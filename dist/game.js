@@ -15,7 +15,7 @@ function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stri
 function totemUnlocked(i){return unlocked>=TOTEMS[i].unlock;}
 function totemEffectText(i,l=totemLevels[i]){return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.map((t,i)=>`<button class="power totem" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%"></span><span class="power-info"><b>${t.name}<small class="totem-level">Lv.${totemLevels[i]}</small></b><small>${t.color} 연속 매치</small><span class="power-meter"><i></i></span></span><span class="power-state"></span></button>`).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>openUpgrades(+b.dataset.totem));}
-let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=90,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
+let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=90,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
 let pausedAt=0,lastFireTargets=[],finishing=false;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
@@ -45,9 +45,10 @@ function pause(){if(!started||ended){toast('보석을 연결하면 탐험이 시
 function resume(){if(started&&!ended){resumeClock();}$('#modal').close();update();}
 function showModal(html){$('#modalContent').innerHTML=html;if(!$('#modal').open)$('#modal').showModal();}
 function help(){if(busy){toast('연쇄가 끝난 뒤 도움말을 열 수 있어요.');return;}const was=running;if(was&&!busy){pauseClock();}showModal(`<div class="modal-kicker">THE ART OF MATCHING</div><h2>아주 간단한 탐험 방법</h2><div class="help-row"><span>01</span><div><b>보석 3개를 나란히</b><small>옆 보석으로 스와이프하거나 두 보석을 차례로 터치하세요.<br>키보드: 방향키 이동 · Enter 선택</small></div></div><div class="help-row"><span>02</span><div><b>길게 연결하면 더 강하게</b><small>4개 → 한 줄 번개 / 5개 → 같은 색 제거<br>T·L자 → 폭탄 / 같은 색 두 번부터 → 자동 토템</small></div></div><div class="help-row"><span>03</span><div><b>같은 색 두 번째부터 자동 발동</b><small>예: 빨강 → 빨강 = 불 토템! 토템 Lv.2로 강화하면 세 번째부터 1.5배 위력이 해금됩니다. Lv.1은 계속 기본 위력입니다. 다른 색을 맞추면 연속 횟수가 초기화됩니다. 자동 낙하 연쇄는 연속 색을 바꾸지 않습니다.</small></div></div><div class="help-row"><span>04</span><div><b>점수와 별빛 수정을 모으세요</b><small>반짝이는 작은 별이 수정입니다. 목표 점수와 수정 수를 모두 채우면 다음 스테이지! 클리어 마법별로 토템을 Lv.5까지 강화하세요. 전체 100개 스테이지.</small></div></div><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="helpClose" class="primary-button">알겠어요 · 탐험으로 →</button>`);$('#helpClose').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};}
-async function trySwap(a,b){if(busy||!ensureStarted()||!adjacent(a,b))return;busy=true;frame.setAttribute('aria-busy','true');selected=-1;hint=[];lastAction=performance.now();[board[a],board[b]]=[board[b],board[a]];syncPositions();tone(280,.06);await wait(reduced?25:155);const groups=findMatches(board);if(!groups.length){[board[a],board[b]]=[board[b],board[a]];syncPositions();await wait(reduced?20:150);busy=false;tone(150,.08,'triangle');if(budgetEmpty())finish(false);return;}combo=1;const primary=groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];totemChain=advanceTotem(totemChain,primary.color);updateTotemUI();await resolve(groups,[b,a]);if(totemChain.trigger&&totemUnlocked(primary.color)&&!ended){await castTotem(primary.color,b);}busy=false;checkEnd();update();}
-async function resolve(groups,preferred=[]){for(let depth=0;groups.length&&depth<24;depth++){const creation=specialCreations(groups,preferred);metrics.specialsMade+=creation.size;metrics.bestCascade=Math.max(metrics.bestCascade,combo);const cells=[...new Set(groups.flatMap(g=>g.cells))];await clearCells(cells,creation,combo);await settle(false);groups=findMatches(board);preferred=[];combo++;}if(findMatches(board).length){board=makeBoard();syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');}}
-async function settle(recurse=true){collapse(board);syncPositions();await wait(reduced?25:245);if(recurse){const groups=findMatches(board);if(groups.length){combo=2;await resolve(groups);}}}
+async function trySwap(a,b){if(swapping||!ensureStarted()||!adjacent(a,b))return;if(!board[a]||!board[b])return;swapping=true;selected=-1;hint=[];lastAction=performance.now();[board[a],board[b]]=[board[b],board[a]];syncPositions();tone(280,.06);await wait(reduced?20:110);const groups=findMatches(board);if(!groups.length){if(board[a]&&board[b]){[board[a],board[b]]=[board[b],board[a]];syncPositions();}await wait(reduced?15:90);swapping=false;tone(150,.08,'triangle');if(budgetEmpty()&&activeCascades===0)finish(false);return;}swapping=false;combo++;const primary=groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];totemChain=advanceTotem(totemChain,primary.color);updateTotemUI();runCascade(groups,[b,a],primary);}
+async function runCascade(groups,preferred=[],primary=null){activeCascades++;busy=true;frame.setAttribute('aria-busy','true');try{await resolve(groups,preferred);if(primary&&totemChain.trigger&&totemUnlocked(primary.color)&&!ended){await castTotem(primary.color,preferred[0]??27);}}finally{activeCascades=Math.max(0,activeCascades-1);if(activeCascades===0){busy=false;frame.setAttribute('aria-busy','false');checkEnd();update();}}}
+async function resolve(groups,preferred=[]){for(let depth=0;groups.length&&depth<24;depth++){const creation=specialCreations(groups,preferred);metrics.specialsMade+=creation.size;metrics.bestCascade=Math.max(metrics.bestCascade,combo);const cells=[...new Set(groups.flatMap(g=>g.cells))].filter(i=>board[i]);if(cells.length){await clearCells(cells,creation,combo);await settle(false);}groups=findMatches(board);preferred=[];combo++;}if(!activeCascades&&findMatches(board).length===0&&!findMove(board)){board=makeBoard();syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');}}
+async function settle(recurse=true){collapse(board);syncPositions();await wait(reduced?20:185);if(recurse){const groups=findMatches(board);if(groups.length){combo++;await resolve(groups);}}}
 async function clearCells(indices,creations=new Map(),chain=1){
   const result=affected(board,indices);
   const seals=damageSeals(sealState,result.cells);
@@ -220,10 +221,10 @@ function completeStage(win){
   if($('#resultUpgrade'))$('#resultUpgrade').onclick=()=>openUpgrades();
   if($('#zenResult'))$('#zenResult').onclick=()=>{mode='zen';reset();start();};
 }
-function select(i){if(busy||paused||ended||$('#modal').open)return;if(selected===i){selected=-1;return;}if(selected>=0&&adjacent(selected,i)){trySwap(selected,i);return;}selected=i;lastAction=performance.now();tone(400+board[i].color*40,.05);}
+function select(i){if(swapping||paused||ended||$('#modal').open)return;if(!board[i])return;if(selected===i){selected=-1;return;}if(selected>=0&&adjacent(selected,i)){trySwap(selected,i);return;}selected=i;lastAction=performance.now();tone(400+board[i].color*40,.05);}
 let pointer=null;
 wrap.addEventListener('pointerdown',e=>{if(e.button!==0)return;const rect=wrap.getBoundingClientRect();const x=(e.clientX-rect.left)/rect.width*8,y=(e.clientY-rect.top)/rect.height*8;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,i:Math.floor(y)*8+Math.floor(x),width:rect.width};wrap.setPointerCapture(e.pointerId);});
-wrap.addEventListener('pointerup',e=>{if(!pointer||pointer.id!==e.pointerId)return;const p=pointer;pointer=null;const dx=e.clientX-p.x,dy=e.clientY-p.y;if(p.i<0||p.i>=64)return;if(Math.hypot(dx,dy)>p.width/8*.3){let b=p.i+(Math.abs(dx)>Math.abs(dy)?(dx>0?1:-1):(dy>0?8:-8));if(b>=0&&b<64&&adjacent(p.i,b))trySwap(p.i,b);}else select(p.i);});wrap.addEventListener('pointercancel',()=>pointer=null);
+wrap.addEventListener('pointerup',e=>{if(!pointer||pointer.id!==e.pointerId)return;const p=pointer;pointer=null;const dx=e.clientX-p.x,dy=e.clientY-p.y;if(p.i<0||p.i>=64||!board[p.i])return;if(Math.hypot(dx,dy)>p.width/8*.3){let b=p.i+(Math.abs(dx)>Math.abs(dy)?(dx>0?1:-1):(dy>0?8:-8));if(b>=0&&b<64&&adjacent(p.i,b))trySwap(p.i,b);}else select(p.i);});wrap.addEventListener('pointercancel',()=>pointer=null);
 $('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;if(!Number.isFinite(i))return;const delta={ArrowRight:1,ArrowLeft:-1,ArrowUp:-8,ArrowDown:8}[e.key];if(delta){e.preventDefault();const j=i+delta;if(j>=0&&j<64&&adjacent(i,j)){e.target.tabIndex=-1;const b=$('#boardInput').children[j];b.tabIndex=0;b.focus();}}if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i);}});
 document.addEventListener('keydown',e=>{if($('#modal').open)return;if(e.key==='Escape'){if(started&&!ended)pause();}});
 $('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=help;$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
@@ -292,12 +293,70 @@ async function castTotem(color,index){
   if(color===4){const gifts=lunarTargets(board,l,totemChain.count);metrics.specialsMade+=gifts.length;gifts.forEach(({index:i,special},k)=>{board[i].special=special;fx.meteor(index,i,t.accent,.75,k*.06,'gift');});fx.field(c+.5,r+.5,t.accent,p.multiplier,'lunar');}
   if(color===5){let text='시간의 축복';if(mode!=='zen'){const next=extendTime(stage,time,p),gained=next-time;time=next;text='+'+gained.toFixed(1).replace('.0','')+'초';}if(p.stasis){frozen=Math.max(frozen,p.stasis);frame.classList.add('frozen-board');}floats.push({x:4,y:3,text,life:1.4,color:'#ffd7a1'});fx.field(4,4,t.accent,p.multiplier,'clock');}
   update();await wait(reduced?20:420);
-  if(cells.length){await clearCells([...new Set(cells)],new Map(),1);await settle();}else{accessBoard();await wait(reduced?20:200);}
+  if(cells.length){const valid=[...new Set(cells)].filter(i=>board[i]);if(valid.length){await clearCells(valid,new Map(),1);await settle();}}else{accessBoard();await wait(reduced?20:200);}
   heavyCast=false;best=Math.max(best,score);update();
 }
 
 function openUpgrades(focus=-1){if(busy){toast('연쇄가 끝난 뒤 토템을 강화할 수 있어요.');return;}if(running)pauseClock();showModal('<div class="modal-kicker">THE TOTEM SANCTUARY</div><h2>고대 토템 강화</h2><div class="wallet-title">★ '+magicStars+' <small>보유 마법별 · 스테이지 클리어로 획득</small></div><div class="upgrade-list">'+TOTEMS.map((t,i)=>{const l=totemLevels[i],cost=upgradeCost(l),available=totemUnlocked(i);return '<div class="upgrade-row '+(focus===i?'focused':'')+'" style="--accent:'+t.accent+'"><span class="upgrade-symbol totem-art" style="background-position:'+(i%3)*50+'% '+Math.floor(i/3)*100+'%"></span><div><b>'+t.name+' <span>Lv.'+l+'</span></b><small>'+(!available?'스테이지 '+t.unlock+' 도달 시 해금':totemEffectText(i))+'</small><span class="level-pips">'+Array.from({length:5},(_,n)=>'<i class="'+(n<l?'filled':'')+'"></i>').join('')+'</span></div><button data-upgrade="'+i+'" '+(!available||!cost||magicStars<cost?'disabled':'')+'>'+(!available?'잠김':!cost?'MAX':'★ '+cost+' 강화')+'</button></div>';}).join('')+'</div><p class="upgrade-help">같은 색을 직접 2번 연속 맞추면 자동 발동합니다.<br>Lv.1: 기본 위력 · Lv.2 이상: 3연속부터 1.5배!<br>다른 색을 맞추면 연속 횟수가 초기화됩니다.</p><button id="upgradeClose" class="primary-button">'+(ended?'다음 스테이지 준비 →':'탐험으로 돌아가기 →')+'</button>');$$('[data-upgrade]').forEach(b=>b.onclick=()=>{const i=+b.dataset.upgrade,l=totemLevels[i],cost=upgradeCost(l);if(!totemUnlocked(i)||!cost||magicStars<cost)return;magicStars-=cost;totemLevels[i]++;persist();chord(5);renderTotems();update();openUpgrades(i);});$('#upgradeClose').onclick=()=>{if(ended){if(level<STAGE_COUNT&&stageStars[level-1])level++;reset();}else resume();};}
-function openMap(chapter=chapterIndex(level)){if(busy){toast('연쇄가 끝난 뒤 지도를 열 수 있어요.');return;}if(running)pauseClock();showModal('<div class="modal-kicker">100 STAGES · 5 TEMPLES</div><h2>'+chapters[chapter][0]+'</h2><div class="map-tabs">'+chapters.map((c,i)=>'<button data-chapter="'+i+'" class="'+(i===chapter?'active':'')+'">'+String(i*20+1).padStart(2,'0')+'–'+((i+1)*20)+'</button>').join('')+'</div><div class="map-grid">'+Array.from({length:20},(_,n)=>{const stage=chapter*20+n+1,stars=stageStars[stage-1],design=stageDesign(stage);return '<button title="'+design.name+' · '+design.tip+'" data-level="'+stage+'" class="'+(design.type==='guardian'?'guardian-stage ':design.type==='bonus'?'bonus-stage ':'')+(stage===level?'current':stage<unlocked?'done':'')+'" '+(stage>unlocked?'disabled':'')+'>'+String(stage).padStart(2,'0')+'<small>'+(stars?'★'.repeat(stars):stage>unlocked?'잠김':design.type==='guardian'?'수호자':design.type==='bonus'?'보너스':'도전')+'</small></button>';}).join('')+'</div><p class="stars-caption">해금 '+unlocked+' / 100 · 마법별 ★ '+magicStars+'</p><button id="mapUpgrade" class="text-button">토템 강화 <span>↗</span></button><button id="mapClose" class="primary-button">탐험으로 돌아가기 →</button>');$('#mapClose').onclick=resume;$('#mapUpgrade').onclick=()=>openUpgrades();$$('[data-chapter]').forEach(b=>b.onclick=()=>openMap(+b.dataset.chapter));$$('[data-level]').forEach(b=>b.onclick=()=>{level=+b.dataset.level;reset();});}
+function openMap(chapter=chapterIndex(level)){
+  if(busy){toast('연쇄가 끝난 뒤 지도를 열 수 있어요.');return;}
+  if(running)pauseClock();
+  const totalStars=stageStars.reduce((a,b)=>a+b,0);
+  const rows=['left','center','right','right','center','left','left','center','right','center','left','center','right','right','center','left','left','center','right','center'];
+  showModal(`
+    <div class="map-dialog">
+      <div class="map-header">
+        <div class="map-kicker">100 EXPEDITIONS · 5 SACRED TEMPLES</div>
+        <h2 class="map-title">${chapters[chapter][0]}</h2>
+        <div class="map-stats-summary">
+          <span>해금 관문 <b>${unlocked} / 100</b></span>
+          <span>총 획득 별 <b>★ ${totalStars}</b></span>
+          <span>보유 마법별 <b>★ ${magicStars}</b></span>
+        </div>
+        <div class="map-tabs">
+          ${chapters.map((c,i)=>`<button data-chapter="${i}" class="${i===chapter?'active':''}">${String(i*20+1).padStart(2,'0')}–${((i+1)*20)}</button>`).join('')}
+        </div>
+      </div>
+      <div class="map-path-container">
+        <div class="map-winding-path">
+          ${Array.from({length:20},(_,n)=>{
+            const stageNum=chapter*20+n+1;
+            const stars=stageStars[stageNum-1];
+            const design=stageDesign(stageNum);
+            const isBoss=design.type==='guardian';
+            const isDone=stageNum<unlocked||(stageNum===unlocked&&stars>0);
+            const isCurrent=stageNum===level;
+            const isLocked=stageNum>unlocked;
+            const posClass=rows[n];
+            return `
+              <div class="map-node-row ${posClass}">
+                <button class="map-node ${isBoss?'boss-node ':''}${isDone?'done ':''}${isCurrent?'current ':''}${isLocked?'locked ':''}"
+                        data-level="${stageNum}" ${isLocked?'disabled':''}
+                        title="${design.name} · ${stars?stars+'별 달성':isLocked?'잠김':'도전 가능'}">
+                  <span class="map-node-num">${isLocked?'🔒':String(stageNum).padStart(2,'0')}</span>
+                  <span class="map-node-stars">${stars?'★'.repeat(stars):isDone?'✓':'도전'}</span>
+                  <span class="map-node-label">${isCurrent?'★ 현재 위치':design.name}</span>
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
+        <button id="mapUpgrade" class="text-button">토템 강화 <span>↗</span></button>
+        <button id="mapClose" class="primary-button" style="width:auto;padding:12px 24px;">지도 닫기 →</button>
+      </div>
+    </div>
+  `);
+  $('#mapClose').onclick=resume;
+  $('#mapUpgrade').onclick=()=>openUpgrades();
+  $$('[data-chapter]').forEach(b=>b.onclick=()=>openMap(+b.dataset.chapter));
+  $$('[data-level]').forEach(b=>b.onclick=()=>{
+    const selectedLevel=+b.dataset.level;
+    $('#modal').close();
+    showScenarioBriefing(selectedLevel);
+  });
+}
 $('#upgradeBtn').onclick=()=>openUpgrades();
 
 function updateStageUI(){
@@ -311,7 +370,7 @@ function updateStageUI(){
 }
 function heavyShake(strength=1){if(reduced||performance.now()-lastHeavyShake<80)return;lastHeavyShake=performance.now();cameraAnimation?.cancel();const a=Math.min(14,5+strength*4);cameraAnimation=frame.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${-a}px,${a*.4}px) scale(1.025)`},{transform:`translate(${a*.8}px,${-a*.5}px) scale(1.018)`},{transform:`translate(${-a*.5}px,${a*.2}px) scale(1.01)`},{transform:'translate(0,0) scale(1)'}],{duration:560,easing:'cubic-bezier(.15,.7,.25,1)'});}
 function impactSound(strength=1){director.impact(strength,totemChain.color>=0?totemChain.color:1);}
-function showCinematic(color,l,multiplier){const t=TOTEMS[color],el=$('#powerCinematic');el.style.setProperty('--power-color',t.accent);el.innerHTML=`<span class="cinematic-totem totem-art" style="background-position:${(color%3)*50}% ${Math.floor(color/3)*100}%"></span><span><small>${multiplier>1?'OVERDRIVE ×1.5':'TOTEM AWAKENING'}</small><b>${t.name}</b><em>Lv.${l} · ${totemChain.count}연속${multiplier>1?' · 위력 150%':''}</em></span>`;clearTimeout(cinematicTimer);el.classList.remove('show');void el.offsetWidth;el.classList.add('show');document.body.classList.toggle('overdrive',multiplier>1);cinematicTimer=setTimeout(()=>{el.classList.remove('show');document.body.classList.remove('overdrive');},reduced?850:1300);}
+function showCinematic(color,l,multiplier){clearTimeout(cinematicTimer);document.body.classList.toggle('overdrive',multiplier>1);cinematicTimer=setTimeout(()=>{document.body.classList.remove('overdrive');},reduced?600:1100);}
 
 function showSoundSettings(){if(busy){toast('연쇄가 끝난 뒤 소리를 조절할 수 있어요.');return;}if(running)pauseClock();const s=director.settings;showModal(`<div class="modal-kicker">TEMPLE SOUNDSCAPES</div><h2>사운드 설정</h2><p class="audio-description">보석 공명 · 묵직한 토템 · 사원의 리듬</p><div class="settings-row"><span>사운드</span><button id="audioEnabled">${s.enabled?'켜짐':'꺼짐'}</button></div>${[['master','전체 음량'],['effects','효과음'],['music','배경음악']].map(([key,label])=>`<label class="audio-control" for="audio-${key}"><span>${label}</span><b id="audioValue-${key}">${Math.round(s[key]*100)}%</b><input id="audio-${key}" data-audio="${key}" type="range" min="0" max="100" value="${Math.round(s[key]*100)}"></label>`).join('')}<label class="audio-preview-label" for="audioPreviewTotem">들어볼 토템</label><select id="audioPreviewTotem" class="audio-preview-select">${TOTEMS.map((t,i)=>`<option value="${i}" ${i===1?'selected':''}>${t.name}</option>`).join('')}</select><button id="audioPreview" class="audio-preview">▶ 토템 사운드 들어보기</button><button id="audioClose" class="primary-button">탐험으로 돌아가기 →</button>`);$('#audioEnabled').onclick=e=>{sound=!director.settings.enabled;director.configure('enabled',sound);e.target.textContent=sound?'켜짐':'꺼짐';persist();update();};$$('[data-audio]').forEach(input=>input.oninput=e=>{const key=e.target.dataset.audio,value=+e.target.value;director.configure(key,value/100);$('#audioValue-'+key).textContent=value+'%';});$('#audioPreview').onclick=async()=>{if(!director.settings.enabled){sound=true;director.configure('enabled',true);$('#audioEnabled').textContent='켜짐';update();}await director.unlock();director.power(Number($('#audioPreviewTotem').value),1.5);};$('#audioClose').onclick=resume;}
 $('#soundSettingsBtn').onclick=showSoundSettings;
@@ -397,6 +456,7 @@ $('#titleNewGameBtn').onclick=()=>{
 
 $('#titleSoundBtn').onclick=showSoundSettings;
 $('#titleHelpBtn').onclick=help;
+$('#titleMapBtn').onclick=()=>openMap();
 $('#homeBtn').onclick=showTitleScreen;
 $('#brandLink').onclick=e=>{e.preventDefault();showTitleScreen();};
 

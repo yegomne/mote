@@ -15,8 +15,30 @@ export class Soundscape {
   track(node){this.active++;node.onended=()=>this.active=Math.max(0,this.active-1);}
   voice(freq,duration=.2,volume=.1,type='sine',when,pan=0,bus='fx',endFreq=freq,attack=.004,wet=.18){if(!this.ready()||volume<=0)return;const c=this.ctx,t=when??c.currentTime,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(15,freq),t);o.frequency.exponentialRampToValueAtTime(Math.max(15,endFreq),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),t+attack);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);const out=c.createStereoPanner?c.createStereoPanner():c.createGain();if(out.pan)out.pan.value=clamp((pan+1)/2)*2-1;g.connect(out).connect(bus==='music'?this.music:this.fx);if(wet){const send=c.createGain();send.gain.value=wet;g.connect(send).connect(this.reverb);}this.track(o);o.start(t);o.stop(t+duration+.02);}
   hiss(duration,volume,frequency,kind='lowpass',when,pan=0,bus='fx'){if(!this.ready())return;const c=this.ctx,t=when??c.currentTime,source=c.createBufferSource(),filter=c.createBiquadFilter(),g=c.createGain();source.buffer=this.noise;filter.type=kind;filter.frequency.value=frequency;filter.Q.value=.7;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),t+.003);g.gain.exponentialRampToValueAtTime(.0001,t+duration);const out=c.createStereoPanner?c.createStereoPanner():c.createGain();if(out.pan)out.pan.value=pan;source.connect(filter).connect(g).connect(out).connect(bus==='music'?this.music:this.fx);this.track(source);source.start(t,Math.random()*.45);source.stop(t+duration+.01);}
-  ui(freq=440,duration=.1,type='sine',volume=.07){if(!this.ready())return;this.voice(freq,duration,volume*1.35,type,undefined,0,'fx',freq*.8,.003,.12);}
-  match(chain,color){if(!this.ready())return;const c=this.ctx,t=c.currentTime,notes=[587.33,659.25,783.99,880,1046.5,1174.66],f=notes[color%6]*Math.pow(1.06,Math.min(chain-1,6)),pan=(Math.random()-.5)*.45;this.voice(145,.13,.24,'sine',t,pan,'fx',55,.002,0);this.hiss(.075,.14,3200,'highpass',t,pan);this.voice(f,.27,.19,'triangle',t,pan);this.voice(f*2.01,.16,.055,'sine',t+.008,-pan);if(chain>1)this.voice(f*1.5,.31,.09,'sine',t+.055,pan);}
+  ui(freq=440,duration=.18,type='triangle',volume=.09){if(!this.ready())return;this.voice(freq,duration,volume*1.3,'triangle',undefined,0,'fx',freq*.85,.003,.22);this.voice(freq*.5,duration*.8,volume*.8,'sine',undefined,0,'fx',freq*.4,.002,.15);}
+  match(chain,color){
+    if(!this.ready())return;
+    const c=this.ctx,t=c.currentTime;
+    const notes=[523.25,587.33,659.25,783.99,880,1046.5];
+    const f=notes[color%6]*Math.pow(1.05,Math.min(chain-1,6));
+    const pan=(Math.random()-.5)*.5;
+    // 1. 묵직하고 따뜻한 보석 파열 바디 (Sub-bass Crack Thud)
+    this.voice(95,.42,.32,'triangle',t,0,'fx',40,.002,.25);
+    // 2. 맑고 풍성한 3중 크리스털 공명음 (Crystal Resonance Chime - 0.65초 풍성한 서스테인)
+    this.voice(f,.68,.28,'sine',t,pan,'fx',f*.99,.003,.45);
+    this.voice(f*1.498,.58,.18,'triangle',t+.015,-pan,'fx',f*1.5,.004,.45);
+    this.voice(f*2.01,.48,.14,'sine',t+.03,pan*.5,'fx',f*2.02,.002,.5);
+    // 3. 고운 유리/보석 파편 질감 (Glass Texture)
+    this.hiss(.22,.16,4200,'bandpass',t,pan);
+    this.hiss(.08,.12,6500,'highpass',t+.01,-pan);
+    // 4. 연쇄(Chain) 상승 시 중후한 팡파레와 서브우퍼 증폭
+    if(chain>1){
+      const bonusIntervals=[1.25,1.5,1.75,2.0,2.5];
+      const r=bonusIntervals[Math.min(chain-2,bonusIntervals.length-1)];
+      this.voice(f*r,.78,.22,'triangle',t+.04,-pan,'fx',f*r,.004,.5);
+      this.voice(65,.6,.26*Math.min(chain,4),'sine',t+.02,0,'fx',32,.002,.3);
+    }
+  }
   impact(strength=1,color=1){if(color===2){this.thunder(strength);return;}if(!this.ready()||this.ctx.currentTime-this.lastImpact<.09)return;const t=this.ctx.currentTime;this.lastImpact=t;const weight=Math.min(1.6,strength);this.voice(135,.68,.55*weight,'sine',t,0,'fx',30,.003,.18);this.voice(62,.85,.22*weight,'triangle',t+.018,0,'fx',31,.009,.35);this.hiss(.46,.44*weight,color===2?2400:1050,'lowpass',t);this.hiss(.09,.28*weight,3800,'highpass',t);if(color===2){this.voice(210,.28,.17,'sawtooth',t,0,'fx',70,.002,.25);for(let n=0;n<4;n++)this.hiss(.055,.15,3000,'bandpass',t+n*.045,(n%2?1:-1)*.45);}this.musicDuck.gain.cancelScheduledValues(t);this.musicDuck.gain.setTargetAtTime(.42,t,.015);this.musicDuck.gain.setTargetAtTime(1,t+.4,.24);}
   thunder(strength=1){if(!this.ready()||this.ctx.currentTime-this.lastThunder<.4)return;const t=this.ctx.currentTime,s=Math.min(1.8,strength);this.lastThunder=t;
     // Immediate violent lightning arc snap, followed by deep shockwave impact and rolling thunder
@@ -103,49 +125,60 @@ export class Soundscape {
   specialCreate(type='bomb'){
     if(!this.ready())return;
     const t=this.ctx.currentTime;
-    this.voice(880,.25,.24,'triangle',t,0,'fx',1760,.002,.3);
-    this.voice(1320,.3,.2,'sine',t+.03,0,'fx',2640,.003,.4);
-    this.hiss(.15,.28,5200,'highpass',t+.02);
+    this.voice(659.25,.75,.26,'triangle',t,0,'fx',1318.5,.003,.4);
+    this.voice(987.77,.85,.22,'sine',t+.04,-.3,'fx',1975.5,.004,.48);
+    this.voice(1318.5,.95,.18,'sine',t+.08,.3,'fx',2637,.003,.52);
+    this.voice(110,.5,.3,'sine',t,0,'fx',55,.002,.25);
+    this.hiss(.35,.22,4800,'bandpass',t+.03);
   }
 
   bombDetonate(){
     if(!this.ready())return;
     const t=this.ctx.currentTime;
-    this.voice(140,.8,.68,'sine',t,0,'fx',30,.002,.38);
-    this.voice(260,.35,.48,'sawtooth',t+.01,0,'fx',45,.001,.25);
-    this.hiss(.75,.58,650,'lowpass',t+.02);
-    this.hiss(.18,.38,3200,'bandpass',t+.01);
+    // 1. 대구경 서브우퍼 폭발 붐 (Sub-bass Shockwave 160Hz -> 25Hz, 1.3초 서스테인)
+    this.voice(160,1.35,.8,'sine',t,0,'fx',25,.002,.45);
+    this.voice(240,.65,.55,'sawtooth',t+.01,0,'fx',35,.001,.3);
+    this.voice(75,1.6,.45,'triangle',t+.03,0,'fx',20,.01,.55);
+    // 2. 묵직하고 거대한 화염 폭풍 노이즈 (Firestorm Rumble)
+    this.hiss(1.2,.65,580,'lowpass',t+.02);
+    this.hiss(.45,.42,2200,'bandpass',t+.01);
     this.musicDuck.gain.cancelScheduledValues(t);
-    this.musicDuck.gain.setTargetAtTime(.2,t,.01);
-    this.musicDuck.gain.setTargetAtTime(1,t+.55,.25);
+    this.musicDuck.gain.setTargetAtTime(.12,t,.01);
+    this.musicDuck.gain.setTargetAtTime(1,t+.8,.35);
   }
 
   laserDetonate(){
     if(!this.ready())return;
     const t=this.ctx.currentTime;
-    this.voice(980,.38,.48,'sawtooth',t,0,'fx',160,.001,.28);
-    this.voice(480,.52,.38,'triangle',t+.02,0,'fx',90,.003,.35);
-    this.hiss(.28,.45,4200,'bandpass',t+.01);
-    this.hiss(.1,.52,6500,'highpass',t);
+    // 1. 고출력 플라즈마 빔 관통음 (Plasma Beam Piercing 1100Hz -> 120Hz)
+    this.voice(1100,.65,.55,'sawtooth',t,0,'fx',120,.001,.35);
+    this.voice(440,.85,.45,'triangle',t+.02,0,'fx',65,.002,.4);
+    this.voice(120,1.1,.55,'sine',t+.01,0,'fx',28,.002,.38);
+    // 2. 전격 방전 스파크 텍스처
+    this.hiss(.45,.5,3800,'bandpass',t+.01);
+    this.hiss(.18,.55,6200,'highpass',t);
     this.musicDuck.gain.cancelScheduledValues(t);
-    this.musicDuck.gain.setTargetAtTime(.22,t,.01);
-    this.musicDuck.gain.setTargetAtTime(1,t+.45,.2);
+    this.musicDuck.gain.setTargetAtTime(.15,t,.01);
+    this.musicDuck.gain.setTargetAtTime(1,t+.65,.28);
   }
 
   novaDetonate(){
     if(!this.ready())return;
     const t=this.ctx.currentTime;
-    this.voice(110,1.25,.7,'sine',t,0,'fx',28,.002,.48);
+    // 1. 전 화면 코스믹 임팩트 붐 (110Hz -> 22Hz, 1.8초)
+    this.voice(110,1.8,.85,'sine',t,0,'fx',22,.002,.55);
+    this.voice(55,2.1,.55,'triangle',t+.04,0,'fx',18,.01,.6);
+    // 2. 6중 신비로운 하모닉스 팡파레
     [0,7,12,16,19,24].forEach((n,i)=>{
       const f=261.63*Math.pow(2,n/12);
-      this.voice(f,.85,.26,'triangle',t+i*.035,(i%2?1:-1)*.4,'fx',f*1.02,.003,.5);
-      this.voice(f*2,.55,.14,'sine',t+i*.035+.005,-(i%2?1:-1)*.3,'fx',f*2,.002,.45);
+      this.voice(f,1.2,.32,'triangle',t+i*.04,(i%2?1:-1)*.45,'fx',f*1.01,.004,.55);
+      this.voice(f*2,.8,.18,'sine',t+i*.04+.006,-(i%2?1:-1)*.35,'fx',f*2,.002,.5);
     });
-    this.hiss(.85,.48,1800,'bandpass',t+.05);
-    this.hiss(.32,.38,4500,'highpass',t+.02);
+    this.hiss(1.1,.55,1600,'bandpass',t+.04);
+    this.hiss(.45,.4,4200,'highpass',t+.02);
     this.musicDuck.gain.cancelScheduledValues(t);
-    this.musicDuck.gain.setTargetAtTime(.15,t,.01);
-    this.musicDuck.gain.setTargetAtTime(1,t+.9,.3);
+    this.musicDuck.gain.setTargetAtTime(.1,t,.01);
+    this.musicDuck.gain.setTargetAtTime(1,t+1.3,.38);
   }
 
   chord(kind=0){if(!this.ready())return;const t=this.ctx.currentTime;[0,3,7,12].forEach((n,i)=>this.voice(220*Math.pow(2,(n+kind)/12),.58,.11,'triangle',t+i*.052,(i-1.5)*.2));}
