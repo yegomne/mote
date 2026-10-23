@@ -1,0 +1,154 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    },
+    "inputs": {
+      "seed": 102,
+      "steps": 12,
+      "cfg": 2.5,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0,
+      "model": [
+        "75",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "58",
+        0
+      ]
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    },
+    "inputs": {
+      "text": "Masterpiece cinematic concept art of an ancient Mayan stone gate with glowing red and blue magical runes emerging from crevices, mystical energy, jungle temple, dramatic volumetric lighting, 8k resolution",
+      "clip": [
+        "38",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Prompt"
+    },
+    "inputs": {
+      "text": "blurry, low quality, watermark, text, distorted, jpeg artifacts",
+      "clip": [
+        "38",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    },
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    }
+  },
+  "37": {
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    },
+    "inputs": {
+      "unet_name": "qwen_image_2.1_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "38": {
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load Text Encoder"
+    },
+    "inputs": {
+      "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    }
+  },
+  "39": {
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    },
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+  },
+  "58": {
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "Empty Latent 1024x1024"
+    },
+    "inputs": {
+      "width": 960,
+      "height": 544,
+      "batch_size": 1
+    }
+  },
+  "60": {
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    },
+    "inputs": {
+      "filename_prefix": "SolarRelic/test_stage_2",
+      "images": [
+        "8",
+        0
+      ]
+    }
+  },
+  "66": {
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "Model Sampling (shift)"
+    },
+    "inputs": {
+      "shift": 3.1,
+      "model": [
+        "37",
+        0
+      ]
+    }
+  },
+  "75": {
+    "class_type": "CFGNorm",
+    "_meta": {
+      "title": "CFG Norm"
+    },
+    "inputs": {
+      "strength": 1.0,
+      "model": [
+        "66",
+        0
+      ]
+    }
+  }
+}
