@@ -45,9 +45,73 @@ function pause(){if(!started||ended){toast('보석을 연결하면 탐험이 시
 function resume(){if(started&&!ended){resumeClock();}$('#modal').close();update();}
 function showModal(html){$('#modalContent').innerHTML=html;if(!$('#modal').open)$('#modal').showModal();}
 function help(){if(busy){toast('연쇄가 끝난 뒤 도움말을 열 수 있어요.');return;}const was=running;if(was&&!busy){pauseClock();}showModal(`<div class="modal-kicker">THE ART OF MATCHING</div><h2>아주 간단한 탐험 방법</h2><div class="help-row"><span>01</span><div><b>보석 3개를 나란히</b><small>옆 보석으로 스와이프하거나 두 보석을 차례로 터치하세요.<br>키보드: 방향키 이동 · Enter 선택</small></div></div><div class="help-row"><span>02</span><div><b>길게 연결하면 더 강하게</b><small>4개 → 한 줄 번개 / 5개 → 같은 색 제거<br>T·L자 → 폭탄 / 같은 색 두 번부터 → 자동 토템</small></div></div><div class="help-row"><span>03</span><div><b>같은 색 두 번째부터 자동 발동</b><small>예: 빨강 → 빨강 = 불 토템! 토템 Lv.2로 강화하면 세 번째부터 1.5배 위력이 해금됩니다. Lv.1은 계속 기본 위력입니다. 다른 색을 맞추면 연속 횟수가 초기화됩니다. 자동 낙하 연쇄는 연속 색을 바꾸지 않습니다.</small></div></div><div class="help-row"><span>04</span><div><b>점수와 별빛 수정을 모으세요</b><small>반짝이는 작은 별이 수정입니다. 목표 점수와 수정 수를 모두 채우면 다음 스테이지! 클리어 마법별로 토템을 Lv.5까지 강화하세요. 전체 100개 스테이지.</small></div></div><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="helpClose" class="primary-button">알겠어요 · 탐험으로 →</button>`);$('#helpClose').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};}
-async function trySwap(a,b){if(swapping||!ensureStarted()||!adjacent(a,b))return;if(!board[a]||!board[b])return;swapping=true;selected=-1;hint=[];lastAction=performance.now();[board[a],board[b]]=[board[b],board[a]];syncPositions();tone(280,.06);await wait(reduced?20:110);const groups=findMatches(board);if(!groups.length){if(board[a]&&board[b]){[board[a],board[b]]=[board[b],board[a]];syncPositions();}await wait(reduced?15:90);swapping=false;tone(150,.08,'triangle');if(budgetEmpty()&&activeCascades===0)finish(false);return;}swapping=false;combo++;const primary=groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];totemChain=advanceTotem(totemChain,primary.color);updateTotemUI();runCascade(groups,[b,a],primary);}
-async function runCascade(groups,preferred=[],primary=null){activeCascades++;busy=true;frame.setAttribute('aria-busy','true');try{await resolve(groups,preferred);if(primary&&totemChain.trigger&&totemUnlocked(primary.color)&&!ended){await castTotem(primary.color,preferred[0]??27);}}finally{activeCascades=Math.max(0,activeCascades-1);if(activeCascades===0){busy=false;frame.setAttribute('aria-busy','false');checkEnd();update();}}}
-async function resolve(groups,preferred=[]){for(let depth=0;groups.length&&depth<24;depth++){const creation=specialCreations(groups,preferred);metrics.specialsMade+=creation.size;metrics.bestCascade=Math.max(metrics.bestCascade,combo);const cells=[...new Set(groups.flatMap(g=>g.cells))].filter(i=>board[i]);if(cells.length){await clearCells(cells,creation,combo);await settle(false);}groups=findMatches(board);preferred=[];combo++;}if(!activeCascades&&findMatches(board).length===0&&!findMove(board)){board=makeBoard();syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');}}
+async function trySwap(a,b){
+  if(swapping||!ensureStarted()||!adjacent(a,b))return;
+  if(!board[a]||!board[b])return;
+  swapping=true;
+  try{
+    selected=-1;hint=[];lastAction=performance.now();
+    [board[a],board[b]]=[board[b],board[a]];
+    syncPositions();tone(280,.06);
+    await wait(reduced?20:110);
+    const groups=findMatches(board);
+    if(!groups.length){
+      if(board[a]&&board[b]){
+        [board[a],board[b]]=[board[b],board[a]];
+        syncPositions();
+      }
+      await wait(reduced?15:90);
+      tone(150,.08,'triangle');
+      if(!findMove(board)){
+        board=makeBoard();syncPositions(true);
+        announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');
+      }
+      if(budgetEmpty()&&activeCascades===0)finish(false);
+      return;
+    }
+    combo++;
+    const primary=groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];
+    totemChain=advanceTotem(totemChain,primary.color);
+    updateTotemUI();
+    runCascade(groups,[b,a],primary);
+  }catch(err){
+    console.error('trySwap error:',err);
+  }finally{
+    swapping=false;
+  }
+}
+async function runCascade(groups,preferred=[],primary=null){
+  activeCascades++;busy=true;frame.setAttribute('aria-busy','true');
+  try{
+    await resolve(groups,preferred);
+    if(primary&&totemChain.trigger&&totemUnlocked(primary.color)&&!ended){
+      await castTotem(primary.color,preferred[0]??27);
+    }
+  }catch(err){
+    console.error('runCascade error:',err);
+  }finally{
+    activeCascades=Math.max(0,activeCascades-1);
+    if(activeCascades===0){
+      busy=false;frame.setAttribute('aria-busy','false');checkEnd();update();
+    }
+  }
+}
+async function resolve(groups,preferred=[]){
+  for(let depth=0;groups.length&&depth<24;depth++){
+    const creation=specialCreations(groups,preferred);
+    metrics.specialsMade+=creation.size;metrics.bestCascade=Math.max(metrics.bestCascade,combo);
+    const cells=[...new Set(groups.flatMap(g=>g.cells))].filter(i=>board[i]);
+    if(cells.length){
+      await clearCells(cells,creation,combo);
+      await settle(false);
+    }
+    groups=findMatches(board);
+    preferred=[];combo++;
+  }
+  if(!activeCascades&&findMatches(board).length===0&&!findMove(board)){
+    board=makeBoard();syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');
+  }
+}
 async function settle(recurse=true){collapse(board);syncPositions();await wait(reduced?20:185);if(recurse){const groups=findMatches(board);if(groups.length){combo++;await resolve(groups);}}}
 async function clearCells(indices,creations=new Map(),chain=1){
   const result=affected(board,indices);
@@ -221,10 +285,64 @@ function completeStage(win){
   if($('#resultUpgrade'))$('#resultUpgrade').onclick=()=>openUpgrades();
   if($('#zenResult'))$('#zenResult').onclick=()=>{mode='zen';reset();start();};
 }
-function select(i){if(swapping||paused||ended||$('#modal').open)return;if(!board[i])return;if(selected===i){selected=-1;return;}if(selected>=0&&adjacent(selected,i)){trySwap(selected,i);return;}selected=i;lastAction=performance.now();tone(400+board[i].color*40,.05);}
+function select(i){
+  if(swapping||paused||ended||$('#modal').open)return;
+  if(i<0||i>=64||!board[i])return;
+  if(selected===i){selected=-1;return;}
+  if(selected>=0&&adjacent(selected,i)){
+    const prev=selected;
+    selected=-1;
+    trySwap(prev,i);
+    return;
+  }
+  selected=i;
+  lastAction=performance.now();
+  tone(400+board[i].color*40,.05);
+}
 let pointer=null;
-wrap.addEventListener('pointerdown',e=>{if(e.button!==0)return;const rect=wrap.getBoundingClientRect();const x=(e.clientX-rect.left)/rect.width*8,y=(e.clientY-rect.top)/rect.height*8;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,i:Math.floor(y)*8+Math.floor(x),width:rect.width};wrap.setPointerCapture(e.pointerId);});
-wrap.addEventListener('pointerup',e=>{if(!pointer||pointer.id!==e.pointerId)return;const p=pointer;pointer=null;const dx=e.clientX-p.x,dy=e.clientY-p.y;if(p.i<0||p.i>=64||!board[p.i])return;if(Math.hypot(dx,dy)>p.width/8*.3){let b=p.i+(Math.abs(dx)>Math.abs(dy)?(dx>0?1:-1):(dy>0?8:-8));if(b>=0&&b<64&&adjacent(p.i,b))trySwap(p.i,b);}else select(p.i);});wrap.addEventListener('pointercancel',()=>pointer=null);
+wrap.addEventListener('pointerdown',e=>{
+  if(e.button!==0||paused||ended||$('#modal').open)return;
+  const rect=wrap.getBoundingClientRect();
+  const col=Math.max(0,Math.min(7,Math.floor((e.clientX-rect.left)/(rect.width/8))));
+  const row=Math.max(0,Math.min(7,Math.floor((e.clientY-rect.top)/(rect.height/8))));
+  const i=row*8+col;
+  pointer={id:e.pointerId,startX:e.clientX,startY:e.clientY,i,width:rect.width,swapped:false};
+  try{wrap.setPointerCapture(e.pointerId);}catch{}
+  select(i);
+});
+wrap.addEventListener('pointermove',e=>{
+  if(!pointer||pointer.id!==e.pointerId||pointer.swapped)return;
+  const dx=e.clientX-pointer.startX,dy=e.clientY-pointer.startY;
+  const threshold=Math.max(12,pointer.width/8*.24);
+  if(Math.hypot(dx,dy)>=threshold){
+    pointer.swapped=true;
+    const from=pointer.i;
+    let targetCol=from%8,targetRow=Math.floor(from/8);
+    if(Math.abs(dx)>Math.abs(dy)){
+      targetCol+=dx>0?1:-1;
+    }else{
+      targetRow+=dy>0?1:-1;
+    }
+    if(targetCol>=0&&targetCol<8&&targetRow>=0&&targetRow<8){
+      const to=targetRow*8+targetCol;
+      if(adjacent(from,to)){
+        selected=-1;
+        trySwap(from,to);
+      }
+    }
+  }
+});
+wrap.addEventListener('pointerup',e=>{
+  if(!pointer||pointer.id!==e.pointerId)return;
+  try{wrap.releasePointerCapture(e.pointerId);}catch{}
+  pointer=null;
+});
+wrap.addEventListener('pointercancel',e=>{
+  if(pointer&&pointer.id===e.pointerId){
+    try{wrap.releasePointerCapture(e.pointerId);}catch{}
+    pointer=null;
+  }
+});
 $('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;if(!Number.isFinite(i))return;const delta={ArrowRight:1,ArrowLeft:-1,ArrowUp:-8,ArrowDown:8}[e.key];if(delta){e.preventDefault();const j=i+delta;if(j>=0&&j<64&&adjacent(i,j)){e.target.tabIndex=-1;const b=$('#boardInput').children[j];b.tabIndex=0;b.focus();}}if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i);}});
 document.addEventListener('keydown',e=>{if($('#modal').open)return;if(e.key==='Escape'){if(started&&!ended)pause();}});
 $('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=help;$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
@@ -274,7 +392,7 @@ for(const b of beams){b.life-=dt*2.1;ctx.globalAlpha=Math.max(0,b.life);ctx.stro
 for(const p of particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=3.4*dt;p.rot+=dt*5;ctx.save();ctx.translate(p.x*cell,p.y*cell);ctx.rotate(p.rot);ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(-p.size*cell/2,-p.size*cell/2,p.size*cell,p.size*cell);ctx.restore();}particles=particles.filter(p=>p.life>0);ctx.restore();for(const f of floats){f.life-=dt;f.y-=dt*.65;ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,f.life*2));ctx.textAlign='center';ctx.font=`600 ${cell*.34}px Georgia`;ctx.fillStyle=f.color;ctx.shadowColor='#02161b';ctx.shadowBlur=5;ctx.fillText(f.text,f.x*cell,f.y*cell);ctx.restore();}floats=floats.filter(f=>f.life>0);
 fx.draw(now,dt);if(paused){ctx.fillStyle='#031c2477';ctx.fillRect(0,0,boardSize,boardSize);}}
 const atm=$('#atmosphere'),ac=atm.getContext('2d');let aw=0,ah=0,ambient=Array.from({length:32},()=>({x:Math.random(),y:Math.random(),s:.4+Math.random()*1.6,speed:.01+Math.random()*.02,phase:Math.random()*6}));function atmosphere(now,dt){if(aw!==innerWidth||ah!==innerHeight){aw=innerWidth;ah=innerHeight;atm.width=aw;atm.height=ah;}ac.clearRect(0,0,aw,ah);if(reduced)return;for(const p of ambient){p.y-=dt*p.speed;if(p.y<0){p.y=1;p.x=Math.random();}const a=.15+.4*(.5+.5*Math.sin(now/1400+p.phase));ac.fillStyle=`rgba(234,198,112,${a})`;ac.shadowColor='#e9bc6a';ac.shadowBlur=9;ac.beginPath();ac.arc(p.x*aw+Math.sin(now/3000+p.phase)*15,p.y*ah,p.s,0,Math.PI*2);ac.fill();}}
-let uiTick=0;function tick(now){const elapsed=Math.min((now-lastTick)/1000,.15);lastTick=now;const dt=elapsed||.016;if(running&&!paused&&!ended){if(frozen>0){frozen=Math.max(0,frozen-elapsed);if(!frozen)frame.classList.remove('frozen-board');}else if(mode!=='zen'&&now>=impactUntil){time=Math.max(0,time-elapsed);}if(now>frenzyUntil&&frenzy>0&&now-lastAction>2500)frenzy=Math.max(0,frenzy-elapsed*1.8);if(budgetEmpty()){if(busy)finishAfterBusy=true;else finish(false);}}
+let uiTick=0;function tick(now){const elapsed=Math.min((now-lastTick)/1000,.15);lastTick=now;const dt=elapsed||.016;if(running&&!paused&&!ended){if(frozen>0){frozen=Math.max(0,frozen-elapsed);if(!frozen)frame.classList.remove('frozen-board');}else if(mode!=='zen'&&now>=impactUntil){time=Math.max(0,time-elapsed);}if(now>frenzyUntil&&frenzy>0&&now-lastAction>2500)frenzy=Math.max(0,frenzy-elapsed*1.8);if((busy||swapping)&&now-lastAction>2200&&activeCascades===0&&!finishing){busy=false;swapping=false;frame.setAttribute('aria-busy','false');checkEnd();}if(budgetEmpty()){if(busy)finishAfterBusy=true;else finish(false);}}
 if(!document.hidden){draw(now,dt);atmosphere(now,dt);}uiTick+=dt;if(uiTick>.15){update();uiTick=0;}requestAnimationFrame(tick);}
 initStage();renderTotems();syncPositions(true);time=objectives(level).time??90;update();requestAnimationFrame(tick);
 
