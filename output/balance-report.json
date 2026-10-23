@@ -1,0 +1,161 @@
+{
+  "note": "Approximation: fixed decision times, no animation time and chapter-level totem upgrades; not a human playtest.",
+  "report": [
+    {
+      "stage": 1,
+      "random": {
+        "wins": 30,
+        "total": 30,
+        "averageScore": 2808
+      },
+      "goalAware": {
+        "wins": 30,
+        "total": 30,
+        "averageScore": 2252
+      }
+    },
+    {
+      "stage": 2,
+      "random": {
+        "wins": 19,
+        "total": 30,
+        "averageScore": 9133
+      },
+      "goalAware": {
+        "wins": 30,
+        "total": 30,
+        "averageScore": 4765
+      }
+    },
+    {
+      "stage": 3,
+      "random": {
+        "wins": 28,
+        "total": 30,
+        "averageScore": 8243
+      },
+      "goalAware": {
+        "wins": 30,
+        "total": 30,
+        "averageScore": 8637
+      }
+    },
+    {
+      "stage": 4,
+      "random": {
+        "wins": 19,
+        "total": 30,
+        "averageScore": 9598
+      },
+      "goalAware": {
+        "wins": 28,
+        "total": 30,
+        "averageScore": 10548
+      }
+    },
+    {
+      "stage": 5,
+      "random": {
+        "wins": 15,
+        "total": 30,
+        "averageScore": 7533
+      },
+      "goalAware": {
+        "wins": 22,
+        "total": 30,
+        "averageScore": 12120
+      }
+    },
+    {
+      "stage": 9,
+      "random": {
+        "wins": 20,
+        "total": 30,
+        "averageScore": 13760
+      },
+      "goalAware": {
+        "wins": 30,
+        "total": 30,
+        "averageScore": 13578
+      }
+    },
+    {
+      "stage": 10,
+      "random": {
+        "wins": 10,
+        "total": 30,
+        "averageScore": 15417
+      },
+      "goalAware": {
+        "wins": 29,
+        "total": 30,
+        "averageScore": 19960
+      }
+    },
+    {
+      "stage": 20,
+      "random": {
+        "wins": 4,
+        "total": 30,
+        "averageScore": 17803
+      },
+      "goalAware": {
+        "wins": 28,
+        "total": 30,
+        "averageScore": 27740
+      }
+    },
+    {
+      "stage": 30,
+      "random": {
+        "wins": 5,
+        "total": 30,
+        "averageScore": 20210
+      },
+      "goalAware": {
+        "wins": 30,
+        "total": 30,
+        "averageScore": 28807
+      }
+    },
+    {
+      "stage": 50,
+      "random": {
+        "wins": 1,
+        "total": 30,
+        "averageScore": 21818
+      },
+      "goalAware": {
+        "wins": 30,
+        "total": 30,
+        "averageScore": 38443
+      }
+    },
+    {
+      "stage": 70,
+      "random": {
+        "wins": 2,
+        "total": 30,
+        "averageScore": 26475
+      },
+      "goalAware": {
+        "wins": 30,
+        "total": 30,
+        "averageScore": 51013
+      }
+    },
+    {
+      "stage": 100,
+      "random": {
+        "wins": 1,
+        "total": 30,
+        "averageScore": 24843
+      },
+      "goalAware": {
+        "wins": 27,
+        "total": 30,
+        "averageScore": 71683
+      }
+    }
+  ]
+}
