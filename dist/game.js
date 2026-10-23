@@ -1,6 +1,6 @@
-import {Soundscape} from './soundscape.mjs?v=5';
+import {Soundscape} from './soundscape.mjs?v=6';
 import {ImpactFX} from './element-fx.mjs?v=7';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives} from './engine.mjs?v=7';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario} from './engine.mjs?v=8';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612']];
@@ -48,15 +48,178 @@ function help(){if(busy){toast('연쇄가 끝난 뒤 도움말을 열 수 있어
 async function trySwap(a,b){if(busy||!ensureStarted()||!adjacent(a,b))return;busy=true;frame.setAttribute('aria-busy','true');selected=-1;hint=[];lastAction=performance.now();[board[a],board[b]]=[board[b],board[a]];syncPositions();tone(280,.06);await wait(reduced?25:155);const groups=findMatches(board);if(!groups.length){[board[a],board[b]]=[board[b],board[a]];syncPositions();await wait(reduced?20:150);busy=false;tone(150,.08,'triangle');if(budgetEmpty())finish(false);return;}combo=1;const primary=groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];totemChain=advanceTotem(totemChain,primary.color);updateTotemUI();await resolve(groups,[b,a]);if(totemChain.trigger&&totemUnlocked(primary.color)&&!ended){await castTotem(primary.color,b);}busy=false;checkEnd();update();}
 async function resolve(groups,preferred=[]){for(let depth=0;groups.length&&depth<24;depth++){const creation=specialCreations(groups,preferred);metrics.specialsMade+=creation.size;metrics.bestCascade=Math.max(metrics.bestCascade,combo);const cells=[...new Set(groups.flatMap(g=>g.cells))];await clearCells(cells,creation,combo);await settle(false);groups=findMatches(board);preferred=[];combo++;}if(findMatches(board).length){board=makeBoard();syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');}}
 async function settle(recurse=true){collapse(board);syncPositions();await wait(reduced?25:245);if(recurse){const groups=findMatches(board);if(groups.length){combo=2;await resolve(groups);}}}
-async function clearCells(indices,creations=new Map(),chain=1){const result=affected(board,indices);const seals=damageSeals(sealState,result.cells);metrics.sealsBroken+=seals.broken;for(const i of seals.damaged){burst(i,3,heavyCast?20:10);ring(i%8+.5,Math.floor(i/8)+.5,'#e8c779',.65);}for(const {index,type,color}of result.effects){const r=Math.floor(index/8),c=index%8;if(type==='row'||type==='cross')beam(r*8,r*8+7,PALETTE[color][1]);if(type==='col'||type==='cross')beam(c,56+c,PALETTE[color][1]);if(type==='bomb'||type==='nova'){ring(c+.5,r+.5,PALETTE[color][1],type==='nova'?3:1.7);shake();}}let gained=0,collected=0;for(const i of result.cells){const g=board[i];if(!g)continue;metrics.colorCollected[g.color]++;gained+=50*Math.min(chain,4)*(performance.now()<frenzyUntil?3:1);if(g.crystal)collected++;burst(i,g.color,heavyCast?24:chain>2?14:9);if(!creations.has(i)){ghosts.push({g:{...g},life:1});board[i]=null;}}for(const [i,special]of creations){if(board[i]){board[i].special=special;board[i].crystal=false;ring(i%8+.5,Math.floor(i/8)+.5,PALETTE[board[i].color][1],1.1);}}score+=gained;crystals+=collected;if(collected)tone(1100,.22,'sine',.06);frenzy=Math.min(100,frenzy+result.cells.length*.85);if(frenzy>=100&&performance.now()>=frenzyUntil){frenzy=0;frenzyUntil=performance.now()+7000;announce('SOLAR AWAKENING','태양의 각성 · 모든 점수 3배',1500);chord(7);flash();shake();}if(gained){const middle=result.cells[Math.floor(result.cells.length/2)]??27;floats.push({x:middle%8+.5,y:Math.floor(middle/8)+.5,text:`+${gained.toLocaleString()}`,life:1.2,color:chain>1?'#ffe2a1':'#d2f3dd'});}if(chain>1){$('#boardHint').textContent=`${chain}연쇄 · 보석이 깨어납니다!`;if(chain>=3)announce(`${chain} COMBO`,chain>=5?'경이로운 연쇄!':'빛나는 연결',650);}director.match(chain,totemChain.color>=0?totemChain.color:0);vibrate(chain>=3?35:12);if(chain>=3)shake();best=Math.max(best,score);update();await wait(reduced?25:165);}
-function checkEnd(){if(ended||finishing)return;const obj=objectives(level);if(currentGoals().every(g=>g.done)){finish(true);return;}if(budgetEmpty()){finish(false);return;}if(!findMove(board)){board=makeBoard();syncPositions(true);announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');}persist();}
-async function finish(requestedWin){if(ended||finishing)return;finishing=true;running=false;busy=true;selected=-1;hint=[];frozen=0;frame.classList.remove('frozen-board');update();
-  frame.dataset.finale='running';const beforeBonus=score;
-  try{const remaining=board.filter(g=>g?.special).length;if(remaining){announce('유적의 마지막 공명','남은 특수 보석 자동 발동 · 보너스 점수',1800);await wait(reduced?40:450);while(board.some(g=>g?.special)){const index=board.findIndex(g=>g?.special);await clearCells([index],new Map(),1);await settle(false);await wait(reduced?20:180);}}
-  }finally{frame.dataset.finale='complete';frame.dataset.finaleBonus=score-beforeBonus;busy=false;finishing=false;completeStage(requestedWin||currentGoals().every(g=>g.done));}
+async function clearCells(indices,creations=new Map(),chain=1){
+  const result=affected(board,indices);
+  const seals=damageSeals(sealState,result.cells);
+  metrics.sealsBroken+=seals.broken;
+  for(const i of seals.damaged){burst(i,3,heavyCast?22:12);ring(i%8+.5,Math.floor(i/8)+.5,'#e8c779',.75);}
+  for(const {index,type,color}of result.effects){
+    const r=Math.floor(index/8),c=index%8;
+    if(type==='row'||type==='cross'){
+      beam(r*8,r*8+7,'#7de0ff');
+      flash('#7de0ff');
+      director.laserDetonate();
+      burst(index,2,24);
+      shake();
+    }
+    if(type==='col'||type==='cross'){
+      beam(c,56+c,'#7de0ff');
+      flash('#7de0ff');
+      director.laserDetonate();
+      burst(index,2,24);
+      shake();
+    }
+    if(type==='bomb'){
+      ring(c+.5,r+.5,'#ff5522',3.2);
+      flash('#ff6633');
+      director.bombDetonate();
+      burst(index,1,36);
+      shake();
+    }
+    if(type==='nova'){
+      ring(c+.5,r+.5,'#e088ff',5.0);
+      flash('#ffb3ff');
+      director.novaDetonate();
+      burst(index,4,48);
+      shake();
+    }
+  }
+  let gained=0,collected=0;
+  for(const i of result.cells){
+    const g=board[i];
+    if(!g)continue;
+    metrics.colorCollected[g.color]++;
+    gained+=50*Math.min(chain,4)*(performance.now()<frenzyUntil?3:1);
+    if(g.crystal)collected++;
+    burst(i,g.color,heavyCast?24:chain>2?14:9);
+    if(!creations.has(i)){ghosts.push({g:{...g},life:1});board[i]=null;}
+  }
+  for(const [i,special]of creations){
+    if(board[i]){
+      board[i].special=special;
+      board[i].crystal=false;
+      ring(i%8+.5,Math.floor(i/8)+.5,'#ffd54f',2.0);
+      burst(i,3,20);
+      flash('#ffe894');
+      director.specialCreate(special);
+    }
+  }
+  score+=gained;
+  crystals+=collected;
+  if(collected)tone(1100,.22,'sine',.06);
+  frenzy=Math.min(100,frenzy+result.cells.length*.85);
+  if(frenzy>=100&&performance.now()>=frenzyUntil){
+    frenzy=0;frenzyUntil=performance.now()+7000;
+    announce('SOLAR AWAKENING','태양의 각성 · 모든 점수 3배',1500);
+    chord(7);flash();shake();
+  }
+  if(gained){
+    const middle=result.cells[Math.floor(result.cells.length/2)]??27;
+    floats.push({x:middle%8+.5,y:Math.floor(middle/8)+.5,text:`+${gained.toLocaleString()}`,life:1.2,color:chain>1?'#ffe2a1':'#d2f3dd'});
+  }
+  if(chain>1){
+    $('#boardHint').textContent=`${chain}연쇄 · 보석이 깨어납니다!`;
+    if(chain>=3)announce(`${chain} COMBO`,chain>=5?'경이로운 연쇄!':'빛나는 연결',650);
+  }
+  director.match(chain,totemChain.color>=0?totemChain.color:0);
+  vibrate(chain>=3?35:12);
+  if(chain>=3)shake();
+  best=Math.max(best,score);
+  update();
+  await wait(reduced?25:165);
 }
-function completeStage(win){if(ended)return;director.victory(win);ended=true;running=false;paused=false;activePower=null;frenzyUntil=0;best=Math.max(best,score);const earnedStars=win?Math.min(3,1+((time>stage.time*.3)?1:0)+(score>objectives(level).target*1.4?1:0)):0;const newStars=win?stageReward(stageStars[level-1],earnedStars):0;if(win){stageStars[level-1]=Math.max(stageStars[level-1],earnedStars);magicStars+=newStars;unlocked=Math.max(unlocked,Math.min(STAGE_COUNT,level+1));chord(12);flash();for(let i=0;i<8;i++)burst(Math.floor(Math.random()*64),3,25);}
-persist();update();const stars=earnedStars,endingBonus=Number(frame.dataset.finaleBonus)||0;showModal(`<div class="modal-kicker">${win?'TEMPLE AWAKENED':'A NEW DAWN AWAITS'}</div><h2>${win?(level===STAGE_COUNT?'태양의 유산을 찾았습니다':'사원의 문이 열렸습니다'):'다시 깨어날 시간'}</h2><div class="result-stars">${win?'★'.repeat(stars)+'☆'.repeat(3-stars):'✦'}</div><div class="result-stats"><div><b>${score.toLocaleString()}</b><span>최종 점수 · 종료 보너스 포함</span></div><div><b>${crystals}</b><span>별빛 수정</span></div></div>${endingBonus?`<p class="stars-caption">종료 보너스 +${endingBonus.toLocaleString()}점 합산 완료</p>`:''}<p class="stars-caption">${win?(level===STAGE_COUNT?'100개의 스테이지를 모두 탐험했습니다. 멋진 여정이었어요.':`마법별 +${newStars}개 · 보유 ${magicStars}개<br>토템을 강화하고 다음 스테이지에 도전하세요.`):currentGoals().map(g=>(g.done?'✓ ':'· ')+g.label+' '+Math.min(g.value,g.target)+'/'+g.target).join('<br>')+'<br>휴식 모드에서 제한 없이 공략할 수도 있어요.'}</p><button id="nextBtn" class="primary-button">${win&&level<STAGE_COUNT?'다음 사원으로 →':'다시 도전하기 →'}</button>${win?'<button id="resultUpgrade" class="text-button">토템 강화 <span>↗</span></button>':''}${!win?'<button id="zenResult" class="text-button">시간 없는 휴식으로 <span>∞</span></button>':''}`);$('#nextBtn').onclick=()=>{if(win&&level<STAGE_COUNT)level++;reset();start();};if($('#resultUpgrade'))$('#resultUpgrade').onclick=()=>openUpgrades();if($('#zenResult'))$('#zenResult').onclick=()=>{mode='zen';reset();start();};}
+function checkEnd(){
+  if(ended||finishing)return;
+  const obj=objectives(level);
+  if(currentGoals().every(g=>g.done)){finish(true);return;}
+  if(budgetEmpty()){finish(false);return;}
+  if(!findMove(board)){board=makeBoard();syncPositions(true);announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');}
+  persist();
+}
+async function finish(requestedWin){
+  if(ended||finishing)return;
+  finishing=true;running=false;busy=true;selected=-1;hint=[];frozen=0;frame.classList.remove('frozen-board');update();
+  frame.dataset.finale='running';const beforeBonus=score;
+  const willWin=requestedWin||currentGoals().every(g=>g.done);
+  try{
+    if(willWin){
+      const hasSpecials=board.some(g=>g?.special);
+      if(hasSpecials){
+        announce('피날레 특수보석 대연쇄!','남은 특수 보석 자동 발동 · 보너스 점수',2000);
+        await wait(reduced?40:480);
+        while(board.some(g=>g?.special)){
+          const index=board.findIndex(g=>g?.special);
+          ring(index%8+.5,Math.floor(index/8)+.5,'#fff9d2',2.0);
+          await wait(reduced?20:120);
+          await clearCells([index],new Map(),1);
+          await wait(reduced?25:200);
+          collapse(board);syncPositions();
+          await wait(reduced?25:220);
+          let extraGroups=findMatches(board);
+          while(extraGroups.length){
+            combo++;
+            await resolve(extraGroups);
+            extraGroups=findMatches(board);
+          }
+          await wait(reduced?20:150);
+        }
+        if(score>beforeBonus){
+          announce('정산 완료!',`종료 보너스 +${(score-beforeBonus).toLocaleString()}점`,1300);
+          await wait(reduced?30:450);
+        }
+      }
+    }
+  }finally{
+    frame.dataset.finale='complete';frame.dataset.finaleBonus=score-beforeBonus;busy=false;finishing=false;
+    completeStage(willWin);
+  }
+}
+function completeStage(win){
+  if(ended)return;
+  director.victory(win);
+  ended=true;running=false;paused=false;activePower=null;frenzyUntil=0;
+  best=Math.max(best,score);
+  const earnedStars=win?Math.min(3,1+((time>stage.time*.3)?1:0)+(score>objectives(level).target*1.4?1:0)):0;
+  const newStars=win?stageReward(stageStars[level-1],earnedStars):0;
+  if(win){
+    stageStars[level-1]=Math.max(stageStars[level-1],earnedStars);
+    magicStars+=newStars;
+    unlocked=Math.max(unlocked,Math.min(STAGE_COUNT,level+1));
+    chord(12);flash();
+    for(let i=0;i<8;i++)burst(Math.floor(Math.random()*64),3,25);
+  }
+  persist();update();
+  const stars=earnedStars,endingBonus=Number(frame.dataset.finaleBonus)||0;
+  const sc=stageScenario(level);
+  showModal(`
+    <div class="modal-kicker">${win?'TEMPLE AWAKENED':'A NEW DAWN AWAITS'}</div>
+    <h2>${win?(level===STAGE_COUNT?'태양의 유산을 찾았습니다':`${sc.title} 돌파!`):'다시 깨어날 시간'}</h2>
+    <div class="result-stars">${win?'★'.repeat(stars)+'☆'.repeat(3-stars):'✦'}</div>
+    <div class="result-stats">
+      <div><b>${score.toLocaleString()}</b><span>최종 점수 · 종료 보너스 포함</span></div>
+      <div><b>${crystals}</b><span>별빛 수정</span></div>
+    </div>
+    ${endingBonus?`<p class="stars-caption">종료 보너스 +${endingBonus.toLocaleString()}점 합산 완료</p>`:''}
+    <p class="stars-caption">
+      ${win?(level===STAGE_COUNT?'100개의 관문을 모두 돌파했습니다! 몬테주마의 전설이 완성되었습니다.':`마법별 +${newStars}개 (보유 ★${magicStars})<br>사원의 다음 문이 열렸습니다. 다음 관문으로 나아가세요!`):currentGoals().map(g=>(g.done?'✓ ':'· ')+g.label+' '+Math.min(g.value,g.target)+'/'+g.target).join('<br>')+'<br>휴식 모드에서 제한 없이 공략할 수도 있어요.'}
+    </p>
+    <button id="nextBtn" class="primary-button">${win&&level<STAGE_COUNT?'다음 관문으로 →':'다시 도전하기 →'}</button>
+    ${win?'<button id="resultUpgrade" class="text-button">토템 강화 <span>↗</span></button>':''}
+    ${!win?'<button id="zenResult" class="text-button">시간 없는 휴식으로 <span>∞</span></button>':''}
+  `);
+  $('#nextBtn').onclick=()=>{
+    if(win&&level<STAGE_COUNT){
+      level++;
+      reset();
+      showScenarioBriefing(level);
+    }else{
+      reset();
+      start();
+    }
+  };
+  if($('#resultUpgrade'))$('#resultUpgrade').onclick=()=>openUpgrades();
+  if($('#zenResult'))$('#zenResult').onclick=()=>{mode='zen';reset();start();};
+}
 function select(i){if(busy||paused||ended||$('#modal').open)return;if(selected===i){selected=-1;return;}if(selected>=0&&adjacent(selected,i)){trySwap(selected,i);return;}selected=i;lastAction=performance.now();tone(400+board[i].color*40,.05);}
 let pointer=null;
 wrap.addEventListener('pointerdown',e=>{if(e.button!==0)return;const rect=wrap.getBoundingClientRect();const x=(e.clientX-rect.left)/rect.width*8,y=(e.clientY-rect.top)/rect.height*8;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,i:Math.floor(y)*8+Math.floor(x),width:rect.width};wrap.setPointerCapture(e.pointerId);});
@@ -80,7 +243,24 @@ polygon(points);ctx.strokeStyle=p[0]+'a8';ctx.lineWidth=.014;ctx.stroke();polygo
 ctx.globalAlpha=alpha*.48;ctx.strokeStyle='#eafff5';ctx.lineWidth=.016;ctx.beginPath();if(g.color===0){ctx.moveTo(0,-.13);ctx.lineTo(.11,0);ctx.lineTo(0,.13);ctx.lineTo(-.11,0);ctx.closePath();ctx.moveTo(0,-.07);ctx.lineTo(0,.07);}if(g.color===1){ctx.moveTo(-.08,.08);ctx.lineTo(0,-.12);ctx.lineTo(.08,.08);ctx.lineTo(-.08,.08);}if(g.color===2){ctx.arc(0,0,.1,0,Math.PI*2);ctx.moveTo(0,-.16);ctx.lineTo(0,.16);ctx.moveTo(-.16,0);ctx.lineTo(.16,0);}if(g.color===3){ctx.arc(0,0,.08,0,Math.PI*2);for(let a=0;a<8;a++){ctx.moveTo(Math.cos(a*Math.PI/4)*.12,Math.sin(a*Math.PI/4)*.12);ctx.lineTo(Math.cos(a*Math.PI/4)*.17,Math.sin(a*Math.PI/4)*.17);}}if(g.color===4){ctx.moveTo(-.07,-.12);ctx.quadraticCurveTo(.13,0,-.07,.12);ctx.quadraticCurveTo(.03,0,-.07,-.12);}if(g.color===5){ctx.moveTo(-.13,.06);ctx.lineTo(0,-.14);ctx.lineTo(.13,.06);ctx.moveTo(-.09,.01);ctx.lineTo(0,.15);ctx.lineTo(.09,.01);}ctx.stroke();ctx.globalAlpha=alpha;
 const glint=.3+.45*Math.sin(now/1000+g.id*2);ctx.fillStyle=`rgba(255,255,255,${glint})`;ctx.beginPath();ctx.ellipse(-.15,-.23,.065,.018,-.7,0,Math.PI*2);ctx.fill();
 if(g.crystal){ctx.save();ctx.translate(.22,.21);ctx.shadowColor='#e9ffd8';ctx.shadowBlur=7;ctx.fillStyle='#f4ffdf';ctx.beginPath();for(let n=0;n<8;n++){const a=n*Math.PI/4-Math.PI/2,rad=n%2?.035:.10;ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);}ctx.closePath();ctx.fill();ctx.restore();}
-if(g.special){ctx.shadowBlur=10;ctx.shadowColor='#ffecb0';ctx.strokeStyle='#fff9d2';ctx.fillStyle='#fff9d2';ctx.lineWidth=.035;ctx.beginPath();if(g.special==='row'||g.special==='cross'){ctx.moveTo(-.34,0);ctx.lineTo(.34,0);ctx.moveTo(-.25,-.05);ctx.lineTo(-.34,0);ctx.lineTo(-.25,.05);ctx.moveTo(.25,-.05);ctx.lineTo(.34,0);ctx.lineTo(.25,.05);}if(g.special==='col'||g.special==='cross'){ctx.moveTo(0,-.34);ctx.lineTo(0,.34);}if(g.special==='bomb'){ctx.arc(0,0,.18,0,Math.PI*2);ctx.moveTo(-.12,-.12);ctx.lineTo(.12,.12);ctx.moveTo(.12,-.12);ctx.lineTo(-.12,.12);}if(g.special==='nova'){for(let a=0;a<10;a++){const r=a%2?.11:.25;ctx.lineTo(Math.cos(a*Math.PI/5-Math.PI/2)*r,Math.sin(a*Math.PI/5-Math.PI/2)*r);}ctx.closePath();}ctx.stroke();ctx.shadowBlur=0;}ctx.restore();}
+if(g.special){
+  const pulse=.5+.5*Math.sin(now/160+g.id);
+  ctx.save();
+  ctx.shadowBlur=12+10*pulse;
+  ctx.shadowColor=g.special==='bomb'?'#ff4400':g.special==='nova'?'#e066ff':'#55d8ff';
+  ctx.strokeStyle=g.special==='bomb'?'#ff9966':g.special==='nova'?'#f3bbff':'#aae8ff';
+  ctx.lineWidth=.03+.012*pulse;
+  ctx.beginPath();
+  ctx.arc(0,0,.36+.04*pulse,0,Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+  ctx.shadowBlur=10;ctx.shadowColor='#ffecb0';ctx.strokeStyle='#fff9d2';ctx.fillStyle='#fff9d2';ctx.lineWidth=.035;ctx.beginPath();
+  if(g.special==='row'||g.special==='cross'){ctx.moveTo(-.34,0);ctx.lineTo(.34,0);ctx.moveTo(-.25,-.05);ctx.lineTo(-.34,0);ctx.lineTo(-.25,.05);ctx.moveTo(.25,-.05);ctx.lineTo(.34,0);ctx.lineTo(.25,.05);}
+  if(g.special==='col'||g.special==='cross'){ctx.moveTo(0,-.34);ctx.lineTo(0,.34);}
+  if(g.special==='bomb'){ctx.arc(0,0,.18,0,Math.PI*2);ctx.moveTo(-.12,-.12);ctx.lineTo(.12,.12);ctx.moveTo(.12,-.12);ctx.lineTo(-.12,.12);}
+  if(g.special==='nova'){for(let a=0;a<10;a++){const r=a%2?.11:.25;ctx.lineTo(Math.cos(a*Math.PI/5-Math.PI/2)*r,Math.sin(a*Math.PI/5-Math.PI/2)*r);}ctx.closePath();}
+  ctx.stroke();ctx.shadowBlur=0;
+}ctx.restore();}
 function burst(i,color,count=10){if(reduced)count=3;const x=i%8+.5,y=Math.floor(i/8)+.5;for(let k=0;k<count&&particles.length<550;k++){const a=Math.random()*Math.PI*2,v=.6+Math.random()*2.8;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:.45+Math.random()*.5,max:1,size:.025+Math.random()*.05,color:PALETTE[color][k%2],rot:Math.random()*6});}}
 function ring(x,y,color,max=2){rings.push({x,y,color,max,r:.1,life:1});}
 function beam(a,b,color){const points=[],x1=a%8+.5,y1=Math.floor(a/8)+.5,x2=b%8+.5,y2=Math.floor(b/8)+.5;for(let n=0;n<=12;n++){const t=n/12;points.push([x1+(x2-x1)*t+(n&&n<12?(Math.random()-.5)*.28:0),y1+(y2-y1)*t+(n&&n<12?(Math.random()-.5)*.28:0)]);}beams.push({points,color,life:.65});}
@@ -135,3 +315,89 @@ function showCinematic(color,l,multiplier){const t=TOTEMS[color],el=$('#powerCin
 
 function showSoundSettings(){if(busy){toast('연쇄가 끝난 뒤 소리를 조절할 수 있어요.');return;}if(running)pauseClock();const s=director.settings;showModal(`<div class="modal-kicker">TEMPLE SOUNDSCAPES</div><h2>사운드 설정</h2><p class="audio-description">보석 공명 · 묵직한 토템 · 사원의 리듬</p><div class="settings-row"><span>사운드</span><button id="audioEnabled">${s.enabled?'켜짐':'꺼짐'}</button></div>${[['master','전체 음량'],['effects','효과음'],['music','배경음악']].map(([key,label])=>`<label class="audio-control" for="audio-${key}"><span>${label}</span><b id="audioValue-${key}">${Math.round(s[key]*100)}%</b><input id="audio-${key}" data-audio="${key}" type="range" min="0" max="100" value="${Math.round(s[key]*100)}"></label>`).join('')}<label class="audio-preview-label" for="audioPreviewTotem">들어볼 토템</label><select id="audioPreviewTotem" class="audio-preview-select">${TOTEMS.map((t,i)=>`<option value="${i}" ${i===1?'selected':''}>${t.name}</option>`).join('')}</select><button id="audioPreview" class="audio-preview">▶ 토템 사운드 들어보기</button><button id="audioClose" class="primary-button">탐험으로 돌아가기 →</button>`);$('#audioEnabled').onclick=e=>{sound=!director.settings.enabled;director.configure('enabled',sound);e.target.textContent=sound?'켜짐':'꺼짐';persist();update();};$$('[data-audio]').forEach(input=>input.oninput=e=>{const key=e.target.dataset.audio,value=+e.target.value;director.configure(key,value/100);$('#audioValue-'+key).textContent=value+'%';});$('#audioPreview').onclick=async()=>{if(!director.settings.enabled){sound=true;director.configure('enabled',true);$('#audioEnabled').textContent='켜짐';update();}await director.unlock();director.power(Number($('#audioPreviewTotem').value),1.5);};$('#audioClose').onclick=resume;}
 $('#soundSettingsBtn').onclick=showSoundSettings;
+
+function updateTitleUI(){
+  const ci=chapterIndex(level);
+  const totalStars=stageStars.reduce((a,b)=>a+b,0);
+  $('#titleStageName').textContent=`STAGE ${String(level).padStart(2,'0')} · ${chapters[ci][0]}`;
+  $('#titleStars').textContent=`★ ${totalStars}개 (보유 ★${magicStars})`;
+  $('#titleContinueBtn').querySelector('span').textContent=`이어하기 (STAGE ${level})`;
+}
+
+function showTitleScreen(){
+  if(running)pauseClock();
+  updateTitleUI();
+  $('#titleScreen').classList.remove('hide');
+}
+
+function hideTitleScreen(){
+  $('#titleScreen').classList.add('hide');
+}
+
+function showScenarioBriefing(lvl=level){
+  const sc=stageScenario(lvl);
+  const st=stageDesign(lvl);
+  const goals=stageGoals(st,{score:0,crystals:0,colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0});
+  showModal(`
+    <div class="scenario-brief">
+      <div class="scenario-kicker">${sc.chapterSub} · 관문 ${lvl}</div>
+      <h2 class="scenario-title">${sc.title}</h2>
+      <div class="scenario-story">"${sc.story}"</div>
+      <div class="scenario-goals">
+        <b style="font-size:11px;color:#d5c095;margin-bottom:4px;">관문 돌파 목표</b>
+        ${goals.map(g=>`
+          <div class="scenario-goal-row">
+            <span>· ${g.label}</span>
+            <strong>${g.target.toLocaleString()}${g.id==='score'?'점':g.id==='crystals'?'개':g.id==='color'?'개':g.id==='seals'?'겹':g.id==='combo'?'연쇄':'회'}</strong>
+          </div>
+        `).join('')}
+      </div>
+      <button id="scenarioStartBtn" class="primary-button">
+        관문 탐험 시작 →
+      </button>
+    </div>
+  `);
+  $('#scenarioStartBtn').onclick=()=>{
+    $('#modal').close();
+    level=lvl;
+    reset();
+    start();
+  };
+}
+
+$('#titleContinueBtn').onclick=()=>{
+  hideTitleScreen();
+  showScenarioBriefing(level);
+};
+
+$('#titleNewGameBtn').onclick=()=>{
+  if(level>1||magicStars>0){
+    showModal(`
+      <div class="modal-kicker">NEW EXPEDITION</div>
+      <h2>처음부터 새로 시작하시겠습니까?</h2>
+      <p style="text-align:center;line-height:1.8;">현재까지의 탐험 기록(STAGE ${level}, 마법별 ★${magicStars})이 초기화되고<br>1단계 태양의 문부터 새로운 모험을 시작합니다.</p>
+      <button id="confirmResetBtn" class="primary-button" style="background:linear-gradient(120deg,#e57373,#c62828);color:#fff;border-color:#ff8a80;margin-top:16px;">네, 새로 시작합니다</button>
+      <button id="cancelResetBtn" class="text-button" style="text-align:center;justify-content:center;margin-top:10px;">취소하고 이어하기</button>
+    `);
+    $('#confirmResetBtn').onclick=()=>{
+      localStorage.removeItem('solar-relic-v1');
+      localStorage.removeItem('solar-relic-growth-v2');
+      level=1;unlocked=1;best=0;magicStars=0;stageStars=Array(STAGE_COUNT).fill(0);totemLevels=Array(6).fill(1);
+      persist();
+      $('#modal').close();
+      hideTitleScreen();
+      showScenarioBriefing(1);
+    };
+    $('#cancelResetBtn').onclick=()=>$('#modal').close();
+  }else{
+    hideTitleScreen();
+    showScenarioBriefing(1);
+  }
+};
+
+$('#titleSoundBtn').onclick=showSoundSettings;
+$('#titleHelpBtn').onclick=help;
+$('#homeBtn').onclick=showTitleScreen;
+$('#brandLink').onclick=e=>{e.preventDefault();showTitleScreen();};
+
+updateTitleUI();

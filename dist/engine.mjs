@@ -63,3 +63,75 @@ export function stageDesign(level){const chapter=chapterIndex(level),local=(leve
 export function extendTime(stage,time,p){return Math.min(stage.timeCap,time+p.seconds);}
 export function stageGoals(stage,metrics){const goals=[{id:'score',label:'점수',value:metrics.score,target:stage.target},{id:'crystals',label:'수정',value:metrics.crystals,target:stage.crystals}];if(stage.colorTarget)goals.push({id:'color',label:colorNames[stage.focusColor],value:metrics.colorCollected?.[stage.focusColor]||0,target:stage.colorTarget,color:stage.focusColor});if(stage.seals.length)goals.push({id:'seals',label:'봉인',value:metrics.sealsBroken||0,target:stage.seals.length});if(stage.comboTarget)goals.push({id:'combo',label:'최대 연쇄',value:metrics.bestCascade||0,target:stage.comboTarget});if(stage.specialTarget)goals.push({id:'special',label:'특수 보석 생성',value:metrics.specialsMade||0,target:stage.specialTarget});if(stage.totemTarget)goals.push({id:'totem',label:'토템 발동',value:metrics.totemCasts||0,target:stage.totemTarget});if(stage.overdriveTarget)goals.push({id:'overdrive',label:'1.5배 각성',value:metrics.overdrives||0,target:stage.overdriveTarget});return goals.map(g=>({...g,done:g.value>=g.target}));}
 export function objectives(level){return stageDesign(level);}
+
+export function stageScenario(level){
+  const ci=chapterIndex(level);
+  const local=(level-1)%20+1;
+  const chapterTitle=chapters[ci][0];
+  const chapterSub=chapters[ci][1];
+  const scenarios=[
+    [
+      '태양 사원의 거대한 석문 앞에 도착했습니다. 먼지 쌓인 석판에 새겨진 고대 보석들이 당신의 손길에 은은한 빛을 뿜어냅니다.',
+      '닫힌 석문 틈새로 붉고 푸른 기운이 새어나옵니다. 같은 색의 보석을 연속으로 맞추어 고대 수호 토템의 영혼을 깨우세요.',
+      '사원 회랑의 바닥에 비취빛 넝쿨 문양이 드러납니다. 녹색 비취 보석을 모아 대지의 맥박을 이어가세요.',
+      '첫 번째 관문인 비취 토템의 봉인이 풀렸습니다! 석판 주위에 얽힌 견고한 봉인석들을 깨뜨려 전진하세요.',
+      '사원의 숨겨진 보물방이 모습을 드러냈습니다! 시간이 흐르기 전에 쏟아지는 보석과 수정을 최대한 거두세요.',
+      '계단 아래로 이어지는 통로에서 보석들이 공명합니다. 아래쪽에서 연속 매치를 설계하여 깊은 연쇄를 유도하세요.',
+      '벽화에 보석을 조합하는 비전이 새겨져 있습니다. 4개 이상의 보석을 정렬하여 강력한 힘을 품은 특수 보석을 빚어내세요.',
+      '고대 사제들이 거행하던 색상의 제례터입니다. 지정된 색상의 보석을 바치고 바닥의 결계를 정화하세요.',
+      '수호 토템들이 더 강한 공명을 요구합니다. 3연속 같은 색 매치로 1.5배 각성의 위력을 증명하세요.',
+      '제1장 최후의 관문! 거대한 [비취의 수문장]이 길을 막아섭니다. 모든 토템과 봉인을 격파하고 사원의 중심 문을 여세요!'
+    ],
+    [
+      '안개 자욱한 지하 정글 성소에 당도했습니다. 이슬 머금은 비취 수정들이 신비로운 울림으로 탐험가를 맞이합니다.',
+      '거대한 고대 석목 뿌리가 보석판을 감싸고 있습니다. 자연의 에너지를 불어넣어 길을 여세요.',
+      '에메랄드빛 폭포 뒤로 숨겨진 제단이 보입니다. 목표 색상의 보석을 모아 물길을 돌리세요.',
+      '잠들어 있던 덩굴 룬들이 깨어났습니다. 더욱 단단해진 이중 봉인을 특수 보석과 토템으로 분쇄하세요.',
+      '정원의 비밀 수장고가 열렸습니다! 짧은 시간 동안 제한 없이 보물과 수정을 획득하세요.',
+      '지하 동굴의 기류가 보석의 낙하를 재촉합니다. 위에서 쏟아지는 연쇄의 리듬을 타세요.',
+      '식물 정령들이 보석에 축복을 내립니다. 강력한 노바와 폭탄 보석을 합성하여 길을 트세요.',
+      '고대 비취 여신의 제단에서 신비한 의식이 시작됩니다. 흩어진 봉인을 깨고 정원의 축복을 받으세요.',
+      '생명의 고동이 붉은 화염과 푸른 번개 토템을 증폭시킵니다. 연속 각성으로 시련을 돌파하세요.',
+      '제2장 최후의 관문! 정글의 쌍둥이 수호자가 포효합니다. 맹렬한 연쇄와 토템으로 수호자를 굴복시키세요!'
+    ],
+    [
+      '절벽 꼭대기에 자리한 천둥의 제단에 올라섰습니다. 하늘을 가르는 벼락이 보석판에 전율을 일으킵니다.',
+      '푸른 사파이어 번개의 토템이 공명합니다. 벼락의 궤적을 따라 보석들을 관통하세요.',
+      '먹구름 사이로 황금빛 햇살이 번뜩입니다. 사파이어와 황금 보석을 집중적으로 수집하세요.',
+      '전격 결계로 단단히 잠긴 벼락의 룬을 부수세요. 강력한 레이저 관통석이 필수적입니다.',
+      '폭풍우의 눈 한가운데 위치한 보물방입니다! 벼락이 치는 틈을 타 신속하게 수정들을 수확하세요.',
+      '연속된 벼락이 보석들을 일제히 내리칩니다. 3연쇄 이상의 강력한 폭풍 콤보를 달성하세요.',
+      '공기 중에 전기가 가득합니다. 4·5개 정렬로 빚어낸 번개 보석으로 전방위를 일소하세요.',
+      '폭풍의 제례가 거행됩니다. 지정된 색상 보석과 삼중 봉인을 동시에 정화하세요.',
+      '번개와 불의 토템이 융합하며 1.5배 초각성을 발휘합니다. 사원의 벽을 부수고 나아가세요.',
+      '제3장 최후의 관문! 하늘의 지배자 [폭풍의 거인]이 벼락을 내리꽂습니다. 최강의 번개로 거인을 제압하세요!'
+    ],
+    [
+      '달빛만이 스며드는 신비로운 보랏빛 회랑에 들어섰습니다. 시공간의 흐름이 천천히 왜곡되기 시작합니다.',
+      '보라색 자수정 토템이 차원의 문을 열어젖힙니다. 보석들이 미지의 힘으로 변이합니다.',
+      '달의 호수 수면에 비친 별빛을 모으세요. 지정된 색상의 보석이 길을 밝혀줍니다.',
+      '차원의 그림자가 드리운 단단한 삼중 봉인석입니다. 토템의 파동으로 어둠을 걷어내세요.',
+      '달의 신비가 깃든 시공간 정지 보물방입니다! 귀중한 수정을 모으세요.',
+      '중력이 일렁이며 보석들이 신비롭게 낙하합니다. 연속 연쇄로 왜곡된 차원을 안정시키세요.',
+      '보랏빛 차원의 틈새에서 노바와 폭탄이 탄생합니다. 강력한 특수돌을 쏟아내세요.',
+      '달의 여사제들이 남긴 고대 주술의 결계입니다. 색상의 조화로 결계를 해제하세요.',
+      '토템들이 차원의 한계를 넘어 1.5배 각성합니다. 마법의 파동으로 전장을 장악하세요.',
+      '제4장 최후의 관문! 차원의 지배자 [달그림자 사제]가 환영의 장벽을 펼칩니다. 진실의 빛으로 결계를 깨뜨리세요!'
+    ],
+    [
+      '마침내 전설로만 전해지던 몬테주마의 황금 심장부에 진입했습니다! 사방이 순금으로 찬란히 빛납니다.',
+      '황금 토템의 강력한 축복이 피버 게이지를 순식간에 채웁니다. 태양의 각성을 일으키세요.',
+      '태양신의 제단에 바칠 황금과 보석들을 가득 모으세요. 사원의 핵심 장치가 작동합니다.',
+      '황금으로 주조된 불멸의 수호 봉인석들입니다. 모든 토템의 총력을 모아 타격하세요.',
+      '황금 제국의 전설적인 황실 보물창고가 열렸습니다! 끝없이 쏟아지는 수정을 담으세요.',
+      '사원 전체가 황금빛으로 진동하며 거대한 연쇄 반응을 일으킵니다. 멈추지 않는 콤보를 완성하세요.',
+      '고대 장인들의 궁극의 비전! 보석판 위에 연달아 특수 보석을 창조하여 폭발시키세요.',
+      '최후의 의식이 거행됩니다. 6대 토템의 힘과 지정 보석을 완벽히 조화시키세요.',
+      '모든 토템이 영구 각성 상태에 돌입합니다! 1.5배 초능력의 향연으로 마지막 길을 여세요.',
+      '운명의 최종장! [황금 태양의 심장 몬테주마]의 진정한 각성! 100번째 관문을 돌파하고 고대 제국의 영원한 전설이 되십시오!'
+    ]
+  ];
+  const stepIdx=Math.min(9,Math.floor((local-1)/2));
+  const story=scenarios[ci]?.[stepIdx]||`${chapterTitle}의 제${local}관문입니다. 고대 사원의 시련을 통과하여 다음 방으로 전진하세요.`;
+  return {chapterIndex:ci,chapterTitle,chapterSub,localStage:local,title:`제${ci+1}장 ${chapterTitle} · 관문 ${local}`,story,isBoss:local===20,isBonus:(local%10===5)};
+}

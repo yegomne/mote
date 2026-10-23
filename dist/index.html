@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081d21"><meta name="description" content="고대 사원의 보석을 깨우세요. 번개, 태양 폭발, 시간 정지로 즐기는 시네마틱 매치3 어드벤처."><title>태양의 유산 — SOLAR RELIC</title><link rel="icon" href="assets/sun.svg" type="image/svg+xml"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="style.css?v=4"></head>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081d21"><meta name="description" content="고대 사원의 보석을 깨우세요. 번개, 태양 폭발, 시간 정지로 즐기는 시네마틱 매치3 어드벤처."><title>태양의 유산 — SOLAR RELIC</title><link rel="icon" href="assets/sun.svg" type="image/svg+xml"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="style.css?v=5"></head>
 <body>
 <div class="world" aria-hidden="true"></div><div class="vignette" aria-hidden="true"></div><canvas id="atmosphere" aria-hidden="true"></canvas>
 <svg class="sprite" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -13,8 +13,34 @@
 <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 3-3 2-3 5m0 2v1"/></symbol>
 <symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
 <symbol id="shuffle" viewBox="0 0 24 24"><path d="M3 6h3c5 0 6 12 11 12h4m-4-4 4 4-4 4M3 18h3c2 0 3-2 4-4m3-4c1-2 2-4 4-4h4m-4-4 4 4-4 4"/></symbol>
+<symbol id="home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
 </defs></svg>
-<header class="topbar"><a href="./" class="brand" aria-label="태양의 유산 홈"><span class="brand-mark"><svg><use href="#sun"/></svg></span><span>SOLAR RELIC<small>태양의 유산</small></span></a><div class="top-center"><i></i> THE LOST TEMPLE AWAITS</div><div class="top-actions"><button id="soundBtn" class="icon-button" aria-label="소리 켜기" title="소리 켜기"><svg><use href="#sound"/></svg><span class="mute-dot"></span></button><button id="helpBtn" class="icon-button" aria-label="게임 방법"><svg><use href="#help"/></svg></button><button id="pauseBtn" class="icon-button" aria-label="일시 정지"><svg><use href="#pause"/></svg></button></div></header>
+<div id="titleScreen" class="title-screen" role="dialog" aria-label="메인 시작 화면">
+  <div class="title-card">
+    <div class="title-emblem"><svg><use href="#sun"/></svg></div>
+    <div class="title-kicker">ANCIENT MESOAMERICAN PUZZLE</div>
+    <h1 class="title-main">태양의 유산</h1>
+    <p class="title-sub">SOLAR RELIC · 몬테주마의 사원</p>
+    <div class="title-badge" id="titleBadge">
+      <span id="titleStageName">STAGE 01 · 태양의 문</span>
+      <b id="titleStars">★ 0</b>
+    </div>
+    <div class="title-actions">
+      <button id="titleContinueBtn" class="title-btn title-continue">
+        <span>이어하기</span>
+        <svg style="width:18px;height:18px;"><use href="#arrow"/></svg>
+      </button>
+      <button id="titleNewGameBtn" class="title-btn title-newgame">
+        처음부터 새로하기
+      </button>
+    </div>
+    <div class="title-footer">
+      <button id="titleSoundBtn" class="icon-button" aria-label="사운드 설정" title="사운드 설정"><svg><use href="#sound"/></svg></button>
+      <button id="titleHelpBtn" class="icon-button" aria-label="도움말" title="게임 방법"><svg><use href="#help"/></svg></button>
+    </div>
+  </div>
+</div>
+<header class="topbar"><a href="#" id="brandLink" class="brand" aria-label="태양의 유산 홈"><span class="brand-mark"><svg><use href="#sun"/></svg></span><span>SOLAR RELIC<small>태양의 유산</small></span></a><div class="top-center"><i></i> THE LOST TEMPLE AWAITS</div><div class="top-actions"><button id="homeBtn" class="icon-button" aria-label="메인 화면으로" title="메인 화면으로"><svg><use href="#home"/></svg></button><button id="soundBtn" class="icon-button" aria-label="소리 켜기" title="소리 켜기"><svg><use href="#sound"/></svg><span class="mute-dot"></span></button><button id="helpBtn" class="icon-button" aria-label="게임 방법"><svg><use href="#help"/></svg></button><button id="pauseBtn" class="icon-button" aria-label="일시 정지"><svg><use href="#pause"/></svg></button></div></header>
 <main>
 <div class="heading"><div class="eyebrow">MATCH · AWAKEN · ASCEND</div><h1>잊혀진 사원, <em>깨어나는 힘.</em></h1><p>보석을 잇고, 당신 안의 태양을 깨우세요.</p></div>
 <div class="game-layout">
@@ -23,4 +49,4 @@
 <aside class="powers-panel"><div class="section-label">색상의 수호 토템 <button id="soundSettingsBtn" class="sound-settings-link">♫ 소리 설정</button></div><p class="powers-intro" id="powerInstruction">같은 색 2번째 매치부터 자동 발동</p><div class="power-list"></div><div class="relic-note"><span>✦</span><p>같은 색 <b>2번째부터 자동 발동</b><br><b>토템 Lv.2 → 3연속 ×1.5</b></p></div><button id="upgradeBtn" class="upgrade-button"><span>토템 강화</span><b id="starWallet">★ 0</b></button><button id="startBtn" class="primary-button">탐험 시작 <svg><use href="#arrow"/></svg></button><div class="mode-select"><button data-mode="adventure" class="active">모험</button><button data-mode="zen">시간 없는 휴식</button></div></aside>
 </div><footer><span>✦ &nbsp; 보석에 깃든, 잊혀진 이야기 &nbsp; ✦</span><span class="footer-detail">ORIGINAL MATCH-3 ADVENTURE <i></i> 터치 · 스와이프 · 키보드</span></footer>
 </main><div id="toast" class="toast" role="status"></div><dialog id="modal"><div id="modalContent"></div><button class="dialog-close" id="closeModal" aria-label="닫기">×</button></dialog><div id="screenFlash" aria-hidden="true"></div>
-<script type="module" src="game.js?v=7"></script></body></html>
+<script type="module" src="game.js?v=8"></script></body></html>
