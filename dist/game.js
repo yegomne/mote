@@ -1,6 +1,6 @@
 import {Soundscape} from './soundscape.mjs?v=6';
 import {ImpactFX} from './element-fx.mjs?v=7';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario} from './engine.mjs?v=9';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=11';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612']];
@@ -12,7 +12,9 @@ document.addEventListener('touchmove',e=>{if(document.body.classList.contains('p
 let growth;try{growth=JSON.parse(localStorage.getItem('solar-relic-growth-v2')||'{}');}catch{growth={};}
 growth??={};
 let totemLevels=Array.from({length:6},(_,i)=>{if(growth.levels&&growth.levels[i]!==undefined)return Math.max(0,Math.min(5,Math.floor(+growth.levels[i]||0)));return i===0?1:0;}),magicStars=Math.max(0,Math.floor(+growth.stars||0)),stageStars=Array.from({length:STAGE_COUNT},(_,i)=>Math.max(0,Math.min(3,Math.floor(+growth.stageStars?.[i]||0)))),totemChain={color:-1,count:0},totemFlash=-1,totemFlashUntil=0,totalTotemCasts=0;
-function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stringify({levels:totemLevels,stars:magicStars,stageStars}));}catch{}}
+let pendingTotemCasts=[],cascadeChain=Promise.resolve();
+let fortuneBuffs=Object.assign({timePenaltyStages:0,timeBonusStages:0,hardSeals:false,extraSpecials:false,instantTotemStages:0},growth.fortuneBuffs||{});
+function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stringify({levels:totemLevels,stars:magicStars,stageStars,fortuneBuffs}));}catch{}}
 function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return `마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i);return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>openUpgrades(+b.dataset.totem));}
@@ -24,7 +26,32 @@ let particles=[],rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(
 let lastHeavyShake=0,cameraAnimation;
 let stage=stageDesign(level),sealState=Array(64).fill(0),metrics={colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer;
 const fx=new ImpactFX(ctx,()=>cell,()=>reduced,(strength,element)=>{heavyShake(strength);if(element==='fire'||element==='thunder')director.impact(strength,element==='thunder'?2:1);});
-function initStage(){finishing=false;lastFireTargets=[];for(const key of ['finale','finaleBonus','castColor','castMultiplier','fireTargets','shockAnchor','shockRadius','shockTargets'])delete frame.dataset[key];stage=stageDesign(level);sealState=Array(64).fill(0);stage.seals.forEach(s=>sealState[s.index]=s.hp);metrics={colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0};impactUntil=0;heavyCast=false;fx.reset();$('#powerCinematic').classList.remove('show');document.body.classList.remove('overdrive');clearTimeout(cinematicTimer);}
+function initStage(){
+  finishing=false;lastFireTargets=[];
+  for(const key of ['finale','finaleBonus','castColor','castMultiplier','fireTargets','shockAnchor','shockRadius','shockTargets'])delete frame.dataset[key];
+  stage=stageDesign(level);
+  let stageTime=stage.time;
+  if(fortuneBuffs.timeBonusStages>0){stageTime+=20;fortuneBuffs.timeBonusStages--;}
+  if(fortuneBuffs.timePenaltyStages>0){stageTime=Math.max(30,stageTime-10);fortuneBuffs.timePenaltyStages--;}
+  stage.time=stageTime;
+  sealState=Array(64).fill(0);
+  const sealHpAdd=fortuneBuffs.hardSeals?1:0;
+  if(fortuneBuffs.hardSeals)fortuneBuffs.hardSeals=false;
+  stage.seals.forEach(s=>sealState[s.index]=s.hp+sealHpAdd);
+  metrics={colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0};
+  impactUntil=0;heavyCast=false;fx.reset();$('#powerCinematic').classList.remove('show');document.body.classList.remove('overdrive');clearTimeout(cinematicTimer);
+  if(fortuneBuffs.extraSpecials){
+    fortuneBuffs.extraSpecials=false;
+    setTimeout(()=>{
+      if(board&&board.length===64){
+        const randCells=[18,27,45],spTypes=['bomb','row','nova'];
+        randCells.forEach((c,idx)=>{if(board[c])board[c].special=spTypes[idx];});
+        syncPositions(true);
+        toast('🌟 황금빛 서광! 특수 보석 3개가 배치되었습니다!');
+      }
+    },200);
+  }
+}
 function currentGoals(){return stageGoals(stage,{...metrics,score,crystals});}
 function budgetEmpty(){return mode!=='zen'&&time<=0;}
 document.body.classList.toggle('reduced-motion',reduced);
@@ -72,30 +99,47 @@ async function trySwap(a,b){
     }
     combo++;
     const primary=groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];
+    const instantBuff=(fortuneBuffs&&fortuneBuffs.instantTotemStages>0);
     totemChain=advanceTotem(totemChain,primary.color);
+    const shouldTrigger=totemUnlocked(primary.color)&&(totemChain.trigger||instantBuff);
+    if(shouldTrigger){
+      pendingTotemCasts.push({
+        color:primary.color,
+        anchor:b,
+        streak:totemChain.count
+      });
+      if(instantBuff){
+        totemChain.trigger=false;
+      }
+    }
     updateTotemUI();
-    runCascade(groups,[b,a],primary);
+    queueCascade(groups,[b,a]);
   }catch(err){
     console.error('trySwap error:',err);
   }finally{
     swapping=false;
   }
 }
-async function runCascade(groups,preferred=[],primary=null){
+function queueCascade(groups,preferred=[]){
   activeCascades++;busy=true;frame.setAttribute('aria-busy','true');
-  try{
-    await resolve(groups,preferred);
-    if(primary&&totemChain.trigger&&totemUnlocked(primary.color)&&!ended){
-      await castTotem(primary.color,preferred[0]??27);
+  cascadeChain=cascadeChain.then(async ()=>{
+    try{
+      await resolve(groups,preferred);
+      while(pendingTotemCasts.length>0&&!ended){
+        const nextCast=pendingTotemCasts.shift();
+        if(totemUnlocked(nextCast.color)){
+          await castTotem(nextCast.color,nextCast.anchor??27);
+        }
+      }
+    }catch(err){
+      console.error('cascade error:',err);
+    }finally{
+      activeCascades=Math.max(0,activeCascades-1);
+      if(activeCascades===0){
+        busy=false;frame.setAttribute('aria-busy','false');checkEnd();update();
+      }
     }
-  }catch(err){
-    console.error('runCascade error:',err);
-  }finally{
-    activeCascades=Math.max(0,activeCascades-1);
-    if(activeCascades===0){
-      busy=false;frame.setAttribute('aria-busy','false');checkEnd();update();
-    }
-  }
+  });
 }
 async function resolve(groups,preferred=[]){
   for(let depth=0;groups.length&&depth<24;depth++){
@@ -246,7 +290,7 @@ function completeStage(win){
   director.victory(win);
   ended=true;running=false;paused=false;activePower=null;frenzyUntil=0;
   best=Math.max(best,score);
-  const earnedStars=win?Math.min(3,1+((time>stage.time*.3)?1:0)+(score>objectives(level).target*1.4?1:0)):0;
+  const earnedStars=win?evaluateStageStars(stage,metrics,time):0;
   const newStars=win?stageReward(stageStars[level-1],earnedStars):0;
   if(win){
     stageStars[level-1]=Math.max(stageStars[level-1],earnedStars);
@@ -258,6 +302,7 @@ function completeStage(win){
   persist();update();
   const stars=earnedStars,endingBonus=Number(frame.dataset.finaleBonus)||0;
   const sc=stageScenario(level);
+  const criteria=stageStarCriteria(stage);
   showModal(`
     <div class="modal-kicker">${win?'TEMPLE AWAKENED':'A NEW DAWN AWAITS'}</div>
     <h2>${win?(level===STAGE_COUNT?'태양의 유산을 찾았습니다':`${sc.title} 돌파!`):'다시 깨어날 시간'}</h2>
@@ -267,18 +312,34 @@ function completeStage(win){
       <div><b>${crystals}</b><span>별빛 수정</span></div>
     </div>
     ${endingBonus?`<p class="stars-caption">종료 보너스 +${endingBonus.toLocaleString()}점 합산 완료</p>`:''}
+    
+    <div class="result-star-breakdown" style="background:#051b20;border:1px solid #d4b56833;border-radius:10px;padding:8px 12px;margin:10px 0;text-align:left;font-size:10px;">
+      <b style="color:#f0dcab;display:block;margin-bottom:4px;">★ 별 달성 내역:</b>
+      <div style="color:${stars>=1?'#72e3be':'#839b97'};margin:2px 0;">${stars>=1?'✓ ':'· '}★1: ${criteria.star1.desc}</div>
+      <div style="color:${stars>=2?'#72e3be':'#839b97'};margin:2px 0;">${stars>=2?'✓ ':'· '}★2: ${criteria.star2.desc}</div>
+      <div style="color:${stars>=3?'#ffd54f':'#839b97'};margin:2px 0;">${stars>=3?'✓ ':'· '}★3: ${criteria.star3.desc}</div>
+    </div>
+
     <p class="stars-caption">
       ${win?(level===STAGE_COUNT?'100개의 관문을 모두 돌파했습니다! 몬테주마의 전설이 완성되었습니다.':`마법별 +${newStars}개 (보유 ★${magicStars})<br>사원의 다음 문이 열렸습니다. 다음 관문으로 나아가세요!`):currentGoals().map(g=>(g.done?'✓ ':'· ')+g.label+' '+Math.min(g.value,g.target)+'/'+g.target).join('<br>')+'<br>휴식 모드에서 제한 없이 공략할 수도 있어요.'}
     </p>
-    <button id="nextBtn" class="primary-button">${win&&level<STAGE_COUNT?'다음 관문으로 →':'다시 도전하기 →'}</button>
+    <button id="nextBtn" class="primary-button">${win&&level<STAGE_COUNT?(level%5===0?'고대 운명의 카드 시험으로 →':'다음 관문으로 →'):'다시 도전하기 →'}</button>
     ${win?'<button id="resultUpgrade" class="text-button">토템 강화 <span>↗</span></button>':''}
     ${!win?'<button id="zenResult" class="text-button">시간 없는 휴식으로 <span>∞</span></button>':''}
   `);
   $('#nextBtn').onclick=()=>{
     if(win&&level<STAGE_COUNT){
-      level++;
-      reset();
-      showScenarioBriefing(level);
+      if(level%5===0){
+        openFortuneCardModal(level,()=>{
+          level++;
+          reset();
+          showScenarioBriefing(level);
+        });
+      }else{
+        level++;
+        reset();
+        showScenarioBriefing(level);
+      }
     }else{
       reset();
       start();
@@ -498,7 +559,91 @@ async function castTotem(color,index){
   heavyCast=false;best=Math.max(best,score);update();
 }
 
-function openUpgrades(focus=-1){if(busy){toast('연쇄가 끝난 뒤 기술 성소를 열 수 있어요.');return;}if(running)pauseClock();const nextTarget=TOTEMS.map((t,i)=>({t,i,l:totemLevels[i]})).find(x=>x.l===0);const nextNeed=nextTarget?Math.max(0,nextTarget.t.unlockCost-magicStars):0;const sortedTotems=TOTEMS.map((t,i)=>({t,i,l:totemLevels[i]})).sort((a,b)=>a.t.priority-b.t.priority);showModal(`<div class="modal-kicker">ANCIENT TECH RESEARCH SANCTUARY</div><h2>사원의 기술 성소 · 토템 강화 & 각성</h2><div class="wallet-title">★ ${magicStars} <small>보유 마법별 · 관문을 3성으로 클리어해 획득</small></div><div class="upgrade-guide-banner"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><strong style="color:#ffe49e;font-size:11px;">🏆 사제장의 추천 육성 순위</strong><span style="font-size:8.5px;color:#85e3c0;background:#062624;border:1px solid #72d4b844;padding:2px 8px;border-radius:10px;">우선순위 추천순 정렬</span></div><div class="upgrade-guide-steps"><span>🥇 <b>1위 불</b> (봉인/광역초토화)</span>➔<span>🥈 <b>2위 시간</b> (타임오버방지)</span>➔<span>🥉 <b>3위 달</b> (특수보석생성)</span>➔<span>⚡ <b>4위 번개</b></span>➔<span>💎 <b>5위 비취</b></span>➔<span>👑 <b>6위 황금</b></span></div><div style="font-size:9px;color:#a8d1be;margin-top:4px;">💡 <b>핵심 공략:</b> 모든 토템은 <b>Lv.2 강화 시 3연속 매치 1.5배 각성</b>이 해금됩니다. 타임오버가 잦다면 <b>시간</b>, 봉인 격파가 어렵다면 <b>불</b>을 1순위로 올리세요!</div></div>${nextTarget?`<div style="text-align:center;margin:-6px 0 14px;"><span style="font-size:11px;color:#f0dcab;background:#103438cc;border:1px solid #d4b56844;padding:6px 14px;border-radius:20px;display:inline-block;">🎯 다음 미해금 기술: <b>[${nextTarget.t.name}]</b> 해금까지 <b>★ ${nextNeed}개</b> 필요</span></div>`:''}<div class="upgrade-list">${sortedTotems.map(({t,i,l})=>{const isLocked=l===0,cost=upgradeCost(l,i),canAfford=cost&&magicStars>=cost,spec=totemLevelSpecs(i,l);return `<div class="upgrade-row ${focus===i?'focused':''} ${isLocked?'locked-row':''}" style="--accent:${t.accent}"><span class="upgrade-symbol totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${isLocked?'<i class="lock-icon" style="display:grid;place-items:center;height:100%;font-size:18px;">🔒</i>':''}</span><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;"><span class="upgrade-priority-tag p-${t.priority}">${t.priorityTag}</span><b style="font-size:12px;margin:0;">${t.name} <span style="color:${isLocked?'#88a096':t.accent};font-size:11px;">${isLocked?'🔒 잠김':'Lv.'+l}</span></b></div><div class="upgrade-spec-box">${isLocked?`<span class="cur-val" style="color:#e57373;"><b>현재 효과:</b> 잠김 (기술 미보유 · 발동 불가)</span><span class="next-val"><b>해금 시:</b> ${spec.next} (${t.desc})</span>`:l>=5?`<span class="cur-val" style="color:#81c784;"><b>현재 [Lv.5 MAX]:</b> ${spec.cur}</span><span class="next-val" style="color:#ffd54f;">✨ 최고 레벨 궁극의 경지 달성 완료!</span>`:`<span class="cur-val"><b>현재 [Lv.${l}]:</b> ${spec.cur}</span><span class="next-val"><b>강화 시 [Lv.${l+1}]:</b> ${spec.next}</span>`}</div><span class="level-pips">${Array.from({length:5},(_,n)=>`<i class="${n<l?'filled':''}"></i>`).join('')}</span></div><button data-upgrade="${i}" class="${isLocked?'unlock-btn':''}" ${!cost||!canAfford?'disabled':''} style="${isLocked&&canAfford?'background:linear-gradient(120deg,#f3d289,#d69e46);color:#0a1c20;font-weight:700;box-shadow:0 0 15px #f3d28988;':''}">${isLocked?(canAfford?`★${cost} 즉시 해금!`:`★${cost} 해금`):!cost?'MAX':`★${cost} 강화`}</button></div>`;}).join('')}</div><p class="upgrade-help">관문을 3성으로 클리어해 마법별을 획득하고 강력한 토템 기술을 연구하세요!<br>해금된 토템은 인게임에서 같은 색 보석 2연속 매치 시 자동 발동합니다.</p><button id="upgradeClose" class="primary-button">${ended?'다음 스테이지 준비 →':'탐험으로 돌아가기 →'}</button>`);$$('[data-upgrade]').forEach(b=>b.onclick=()=>{const i=+b.dataset.upgrade,l=totemLevels[i],cost=upgradeCost(l,i);if(!cost||magicStars<cost)return;magicStars-=cost;const wasLocked=totemLevels[i]===0;totemLevels[i]++;persist();if(wasLocked){chord(12);flash('#ffe894');toast(`🎉 고대 기술 [${TOTEMS[i].name}] 해금 성공!`);}else{chord(5);toast(`✨ [${TOTEMS[i].name}] Lv.${totemLevels[i]} 강화 완료!`);}renderTotems();update();openUpgrades(i);});$('#upgradeClose').onclick=()=>{if(ended){if(level<STAGE_COUNT&&stageStars[level-1])level++;reset();}else resume();};}
+function openUpgrades(focus=-1){
+  if(busy){toast('연쇄가 끝난 뒤 기술 성소를 열 수 있어요.');return;}
+  if(running)pauseClock();
+  const nextTarget=TOTEMS.map((t,i)=>({t,i,l:totemLevels[i]})).find(x=>x.l===0);
+  const nextNeed=nextTarget?Math.max(0,nextTarget.t.unlockCost-magicStars):0;
+  
+  showModal(`
+    <div class="modal-kicker">ANCIENT TECH RESEARCH SANCTUARY</div>
+    <h2>사원의 기술 성소 · 토템 강화 & 각성</h2>
+    <div class="wallet-title">★ ${magicStars} <small>보유 마법별 · 관문을 3성으로 클리어해 획득</small></div>
+    ${nextTarget?`<div style="text-align:center;margin:-2px 0 12px;"><span style="font-size:11px;color:#f0dcab;background:#103438cc;border:1px solid #d4b56844;padding:6px 14px;border-radius:20px;display:inline-block;">🎯 다음 미해금 기술: <b>[${nextTarget.t.name}]</b> 해금까지 <b>★ ${nextNeed}개</b> 필요</span></div>`:''}
+    <div class="upgrade-list">
+      ${TOTEMS.map((t,i)=>{
+        const l=totemLevels[i],isLocked=l===0,status=canUpgradeTotem(i,l,level,totemLevels,magicStars),prereq=upgradePrerequisite(i,l+1),spec=totemLevelSpecs(i,l);
+        let btnText='',btnDisabled=false,btnStyle='';
+        if(status.isMax){
+          btnText='MAX';btnDisabled=true;
+        }else if(status.lockedByCondition){
+          btnText=`🔒 ${status.reason}`;btnDisabled=true;
+        }else if(status.lockedByCost){
+          btnText=`★${status.cost} 부족`;btnDisabled=true;
+        }else if(status.ok){
+          btnText=isLocked?`★${status.cost} 즉시 해금!`:`★${status.cost} 강화`;
+          btnStyle='background:linear-gradient(120deg,#f3d289,#d69e46);color:#0a1c20;font-weight:700;box-shadow:0 0 15px #f3d28988;';
+        }
+        return `
+          <div class="upgrade-row ${focus===i?'focused':''} ${isLocked?'locked-row':''}" style="--accent:${t.accent}">
+            <span class="upgrade-symbol totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">
+              ${isLocked?'<i class="lock-icon" style="display:grid;place-items:center;height:100%;font-size:18px;">🔒</i>':''}
+            </span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+                <span class="upgrade-priority-tag" style="background:#092d2b;border:1px solid #6ee2ae44;color:#a3eed1;font-size:9px;padding:2px 7px;border-radius:6px;">${t.roleTag||'토템'}</span>
+                <b style="font-size:12px;margin:0;">${t.name} <span style="color:${isLocked?'#88a096':t.accent};font-size:11px;">${isLocked?'🔒 잠김':'Lv.'+l}</span></b>
+              </div>
+              <div class="upgrade-spec-box">
+                ${isLocked
+                  ? `<span class="cur-val" style="color:#e57373;"><b>현재 상태:</b> 잠김 (기술 미보유 · 발동 불가)</span><span class="next-val"><b>해금 시:</b> ${spec.next} (${t.desc})</span>`
+                  : l>=5
+                  ? `<span class="cur-val" style="color:#81c784;"><b>현재 [Lv.5 MAX]:</b> ${spec.cur}</span><span class="next-val" style="color:#ffd54f;">✨ 최고 레벨 궁극의 경지 달성 완료!</span>`
+                  : `<span class="cur-val"><b>현재 [Lv.${l}]:</b> ${spec.cur}</span><span class="next-val"><b>강화 시 [Lv.${l+1}]:</b> ${spec.next}</span>`
+                }
+                ${prereq&&!status.isMax?`<div style="font-size:9.5px;color:${status.lockedByCondition?'#ffb3ba':'#a4d4b9'};margin-top:4px;"><b>자격 조건:</b> ${prereq.desc}</div>`:''}
+              </div>
+              <span class="level-pips">${Array.from({length:5},(_,n)=>`<i class="${n<l?'filled':''}"></i>`).join('')}</span>
+            </div>
+            <button data-upgrade="${i}" class="${isLocked?'unlock-btn':''}" ${btnDisabled?'disabled':''} style="${btnStyle}">
+              ${btnText}
+            </button>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <p class="upgrade-help" style="font-size:10px;line-height:1.6;color:#a8d1be;margin-top:10px;">
+      💡 <b>균형 육성 법칙:</b> 특정 토템만 몰아서 육성할 수 없으며, 모든 토템을 골고루 강화해야 상위 단계로 각성합니다.<br>
+      관문을 3성으로 클리어해 마법별을 획득하고 사원의 6대 원소를 조화롭게 연구하세요!
+    </p>
+    <button id="upgradeClose" class="primary-button">${ended?'다음 스테이지 준비 →':'탐험으로 돌아가기 →'}</button>
+  `);
+  
+  $$('[data-upgrade]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.upgrade,l=totemLevels[i];
+    const status=canUpgradeTotem(i,l,level,totemLevels,magicStars);
+    if(!status.ok)return;
+    magicStars-=status.cost;
+    const wasLocked=(totemLevels[i]===0);
+    totemLevels[i]++;
+    persist();
+    if(wasLocked){
+      chord(12);flash('#ffe894');
+      toast(`🎉 고대 기술 [${TOTEMS[i].name}] 해금 성공!`);
+    }else{
+      chord(5);
+      toast(`✨ [${TOTEMS[i].name}] Lv.${totemLevels[i]} 강화 완료!`);
+    }
+    renderTotems();update();openUpgrades(i);
+  });
+  
+  $('#upgradeClose').onclick=()=>{
+    if(ended){
+      if(level<STAGE_COUNT&&stageStars[level-1])level++;
+      reset();
+    }else resume();
+  };
+}
 function openMap(chapter=chapterIndex(level)){
   if(busy){toast('연쇄가 끝난 뒤 지도를 열 수 있어요.');return;}
   if(running)pauseClock();
@@ -598,22 +743,61 @@ function showScenarioBriefing(lvl=level){
   const sc=stageScenario(lvl);
   const st=stageDesign(lvl);
   const goals=stageGoals(st,{score:0,crystals:0,colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0});
+  const criteria=stageStarCriteria(st);
+  const chImg=sc.image||`assets/stages/stage_${lvl}.jpg`;
+
+  const activeBuffs=[];
+  if(fortuneBuffs.timeBonusStages>0)activeBuffs.push(`⏳ 크로노스의 가호 (제한시간 +20초 · ${fortuneBuffs.timeBonusStages}관문 잔여)`);
+  if(fortuneBuffs.timePenaltyStages>0)activeBuffs.push(`⚠️ 모래시계 균열 (제한시간 -10초 · ${fortuneBuffs.timePenaltyStages}관문 잔여)`);
+  if(fortuneBuffs.instantTotemStages>0)activeBuffs.push(`🔮 초능력 폭주 (단 1회 매치로 토템 즉시 발동! · ${fortuneBuffs.instantTotemStages}관문 잔여)`);
+  if(fortuneBuffs.hardSeals)activeBuffs.push(`🛡️ 굳어버린 봉인 (이번 관문 모든 봉인 내구도 +1)`);
+  if(fortuneBuffs.extraSpecials)activeBuffs.push(`🌟 황금빛 서광 (시작 시 특수 보석 3개 자동 배치)`);
+
   showModal(`
     <div class="scenario-brief">
-      <div class="scenario-kicker">${sc.chapterSub} · 관문 ${lvl}</div>
-      <h2 class="scenario-title">${sc.title}</h2>
-      <div class="scenario-story">"${sc.story}"</div>
-      <div class="scenario-goals">
-        <b style="font-size:11px;color:#d5c095;margin-bottom:4px;">관문 돌파 목표</b>
-        ${goals.map(g=>`
-          <div class="scenario-goal-row">
-            <span>· ${g.label}</span>
-            <strong>${g.target.toLocaleString()}${g.id==='score'?'점':g.id==='crystals'?'개':g.id==='color'?'개':g.id==='seals'?'겹':g.id==='combo'?'연쇄':'회'}</strong>
-          </div>
-        `).join('')}
+      <div class="scenario-art-frame">
+        <img src="${chImg}" alt="${sc.title}" class="scenario-art-img">
+        <div class="scenario-art-badge">STAGE ${String(lvl).padStart(2,'0')} · ${sc.chapterTitle}</div>
+        <div class="scenario-art-overlay"></div>
       </div>
-      <button id="scenarioStartBtn" class="primary-button">
-        관문 탐험 시작 →
+      <div class="scenario-kicker" style="margin-top:10px;">${sc.chapterSub} · 제${lvl}관문 탐험 브리핑</div>
+      <h2 class="scenario-title">${sc.title}</h2>
+      
+      <div class="scenario-story">"${sc.story}"</div>
+
+      ${activeBuffs.length?`
+        <div class="scenario-fortune-banner" style="background:#09262b;border:1px solid #72d4b888;padding:7px 12px;border-radius:8px;margin:8px 0;font-size:10px;color:#a8e7d2;text-align:left;">
+          <b style="color:#ffe49e;">🔮 활성화된 고대의 운명:</b><br>
+          ${activeBuffs.map(b=>`<span>· ${b}</span><br>`).join('')}
+        </div>
+      `:''}
+
+      <div class="scenario-goals">
+        <b style="font-size:11px;color:#d5c095;margin-bottom:6px;display:block;">🎯 관문 돌파 필수 목표</b>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          ${goals.map(g=>`
+            <div class="scenario-goal-row" style="background:#072126;padding:6px 8px;border-radius:6px;border:1px solid #d4b56822;">
+              <span style="font-size:10.5px;color:#a0b9b3;">· ${g.label}</span>
+              <strong style="font-size:11px;color:#ffd97d;">${g.target.toLocaleString()}${g.id==='score'?'점':g.id==='crystals'?'개':g.id==='color'?'개':g.id==='seals'?'겹':g.id==='combo'?'연쇄':'회'}</strong>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="scenario-stars-panel" style="background:#051a1e;border:1px solid #d4b56844;border-radius:8px;padding:8px 12px;margin:10px 0;text-align:left;">
+        <b style="font-size:11px;color:#ffd54f;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span>★ 별 3개 달성 조건</span>
+          <span style="font-size:9px;color:#85e3c0;font-weight:normal;">(마법별 획득 가이드)</span>
+        </b>
+        <div style="font-size:9.5px;color:#b2d1c5;line-height:1.7;">
+          <div><b style="color:#72e3be;">★ 1성:</b> ${criteria.star1.desc}</div>
+          <div><b style="color:#72e3be;">★★ 2성:</b> ${criteria.star2.desc}</div>
+          <div><b style="color:#ffd54f;">★★★ 3성:</b> ${criteria.star3.desc}</div>
+        </div>
+      </div>
+
+      <button id="scenarioStartBtn" class="primary-button" style="font-size:13px;padding:12px;">
+        관문 탐험 시작 (Ready →)
       </button>
     </div>
   `);
@@ -623,6 +807,105 @@ function showScenarioBriefing(lvl=level){
     reset();
     start();
   };
+}
+
+function openFortuneCardModal(clearedStage, onFinished){
+  if(running)pauseClock();
+  
+  const misfortunes=FORTUNE_CARDS.filter(c=>c.type==='misfortune').sort(()=>Math.random()-.5);
+  const fortunes=FORTUNE_CARDS.filter(c=>c.type==='fortune').sort(()=>Math.random()-.5);
+  const rest=[...misfortunes.slice(1),...fortunes.slice(1)].sort(()=>Math.random()-.5);
+  const pickedThree=[misfortunes[0],fortunes[0],rest[0]].sort(()=>Math.random()-.5);
+  
+  showModal(`
+    <div class="fortune-modal-wrap">
+      <div class="modal-kicker">THE ORACLE OF MONTEZUMA · 5관문 돌파 시험</div>
+      <h2 style="font-size:17px;color:#ffe49e;margin:4px 0 6px;">고대 사원의 운명 카드 (Fortune Cards)</h2>
+      <p style="font-size:11px;color:#a8d1be;margin-bottom:14px;line-height:1.6;">
+        제<b>${clearedStage}</b>관문을 돌파한 탐험가여, 고대 신들의 시험이 시작됩니다.<br>
+        뒤집힌 3장의 카드 중 <b>하나의 운명</b>을 선택하십시오. (행운과 악운이 공존합니다)
+      </p>
+
+      <div class="fortune-cards-container">
+        ${pickedThree.map((card,idx)=>`
+          <div class="fortune-card-slot" data-card-idx="${idx}">
+            <div class="fortune-card-inner">
+              <div class="fortune-card-face fortune-card-back">
+                <img src="assets/cards/back.jpg" alt="고대 타로 카드 뒷면" class="fortune-card-img">
+                <div class="fortune-card-touch-prompt">터치하여 뒤집기</div>
+              </div>
+              <div class="fortune-card-face fortune-card-front ${card.type}">
+                <img src="${card.image}" alt="${card.title}" class="fortune-card-img">
+                <div class="fortune-card-front-overlay">
+                  <span class="fortune-type-badge ${card.type}">${card.type==='fortune'?'🍀 행운의 축복':'💀 악운의 시련'}</span>
+                  <div class="fortune-card-title">${card.title}</div>
+                  <div class="fortune-card-summary">${card.summary}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div id="fortuneResultBox" class="fortune-result-box hide">
+        <div id="fortuneResultType" class="fortune-result-type"></div>
+        <div id="fortuneResultTitle" class="fortune-result-title"></div>
+        <div id="fortuneResultDesc" class="fortune-result-desc"></div>
+        <div id="fortuneResultImpact" class="fortune-result-impact"></div>
+        <button id="fortuneConfirmBtn" class="primary-button" style="margin-top:14px;">
+          운명을 받아들이고 다음으로 →
+        </button>
+      </div>
+    </div>
+  `);
+
+  let chosen=false;
+  $$('.fortune-card-slot').forEach(slot=>{
+    slot.onclick=()=>{
+      if(chosen)return;
+      chosen=true;
+      const idx=+slot.dataset.cardIdx;
+      const card=pickedThree[idx];
+      
+      slot.classList.add('flipped');
+      $$('.fortune-card-slot').forEach(s=>{
+        if(s!==slot)s.classList.add('faded');
+      });
+
+      if(card.type==='fortune'){
+        chord(12);
+        flash('#ffe28a');
+        director.impact(2,2);
+        for(let k=0;k<12;k++)burst(Math.floor(Math.random()*64),3,20);
+      }else{
+        chord(2);
+        flash('#ff5555');
+        director.impact(3,1);
+        heavyShake(2.0);
+      }
+
+      const impactText=card.apply({totemLevels,magicStars,fortuneBuffs});
+      persist();
+      renderTotems();
+      update();
+
+      setTimeout(()=>{
+        const box=$('#fortuneResultBox');
+        $('#fortuneResultType').textContent=card.type==='fortune'?'☀️ 고대 태양신의 축복':'⚡ 피할 수 없는 고대의 시련';
+        $('#fortuneResultType').className='fortune-result-type '+card.type;
+        $('#fortuneResultTitle').textContent=card.title;
+        $('#fortuneResultDesc').textContent=card.desc;
+        $('#fortuneResultImpact').innerHTML=`<b>적용된 결과:</b> ${impactText}`;
+        box.classList.remove('hide');
+        box.classList.add('show-animated');
+      },700);
+
+      $('#fortuneConfirmBtn').onclick=()=>{
+        $('#modal').close();
+        if(onFinished)onFinished();
+      };
+    };
+  });
 }
 
 $('#titleContinueBtn').onclick=()=>{

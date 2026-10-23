@@ -81,3 +81,58 @@ html,body{overscroll-behavior:none!important;-webkit-overscroll-behavior:none!im
     box-shadow: 0 0 0 2px #f6c96180, 0 0 20px #e8a93944 !important;
   }
 }
+
+/* Fortune Cards 3D Interactive Flip System */
+.fortune-modal-wrap{text-align:center;padding:4px}
+.fortune-cards-container{display:flex;justify-content:center;gap:16px;margin:18px 0;perspective:1000px}
+.fortune-card-slot{width:140px;height:210px;position:relative;cursor:pointer;perspective:1000px;transition:transform .4s ease,opacity .4s ease}
+.fortune-card-slot:hover:not(.flipped){transform:translateY(-8px) scale(1.04)}
+.fortune-card-slot.faded{opacity:.28;filter:grayscale(60%);pointer-events:none;transform:scale(.92)}
+.fortune-card-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.34,1.56,.64,1)}
+.fortune-card-slot.flipped .fortune-card-inner{transform:rotateY(180deg)}
+.fortune-card-face{position:absolute;inset:0;width:100%;height:100%;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;overflow:hidden;box-shadow:0 8px 24px #000c,0 0 16px #c8a76044;border:1.5px solid #d4b568aa}
+.fortune-card-img{width:100%;height:100%;object-fit:cover;display:block}
+.fortune-card-back{background:#04151a;display:flex;align-items:center;justify-content:center}
+.fortune-card-touch-prompt{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#041b20dd;border:1px solid #72d4b888;color:#a8e7d2;font-size:9px;padding:3px 8px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 8px #0008;animation:pulse 2s infinite ease-in-out}
+.fortune-card-front{transform:rotateY(180deg);position:relative}
+.fortune-card-front.fortune{border-color:#ffd54f;box-shadow:0 0 30px #ffd54f66,0 10px 30px #000}
+.fortune-card-front.misfortune{border-color:#ff5252;box-shadow:0 0 30px #ff525266,0 10px 30px #000}
+.fortune-card-front-overlay{position:absolute;bottom:0;inset-x:0;padding:26px 8px 8px;background:linear-gradient(to top,#020b0fe8 75%,transparent);text-align:center}
+.fortune-type-badge{display:inline-block;font-size:8px;font-weight:700;padding:2px 7px;border-radius:10px;margin-bottom:3px}
+.fortune-type-badge.fortune{background:#1b5e20dd;color:#a5d6a7;border:1px solid #81c784}
+.fortune-type-badge.misfortune{background:#b71c1cdd;color:#ffcdd2;border:1px solid #e57373}
+.fortune-card-title{font-size:11px;font-weight:700;color:#fff;margin-bottom:2px;text-shadow:0 1px 3px #000}
+.fortune-card-summary{font-size:9px;color:#d5e5db;line-height:1.3}
+.fortune-result-box{background:#082227;border:1px solid #d4b56866;border-radius:10px;padding:12px 14px;margin-top:10px;text-align:center}
+.fortune-result-box.hide{display:none}
+.fortune-result-box.show-animated{display:block;animation:fadeInUp .4s ease-out forwards}
+.fortune-result-type{font-size:10.5px;letter-spacing:1.5px;font-weight:700;margin-bottom:4px}
+.fortune-result-type.fortune{color:#ffd54f}
+.fortune-result-type.misfortune{color:#ff8a80}
+.fortune-result-title{font:700 18px 'Cormorant Garamond',Georgia,serif;color:#fff2cc;margin-bottom:6px}
+.fortune-result-desc{font-size:11px;line-height:1.6;color:#c9ded3;margin-bottom:8px}
+.fortune-result-impact{font-size:11px;background:#031317;border:1px solid #72d4b844;padding:6px 12px;border-radius:6px;color:#ffe49e}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:520px){
+  .fortune-cards-container{gap:8px;margin:12px 0}
+  .fortune-card-slot{width:96px;height:144px}
+  .fortune-card-touch-prompt{font-size:7.5px;padding:2px 5px;bottom:5px}
+  .fortune-card-title{font-size:9px}
+  .fortune-card-summary{font-size:7.5px}
+  .fortune-type-badge{font-size:7px;padding:1px 5px}
+  .fortune-result-title{font-size:15px}
+  .fortune-result-desc{font-size:9.5px}
+  .fortune-result-impact{font-size:9.5px}
+}
+
+/* Scenario Briefing Cinematic Illustration Frame */
+.scenario-art-frame{position:relative;width:100%;height:140px;border-radius:8px;overflow:hidden;border:1px solid #d4b56866;box-shadow:0 6px 20px #000a,inset 0 0 20px #0008;margin-bottom:12px}
+.scenario-art-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 1.2s ease}
+.scenario-art-frame:hover .scenario-art-img{transform:scale(1.04)}
+.scenario-art-badge{position:absolute;top:8px;left:8px;background:#051e22dd;border:1px solid #72d4b8aa;color:#b6f2dc;font-size:9px;padding:3px 9px;border-radius:12px;box-shadow:0 2px 6px #0008;z-index:2;letter-spacing:1px;font-weight:700}
+.scenario-art-overlay{position:absolute;inset:0;background:linear-gradient(to top,#061d22ee 0%,transparent 60%),radial-gradient(ellipse at 50% 50%,transparent 40%,#03111499 100%);pointer-events:none}
+@media(max-width:520px){
+  .scenario-art-frame{height:110px;margin-bottom:8px}
+  .scenario-art-badge{font-size:8px;padding:2px 7px}
+}
+
