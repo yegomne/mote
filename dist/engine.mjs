@@ -155,8 +155,11 @@ export function stageStarCriteria(stage){
   };
 }
 
-export function evaluateStageStars(stage, metrics, remainingTime){
-  const goals = stageGoals(stage, metrics);
+export function evaluateStageStars(stage, metrics, remainingTime=0){
+  const m = { ...metrics };
+  if(m.score === undefined) m.score = stage.target;
+  if(m.crystals === undefined) m.crystals = stage.crystals;
+  const goals = stageGoals(stage, m);
   if(!goals.every(g => g.done)) return 0;
   const targetScore = stage.target;
   const star2Score = Math.round(targetScore * 1.3 / 50) * 50;
@@ -164,13 +167,13 @@ export function evaluateStageStars(stage, metrics, remainingTime){
   const hasSeals = stage.seals && stage.seals.length > 0;
 
   let stars = 1;
-  const star2Cond = metrics.score >= star2Score && (remainingTime >= 15 || (metrics.bestCascade || 0) >= 3);
+  const star2Cond = m.score >= star2Score && (remainingTime >= 15 || (m.bestCascade || 0) >= 3);
   if(star2Cond) stars = 2;
 
-  const sealCleared = hasSeals ? ((metrics.sealsBroken || 0) >= stage.seals.length) : true;
-  const extraCond = hasSeals ? sealCleared : (remainingTime >= 25 || (metrics.specialsMade || 0) >= 4);
+  const sealCleared = hasSeals ? ((m.sealsBroken || 0) >= stage.seals.length) : true;
+  const extraCond = hasSeals ? sealCleared : (remainingTime >= 25 || (m.specialsMade || 0) >= 4);
 
-  if(stars >= 2 && metrics.score >= star3Score && extraCond) stars = 3;
+  if(stars >= 2 && m.score >= star3Score && extraCond) stars = 3;
   return stars;
 }
 

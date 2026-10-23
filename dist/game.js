@@ -290,7 +290,8 @@ function completeStage(win){
   director.victory(win);
   ended=true;running=false;paused=false;activePower=null;frenzyUntil=0;
   best=Math.max(best,score);
-  const earnedStars=win?evaluateStageStars(stage,metrics,time):0;
+  const stageMetrics={...metrics,score,crystals};
+  const earnedStars=win?Math.max(1,evaluateStageStars(stage,stageMetrics,time)):0;
   const newStars=win?stageReward(stageStars[level-1],earnedStars):0;
   if(win){
     stageStars[level-1]=Math.max(stageStars[level-1],earnedStars);
@@ -575,37 +576,42 @@ function openUpgrades(focus=-1){
         const l=totemLevels[i],isLocked=l===0,status=canUpgradeTotem(i,l,level,totemLevels,magicStars),prereq=upgradePrerequisite(i,l+1),spec=totemLevelSpecs(i,l);
         let btnText='',btnDisabled=false,btnStyle='';
         if(status.isMax){
-          btnText='MAX';btnDisabled=true;
+          btnText='최고 레벨 달성 (MAX)';btnDisabled=true;
         }else if(status.lockedByCondition){
-          btnText=`🔒 ${status.reason}`;btnDisabled=true;
+          btnText='🔒 조건 미충족 (자격 조건 확인)';btnDisabled=true;
         }else if(status.lockedByCost){
-          btnText=`★${status.cost} 부족`;btnDisabled=true;
+          btnText=`★${status.cost} 마법별 부족 (현재 ★${magicStars})`;btnDisabled=true;
         }else if(status.ok){
-          btnText=isLocked?`★${status.cost} 즉시 해금!`:`★${status.cost} 강화`;
-          btnStyle='background:linear-gradient(120deg,#f3d289,#d69e46);color:#0a1c20;font-weight:700;box-shadow:0 0 15px #f3d28988;';
+          btnText=isLocked?`★${status.cost} 즉시 해금하기!`:`★${status.cost} 레벨업 강화하기!`;
+          btnStyle='background:linear-gradient(120deg,#f3d289,#d69e46);color:#0a1c20;font-weight:700;box-shadow:0 0 15px #f3d28988;border:1px solid #ffe699;';
         }
         return `
           <div class="upgrade-row ${focus===i?'focused':''} ${isLocked?'locked-row':''}" style="--accent:${t.accent}">
-            <span class="upgrade-symbol totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">
-              ${isLocked?'<i class="lock-icon" style="display:grid;place-items:center;height:100%;font-size:18px;">🔒</i>':''}
-            </span>
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
-                <span class="upgrade-priority-tag" style="background:#092d2b;border:1px solid #6ee2ae44;color:#a3eed1;font-size:9px;padding:2px 7px;border-radius:6px;">${t.roleTag||'토템'}</span>
-                <b style="font-size:12px;margin:0;">${t.name} <span style="color:${isLocked?'#88a096':t.accent};font-size:11px;">${isLocked?'🔒 잠김':'Lv.'+l}</span></b>
+            <div class="upgrade-card-header">
+              <span class="upgrade-symbol totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">
+                ${isLocked?'<i class="lock-icon" style="display:grid;place-items:center;height:100%;font-size:18px;">🔒</i>':''}
+              </span>
+              <div class="upgrade-card-title-group">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span class="upgrade-priority-tag" style="background:#092d2b;border:1px solid #6ee2ae44;color:#a3eed1;font-size:9.5px;padding:2px 7px;border-radius:6px;">${t.roleTag||'토템'}</span>
+                  <b style="font-size:13px;margin:0;color:#fff;">${t.name}</b>
+                  <span style="color:${isLocked?'#88a096':t.accent};font-size:11px;font-weight:bold;">${isLocked?'🔒 잠김':'Lv.'+l}</span>
+                </div>
+                <span class="level-pips">${Array.from({length:5},(_,n)=>`<i class="${n<l?'filled':''}"></i>`).join('')}</span>
               </div>
-              <div class="upgrade-spec-box">
-                ${isLocked
-                  ? `<span class="cur-val" style="color:#e57373;"><b>현재 상태:</b> 잠김 (기술 미보유 · 발동 불가)</span><span class="next-val"><b>해금 시:</b> ${spec.next} (${t.desc})</span>`
-                  : l>=5
-                  ? `<span class="cur-val" style="color:#81c784;"><b>현재 [Lv.5 MAX]:</b> ${spec.cur}</span><span class="next-val" style="color:#ffd54f;">✨ 최고 레벨 궁극의 경지 달성 완료!</span>`
-                  : `<span class="cur-val"><b>현재 [Lv.${l}]:</b> ${spec.cur}</span><span class="next-val"><b>강화 시 [Lv.${l+1}]:</b> ${spec.next}</span>`
-                }
-                ${prereq&&!status.isMax?`<div style="font-size:9.5px;color:${status.lockedByCondition?'#ffb3ba':'#a4d4b9'};margin-top:4px;"><b>자격 조건:</b> ${prereq.desc}</div>`:''}
-              </div>
-              <span class="level-pips">${Array.from({length:5},(_,n)=>`<i class="${n<l?'filled':''}"></i>`).join('')}</span>
             </div>
-            <button data-upgrade="${i}" class="${isLocked?'unlock-btn':''}" ${btnDisabled?'disabled':''} style="${btnStyle}">
+
+            <div class="upgrade-spec-box">
+              ${isLocked
+                ? `<span class="cur-val" style="color:#e57373;"><b>현재 상태:</b> 잠김 (기술 미보유 · 발동 불가)</span><span class="next-val"><b>해금 시:</b> ${spec.next} (${t.desc})</span>`
+                : l>=5
+                ? `<span class="cur-val" style="color:#81c784;"><b>현재 [Lv.5 MAX]:</b> ${spec.cur}</span><span class="next-val" style="color:#ffd54f;">✨ 최고 레벨 궁극의 경지 달성 완료!</span>`
+                : `<span class="cur-val"><b>현재 [Lv.${l}]:</b> ${spec.cur}</span><span class="next-val"><b>강화 시 [Lv.${l+1}]:</b> ${spec.next}</span>`
+              }
+              ${prereq&&!status.isMax?`<div class="upgrade-prereq-badge" style="font-size:10px;color:${status.lockedByCondition?'#ffb3ba':'#a4d4b9'};background:${status.lockedByCondition?'#40151a66':'#12362866'};padding:5px 8px;border-radius:4px;border:1px solid ${status.lockedByCondition?'#ff888844':'#52c79f44'};margin-top:4px;"><b>자격 조건:</b> ${prereq.desc}</div>`:''}
+            </div>
+
+            <button data-upgrade="${i}" class="upgrade-action-btn ${isLocked?'unlock-btn':''}" ${btnDisabled?'disabled':''} style="${btnStyle}">
               ${btnText}
             </button>
           </div>

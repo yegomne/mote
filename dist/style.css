@@ -136,3 +136,33 @@ html,body{overscroll-behavior:none!important;-webkit-overscroll-behavior:none!im
   .scenario-art-badge{font-size:8px;padding:2px 7px}
 }
 
+/* Mobile-First Robust Totem Upgrade Sanctuary Styles */
+.upgrade-list{display:flex;flex-direction:column;gap:12px;margin:16px 0;width:100%!important}
+.upgrade-row{display:flex;flex-direction:column;gap:10px;padding:12px 14px!important;background:linear-gradient(135deg,#09272d,#05171b)!important;border:1px solid #72d4b833!important;border-radius:10px!important;position:relative;width:100%!important;box-sizing:border-box!important}
+.upgrade-row.focused{border-color:var(--accent)!important;box-shadow:0 0 16px color-mix(in srgb,var(--accent) 30%,transparent)!important}
+.upgrade-row.locked-row{background:linear-gradient(135deg,#06171a,#031013)!important;border-color:#36524d44!important}
+.upgrade-card-header{display:flex;align-items:center;gap:12px;width:100%}
+.upgrade-symbol.totem-art{width:42px!important;height:42px!important;flex-shrink:0;border-radius:8px;border:1px solid var(--accent);background-size:300% 200%!important}
+.upgrade-card-title-group{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.upgrade-spec-box{margin-top:0!important;background:#031013cc!important;border:1px solid #b7965633!important;border-radius:6px;padding:8px 10px!important;font-size:10px;line-height:1.6;display:flex;flex-direction:column;gap:4px;width:100%!important;box-sizing:border-box!important}
+.upgrade-spec-box .cur-val{color:#a8d1be;display:block}
+.upgrade-spec-box .next-val{color:#ffe49e;display:block;font-weight:600;background:#ffffff0d;padding:3px 6px;border-radius:4px}
+.upgrade-action-btn{width:100%!important;padding:11px 14px!important;border-radius:6px!important;font-size:12px!important;font-weight:700!important;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:filter .2s,transform .1s;box-sizing:border-box;border:0!important;white-space:normal!important;text-align:center}
+.upgrade-action-btn:disabled{background:#0e2528a6!important;color:#6b8680!important;border:1px solid #36504a55!important;cursor:not-allowed;box-shadow:none!important}
+.upgrade-prereq-badge{font-size:10px;padding:5px 8px;border-radius:4px;line-height:1.4}
+.level-pips{display:flex;gap:5px;margin-top:2px}
+.level-pips i{width:18px;height:4px;border-radius:2px;background:#cbd5bd22}
+.level-pips .filled{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+
+@media(max-width:650px){
+  dialog{width:95vw!important;max-width:95vw!important;padding:24px 12px 18px!important;max-height:92dvh!important;border-radius:12px!important}
+  .upgrade-list{gap:10px;margin:12px 0}
+  .upgrade-row{padding:10px 10px!important;gap:8px!important}
+  .upgrade-symbol.totem-art{width:36px!important;height:36px!important}
+  .upgrade-spec-box{padding:6px 8px!important;font-size:9.5px!important}
+  .upgrade-action-btn{padding:10px 12px!important;font-size:11px!important}
+  .wallet-title{font-size:22px!important}
+  dialog h2{font-size:20px!important;margin:8px 0 16px!important}
+}
+
+
