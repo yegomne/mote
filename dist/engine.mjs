@@ -1,11 +1,11 @@
 export const SIZE=8, COLORS=6, STAGE_COUNT=100;
 export const TOTEMS=[
- {name:'비취의 수확',color:'비취',icon:'gem',unlock:4,accent:'#6ee2ae',desc:'수정을 모으고 새 수정을 생성'},
- {name:'불의 심판',color:'루비',icon:'sun',unlock:1,accent:'#ff8a89',desc:'불덩이와 폭발로 주변 보석 파괴'},
- {name:'천둥의 분노',color:'사파이어',icon:'bolt',unlock:1,accent:'#80d7f1',desc:'움직인 보석 주변 사방으로 무작위 감전'},
- {name:'황금의 축복',color:'황금',icon:'sun',unlock:10,accent:'#efcf7e',desc:'보너스 점수와 피버 에너지'},
- {name:'달의 선물',color:'자수정',icon:'moon',unlock:7,accent:'#c8a5ff',desc:'보석에 폭탄과 번개를 부여'},
- {name:'시간의 숨결',color:'호박',icon:'freeze',unlock:2,accent:'#ffb781',desc:'남은 시간을 늘리고 시간을 정지'}
+  {name:'비취의 수확',color:'비취',icon:'gem',unlockCost:0,unlock:1,accent:'#6ee2ae',desc:'수정을 모으고 새 수정을 생성'},
+  {name:'불의 심판',color:'루비',icon:'sun',unlockCost:2,unlock:2,accent:'#ff8a89',desc:'불덩이와 폭발로 주변 보석 파괴'},
+  {name:'천둥의 분노',color:'사파이어',icon:'bolt',unlockCost:4,unlock:3,accent:'#80d7f1',desc:'움직인 보석 주변 사방으로 무작위 감전'},
+  {name:'황금의 축복',color:'황금',icon:'sun',unlockCost:6,unlock:5,accent:'#efcf7e',desc:'보너스 점수와 피버 3배 에너지'},
+  {name:'달의 선물',color:'자수정',icon:'moon',unlockCost:8,unlock:7,accent:'#c8a5ff',desc:'보석에 폭탄과 번개를 부여'},
+  {name:'시간의 숨결',color:'호박',icon:'freeze',unlockCost:10,unlock:10,accent:'#ffb781',desc:'남은 시간을 늘리고 시간을 정지'}
 ];
 export function advanceTotem(previous,color){const count=previous.color===color?previous.count+1:1;return {color,count,trigger:count>=2};}
 export function totemPower(color,level,streak){const multiplier=level>=2&&streak>=3?1.5:1;return {multiplier,harvest:Math.ceil((level+1)*multiplier),gifts:Math.ceil(level*multiplier),bonus:300*level*multiplier,energy:(15+5*level)*multiplier,seconds:(3+2*level)*multiplier,stasis:level>=3?level*multiplier:0};}
@@ -15,7 +15,8 @@ export function thunderTargets(level,streak,anchor,random=Math.random){const l=M
 export function harvestTargets(board,level,streak,random=Math.random){const p=totemPower(0,level,streak),collect=sample(board.flatMap((g,i)=>g?.crystal?[i]:[]),p.harvest,random),create=sample(board.flatMap((g,i)=>g&&!g.crystal?[i]:[]),p.harvest,random);return {collect,create};}
 export function lunarTargets(board,level,streak,random=Math.random){const p=totemPower(4,level,streak);return sample(board.flatMap((g,i)=>g&&!g.special?[i]:[]),p.gifts,random).map((index,k)=>({index,special:level>=5&&k===0?'nova':level>=3&&k%3===2?'col':k%2?'row':'bomb'}));}
 export function amplifyCells(initial,multiplier,center){const cells=[...new Set(initial)],target=Math.min(64,Math.ceil(cells.length*multiplier));if(cells.length>=target)return cells;const distance=(a,b)=>Math.hypot(a%8-b%8,Math.floor(a/8)-Math.floor(b/8));const rest=Array.from({length:64},(_,i)=>i).filter(i=>!cells.includes(i));rest.sort((a,b)=>Math.min(...cells.map(i=>distance(a,i)))-Math.min(...cells.map(i=>distance(b,i)))||distance(a,center)-distance(b,center)||a-b);return cells.concat(rest.slice(0,target-cells.length));}
-export function upgradeCost(level){return level>=5?null:level*2;}
+export function upgradeCost(level, totemIndex=0){if(level===0)return TOTEMS[totemIndex]?.unlockCost||2;return level>=5?null:level*2;}
+
 export function stageReward(previous,stars){return Math.max(0,Math.min(3,stars)-Math.max(0,previous));}
 export function chapterIndex(stage){return Math.min(4,Math.floor((stage-1)/20));}
 export const colorNames=['비취','루비','사파이어','황금','자수정','호박'];

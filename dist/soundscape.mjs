@@ -3,10 +3,33 @@ export const DEFAULT_AUDIO={enabled:true,master:.86,effects:.92,music:.32};
 export function sanitizeAudio(s={}){return {enabled:s.enabled!==false,master:clamp(s.master??DEFAULT_AUDIO.master),effects:clamp(s.effects??DEFAULT_AUDIO.effects),music:clamp(s.music??DEFAULT_AUDIO.music)};}
 export function musicStep(step,chapter=0){const roots=[73.416,65.406,82.407,55,73.416],root=roots[chapter%5],progress=[1,4/3,Math.pow(2,8/12),1.5],bass=root*progress[Math.floor(step/16)%4];return {bass,pad:step%16===0,kick:[0,6,8,14].includes(step%16),rim:[4,12].includes(step%16),shaker:step%2===1,note:step%4===2?bass*4*[1,1.2,1.5,1.8][Math.floor(step/4)%4]:null};}
 export class Soundscape {
-  constructor(){let saved;try{saved=JSON.parse(localStorage.getItem('solar-relic-audio-v3')||'null');}catch{}this.settings=sanitizeAudio(saved||{});this.ctx=null;this.active=0;this.chapter=0;this.playing=false;this.fever=false;this.hidden=false;this.step=0;this.lastImpact=-Infinity;this.lastThunder=-Infinity;}
+  constructor(){let saved;try{saved=JSON.parse(localStorage.getItem('solar-relic-audio-v3')||'null');}catch{}this.settings=sanitizeAudio(saved||{});this.ctx=null;this.active=0;this.chapter=0;this.playing=false;this.fever=false;this.hidden=false;this.step=0;this.lastImpact=-Infinity;this.lastThunder=-Infinity;this.buffers={};}
   persist(){try{localStorage.setItem('solar-relic-audio-v3',JSON.stringify(this.settings));}catch{}}
-  setup(){if(this.ctx)return true;const AC=globalThis.AudioContext||globalThis.webkitAudioContext;if(!AC)return false;try{const c=this.ctx=new AC();this.master=c.createGain();this.fx=c.createGain();this.music=c.createGain();this.musicDuck=c.createGain();this.compressor=c.createDynamicsCompressor();this.compressor.threshold.value=-17;this.compressor.knee.value=15;this.compressor.ratio.value=5;this.compressor.attack.value=.005;this.compressor.release.value=.22;const limiter=c.createDynamicsCompressor();limiter.threshold.value=-2;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=.001;limiter.release.value=.09;this.fx.connect(this.master);this.music.connect(this.musicDuck).connect(this.master);this.master.connect(this.compressor).connect(limiter).connect(c.destination);this.reverb=c.createConvolver();const length=Math.floor(c.sampleRate*1.8),buffer=c.createBuffer(2,length,c.sampleRate);for(let ch=0;ch<2;ch++){const a=buffer.getChannelData(ch);for(let i=0;i<length;i++)a[i]=(Math.random()*2-1)*(1-i/length)**3.6*.6;}this.reverb.buffer=buffer;const wet=c.createGain();wet.gain.value=.22;this.reverb.connect(wet).connect(this.master);this.noise=c.createBuffer(1,c.sampleRate*4,c.sampleRate);const data=this.noise.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;this.apply();this.nextBeat=c.currentTime+.08;this.scheduler=setInterval(()=>this.schedule(),100);return true;}catch{return false;}}
-  async unlock(){if(!this.settings.enabled)return;if(!this.setup())return;try{if(this.ctx.state==='suspended')await this.ctx.resume();}catch{}}
+  async loadSamples(){
+    if(!this.ctx||typeof fetch==='undefined')return;
+    const list={match:'assets/sounds/match.wav',combo:'assets/sounds/combo.wav',bomb:'assets/sounds/bomb.wav',laser:'assets/sounds/laser.wav',nova:'assets/sounds/nova.wav',totem:'assets/sounds/totem.wav',win:'assets/sounds/win.wav',click:'assets/sounds/click.wav',chime:'assets/sounds/chime.wav'};
+    for(const [k,url]of Object.entries(list)){
+      if(this.buffers[k])continue;
+      try{
+        const r=await fetch(url);
+        if(r.ok){const ab=await r.arrayBuffer();this.buffers[k]=await this.ctx.decodeAudioData(ab);}
+      }catch{}
+    }
+  }
+  playSample(name,volume=1,rate=1,pan=0){
+    if(!this.ready()||!this.buffers[name])return false;
+    try{
+      const c=this.ctx,src=c.createBufferSource();
+      src.buffer=this.buffers[name];src.playbackRate.value=rate;
+      const g=c.createGain();g.gain.value=volume;
+      const out=c.createStereoPanner?c.createStereoPanner():c.createGain();
+      if(out.pan)out.pan.value=clamp(pan);
+      src.connect(g).connect(out).connect(this.fx);
+      this.track(src);src.start();return true;
+    }catch{return false;}
+  }
+  setup(){if(this.ctx)return true;const AC=globalThis.AudioContext||globalThis.webkitAudioContext;if(!AC)return false;try{const c=this.ctx=new AC();this.master=c.createGain();this.fx=c.createGain();this.music=c.createGain();this.musicDuck=c.createGain();this.compressor=c.createDynamicsCompressor();this.compressor.threshold.value=-17;this.compressor.knee.value=15;this.compressor.ratio.value=5;this.compressor.attack.value=.005;this.compressor.release.value=.22;const limiter=c.createDynamicsCompressor();limiter.threshold.value=-2;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=.001;limiter.release.value=.09;this.fx.connect(this.master);this.music.connect(this.musicDuck).connect(this.master);this.master.connect(this.compressor).connect(limiter).connect(c.destination);this.reverb=c.createConvolver();const length=Math.floor(c.sampleRate*1.8),buffer=c.createBuffer(2,length,c.sampleRate);for(let ch=0;ch<2;ch++){const a=buffer.getChannelData(ch);for(let i=0;i<length;i++)a[i]=(Math.random()*2-1)*(1-i/length)**3.6*.6;}this.reverb.buffer=buffer;const wet=c.createGain();wet.gain.value=.22;this.reverb.connect(wet).connect(this.master);this.noise=c.createBuffer(1,c.sampleRate*4,c.sampleRate);const data=this.noise.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;this.apply();this.loadSamples();this.nextBeat=c.currentTime+.08;this.scheduler=setInterval(()=>this.schedule(),100);return true;}catch{return false;}}
+  async unlock(){if(!this.settings.enabled)return;if(!this.setup())return;try{if(this.ctx.state==='suspended')await this.ctx.resume();this.loadSamples();}catch{}}
   apply(){if(!this.ctx)return;const t=this.ctx.currentTime;this.master.gain.setTargetAtTime(this.settings.enabled&&!this.hidden?this.settings.master*.78:0,t,.045);this.fx.gain.setTargetAtTime(this.settings.effects,t,.03);this.music.gain.setTargetAtTime(this.settings.music*(this.playing?.65:.34),t,.25);}
   configure(key,value){if(key==='enabled')this.settings.enabled=!!value;else if(key in DEFAULT_AUDIO)this.settings[key]=clamp(value);this.persist();this.apply();if(this.settings.enabled)this.unlock();}
   mood(chapter,playing,fever=false){if(this.chapter!==chapter){this.chapter=chapter;this.step=0;}if(this.playing!==playing){this.playing=playing;this.apply();}this.fever=fever;}
@@ -15,29 +38,22 @@ export class Soundscape {
   track(node){this.active++;node.onended=()=>this.active=Math.max(0,this.active-1);}
   voice(freq,duration=.2,volume=.1,type='sine',when,pan=0,bus='fx',endFreq=freq,attack=.004,wet=.18){if(!this.ready()||volume<=0)return;const c=this.ctx,t=when??c.currentTime,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(15,freq),t);o.frequency.exponentialRampToValueAtTime(Math.max(15,endFreq),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),t+attack);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);const out=c.createStereoPanner?c.createStereoPanner():c.createGain();if(out.pan)out.pan.value=clamp((pan+1)/2)*2-1;g.connect(out).connect(bus==='music'?this.music:this.fx);if(wet){const send=c.createGain();send.gain.value=wet;g.connect(send).connect(this.reverb);}this.track(o);o.start(t);o.stop(t+duration+.02);}
   hiss(duration,volume,frequency,kind='lowpass',when,pan=0,bus='fx'){if(!this.ready())return;const c=this.ctx,t=when??c.currentTime,source=c.createBufferSource(),filter=c.createBiquadFilter(),g=c.createGain();source.buffer=this.noise;filter.type=kind;filter.frequency.value=frequency;filter.Q.value=.7;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),t+.003);g.gain.exponentialRampToValueAtTime(.0001,t+duration);const out=c.createStereoPanner?c.createStereoPanner():c.createGain();if(out.pan)out.pan.value=pan;source.connect(filter).connect(g).connect(out).connect(bus==='music'?this.music:this.fx);this.track(source);source.start(t,Math.random()*.45);source.stop(t+duration+.01);}
-  ui(freq=440,duration=.18,type='triangle',volume=.09){if(!this.ready())return;this.voice(freq,duration,volume*1.3,'triangle',undefined,0,'fx',freq*.85,.003,.22);this.voice(freq*.5,duration*.8,volume*.8,'sine',undefined,0,'fx',freq*.4,.002,.15);}
+  ui(freq=440,duration=.18,type='triangle',volume=.09){if(!this.ready())return;if(this.playSample('click',.85))return;this.voice(freq,duration,volume*1.3,'triangle',undefined,0,'fx',freq*.85,.003,.22);this.voice(freq*.5,duration*.8,volume*.8,'sine',undefined,0,'fx',freq*.4,.002,.15);}
   match(chain,color){
     if(!this.ready())return;
+    const pan=(Math.random()-.5)*.5;
+    const played=this.playSample('match',.95,Math.pow(1.04,Math.min(chain-1,6)),pan);
+    if(chain>1)this.playSample('combo',Math.min(1.1,.7+chain*.1),Math.pow(1.03,Math.min(chain-1,4)),-pan);
+    if(played)return;
     const c=this.ctx,t=c.currentTime;
     const notes=[523.25,587.33,659.25,783.99,880,1046.5];
     const f=notes[color%6]*Math.pow(1.05,Math.min(chain-1,6));
-    const pan=(Math.random()-.5)*.5;
-    // 1. 묵직하고 따뜻한 보석 파열 바디 (Sub-bass Crack Thud)
     this.voice(95,.42,.32,'triangle',t,0,'fx',40,.002,.25);
-    // 2. 맑고 풍성한 3중 크리스털 공명음 (Crystal Resonance Chime - 0.65초 풍성한 서스테인)
     this.voice(f,.68,.28,'sine',t,pan,'fx',f*.99,.003,.45);
     this.voice(f*1.498,.58,.18,'triangle',t+.015,-pan,'fx',f*1.5,.004,.45);
     this.voice(f*2.01,.48,.14,'sine',t+.03,pan*.5,'fx',f*2.02,.002,.5);
-    // 3. 고운 유리/보석 파편 질감 (Glass Texture)
     this.hiss(.22,.16,4200,'bandpass',t,pan);
-    this.hiss(.08,.12,6500,'highpass',t+.01,-pan);
-    // 4. 연쇄(Chain) 상승 시 중후한 팡파레와 서브우퍼 증폭
-    if(chain>1){
-      const bonusIntervals=[1.25,1.5,1.75,2.0,2.5];
-      const r=bonusIntervals[Math.min(chain-2,bonusIntervals.length-1)];
-      this.voice(f*r,.78,.22,'triangle',t+.04,-pan,'fx',f*r,.004,.5);
-      this.voice(65,.6,.26*Math.min(chain,4),'sine',t+.02,0,'fx',32,.002,.3);
-    }
+    if(chain>1){this.voice(f*1.5,.78,.22,'triangle',t+.04,-pan,'fx',f*1.5,.004,.5);this.voice(65,.6,.26,'sine',t+.02,0,'fx',32,.002,.3);}
   }
   impact(strength=1,color=1){if(color===2){this.thunder(strength);return;}if(!this.ready()||this.ctx.currentTime-this.lastImpact<.09)return;const t=this.ctx.currentTime;this.lastImpact=t;const weight=Math.min(1.6,strength);this.voice(135,.68,.55*weight,'sine',t,0,'fx',30,.003,.18);this.voice(62,.85,.22*weight,'triangle',t+.018,0,'fx',31,.009,.35);this.hiss(.46,.44*weight,color===2?2400:1050,'lowpass',t);this.hiss(.09,.28*weight,3800,'highpass',t);if(color===2){this.voice(210,.28,.17,'sawtooth',t,0,'fx',70,.002,.25);for(let n=0;n<4;n++)this.hiss(.055,.15,3000,'bandpass',t+n*.045,(n%2?1:-1)*.45);}this.musicDuck.gain.cancelScheduledValues(t);this.musicDuck.gain.setTargetAtTime(.42,t,.015);this.musicDuck.gain.setTargetAtTime(1,t+.4,.24);}
   thunder(strength=1){if(!this.ready()||this.ctx.currentTime-this.lastThunder<.4)return;const t=this.ctx.currentTime,s=Math.min(1.8,strength);this.lastThunder=t;
@@ -134,54 +150,41 @@ export class Soundscape {
 
   bombDetonate(){
     if(!this.ready())return;
+    if(this.playSample('bomb',1))return;
     const t=this.ctx.currentTime;
-    // 1. 대구경 서브우퍼 폭발 붐 (Sub-bass Shockwave 160Hz -> 25Hz, 1.3초 서스테인)
     this.voice(160,1.35,.8,'sine',t,0,'fx',25,.002,.45);
     this.voice(240,.65,.55,'sawtooth',t+.01,0,'fx',35,.001,.3);
     this.voice(75,1.6,.45,'triangle',t+.03,0,'fx',20,.01,.55);
-    // 2. 묵직하고 거대한 화염 폭풍 노이즈 (Firestorm Rumble)
     this.hiss(1.2,.65,580,'lowpass',t+.02);
     this.hiss(.45,.42,2200,'bandpass',t+.01);
-    this.musicDuck.gain.cancelScheduledValues(t);
-    this.musicDuck.gain.setTargetAtTime(.12,t,.01);
-    this.musicDuck.gain.setTargetAtTime(1,t+.8,.35);
   }
 
   laserDetonate(){
     if(!this.ready())return;
+    if(this.playSample('laser',.95))return;
     const t=this.ctx.currentTime;
-    // 1. 고출력 플라즈마 빔 관통음 (Plasma Beam Piercing 1100Hz -> 120Hz)
     this.voice(1100,.65,.55,'sawtooth',t,0,'fx',120,.001,.35);
     this.voice(440,.85,.45,'triangle',t+.02,0,'fx',65,.002,.4);
     this.voice(120,1.1,.55,'sine',t+.01,0,'fx',28,.002,.38);
-    // 2. 전격 방전 스파크 텍스처
     this.hiss(.45,.5,3800,'bandpass',t+.01);
     this.hiss(.18,.55,6200,'highpass',t);
-    this.musicDuck.gain.cancelScheduledValues(t);
-    this.musicDuck.gain.setTargetAtTime(.15,t,.01);
-    this.musicDuck.gain.setTargetAtTime(1,t+.65,.28);
   }
 
   novaDetonate(){
     if(!this.ready())return;
+    if(this.playSample('nova',1))return;
     const t=this.ctx.currentTime;
-    // 1. 전 화면 코스믹 임팩트 붐 (110Hz -> 22Hz, 1.8초)
     this.voice(110,1.8,.85,'sine',t,0,'fx',22,.002,.55);
     this.voice(55,2.1,.55,'triangle',t+.04,0,'fx',18,.01,.6);
-    // 2. 6중 신비로운 하모닉스 팡파레
     [0,7,12,16,19,24].forEach((n,i)=>{
       const f=261.63*Math.pow(2,n/12);
       this.voice(f,1.2,.32,'triangle',t+i*.04,(i%2?1:-1)*.45,'fx',f*1.01,.004,.55);
       this.voice(f*2,.8,.18,'sine',t+i*.04+.006,-(i%2?1:-1)*.35,'fx',f*2,.002,.5);
     });
     this.hiss(1.1,.55,1600,'bandpass',t+.04);
-    this.hiss(.45,.4,4200,'highpass',t+.02);
-    this.musicDuck.gain.cancelScheduledValues(t);
-    this.musicDuck.gain.setTargetAtTime(.1,t,.01);
-    this.musicDuck.gain.setTargetAtTime(1,t+1.3,.38);
   }
 
-  chord(kind=0){if(!this.ready())return;const t=this.ctx.currentTime;[0,3,7,12].forEach((n,i)=>this.voice(220*Math.pow(2,(n+kind)/12),.58,.11,'triangle',t+i*.052,(i-1.5)*.2));}
-  victory(win=true){if(!this.ready())return;const t=this.ctx.currentTime,notes=win?[0,7,12,15,19,24]:[7,3,0,-5];notes.forEach((n,i)=>this.voice(293.66*Math.pow(2,n/12),.85,.2,'triangle',t+i*.115,(i%2?1:-1)*.25));this.voice(win?73.416:55,1.4,.2,'sine',t,0,'fx',win?73.416:41,.02,.4);}
+  chord(kind=0){if(!this.ready())return;if(this.playSample('chime',.85))return;const t=this.ctx.currentTime;[0,3,7,12].forEach((n,i)=>this.voice(220*Math.pow(2,(n+kind)/12),.58,.11,'triangle',t+i*.052,(i-1.5)*.2));}
+  victory(win=true){if(!this.ready())return;if(win&&this.playSample('win',1))return;const t=this.ctx.currentTime,notes=win?[0,7,12,15,19,24]:[7,3,0,-5];notes.forEach((n,i)=>this.voice(293.66*Math.pow(2,n/12),.85,.2,'triangle',t+i*.115,(i%2?1:-1)*.25));this.voice(win?73.416:55,1.4,.2,'sine',t,0,'fx',win?73.416:41,.02,.4);}
   schedule(){if(!this.ready())return;const c=this.ctx;if(this.nextBeat<c.currentTime-.2)this.nextBeat=c.currentTime+.03;let guard=0;while(this.nextBeat<c.currentTime+.22&&guard++<4){const t=this.nextBeat,p=musicStep(this.step,this.chapter);if(this.settings.music>0){if(p.pad){[1,1.2,1.5].forEach((r,i)=>{this.voice(p.bass*2*r,5.2,.055,'sine',t,(i-1)*.5,'music',p.bass*2*r,.8,.25);});this.voice(p.bass,2.8,.11,'sine',t,0,'music',p.bass,.02,.1);}if(p.kick){this.voice(120,.2,.31,'sine',t,0,'music',43,.002,0);this.hiss(.08,.035,850,'lowpass',t,0,'music');}if(p.rim){this.voice(470,.075,.075,'triangle',t,.25,'music',290,.001,.08);this.hiss(.07,.05,1700,'bandpass',t,-.25,'music');}if(p.shaker)this.hiss(.045,.035,6500,'highpass',t,this.step%4===1?-.6:.6,'music');if(p.note)this.voice(p.note,.9,.055,'sine',t,(this.step%8<4?-.45:.45),'music',p.note,.01,.4);if(this.fever&&this.step%2===0)this.voice(p.bass*4,.18,.055,'triangle',t,-.3,'music',p.bass*4,.004,.1);}this.step++;this.nextBeat+=this.fever?.285:.34;}}
 }
