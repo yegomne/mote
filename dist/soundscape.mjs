@@ -150,38 +150,36 @@ export class Soundscape {
 
   bombDetonate(){
     if(!this.ready())return;
-    if(this.playSample('bomb',1))return;
+    if(this.playSample('bomb',1.35,0.88))return;
     const t=this.ctx.currentTime;
-    this.voice(160,1.35,.8,'sine',t,0,'fx',25,.002,.45);
-    this.voice(240,.65,.55,'sawtooth',t+.01,0,'fx',35,.001,.3);
-    this.voice(75,1.6,.45,'triangle',t+.03,0,'fx',20,.01,.55);
-    this.hiss(1.2,.65,580,'lowpass',t+.02);
-    this.hiss(.45,.42,2200,'bandpass',t+.01);
+    this.voice(95,1.6,1.0,'sine',t,0,'fx',18,.002,.55);
+    this.voice(160,.85,.65,'sawtooth',t+.01,0,'fx',25,.001,.4);
+    this.voice(45,2.0,.6,'triangle',t+.03,0,'fx',16,.01,.65);
+    this.hiss(1.5,.75,450,'lowpass',t+.02);
+    this.hiss(.55,.45,1800,'bandpass',t+.01);
   }
 
   laserDetonate(){
     if(!this.ready())return;
-    if(this.playSample('laser',.95))return;
+    if(this.playSample('laser',1.25,0.90))return;
     const t=this.ctx.currentTime;
-    this.voice(1100,.65,.55,'sawtooth',t,0,'fx',120,.001,.35);
-    this.voice(440,.85,.45,'triangle',t+.02,0,'fx',65,.002,.4);
-    this.voice(120,1.1,.55,'sine',t+.01,0,'fx',28,.002,.38);
-    this.hiss(.45,.5,3800,'bandpass',t+.01);
-    this.hiss(.18,.55,6200,'highpass',t);
+    this.voice(650,.9,.65,'sawtooth',t,0,'fx',80,.001,.45);
+    this.voice(220,1.1,.55,'triangle',t+.02,0,'fx',50,.002,.5);
+    this.voice(75,1.3,.65,'sine',t+.01,0,'fx',22,.002,.48);
+    this.hiss(.6,.55,2800,'bandpass',t+.01);
   }
 
   novaDetonate(){
     if(!this.ready())return;
-    if(this.playSample('nova',1))return;
+    if(this.playSample('nova',1.4,0.84))return;
     const t=this.ctx.currentTime;
-    this.voice(110,1.8,.85,'sine',t,0,'fx',22,.002,.55);
-    this.voice(55,2.1,.55,'triangle',t+.04,0,'fx',18,.01,.6);
+    this.voice(75,2.4,1.1,'sine',t,0,'fx',16,.002,.65);
+    this.voice(38,2.8,.75,'triangle',t+.04,0,'fx',14,.01,.7);
     [0,7,12,16,19,24].forEach((n,i)=>{
-      const f=261.63*Math.pow(2,n/12);
-      this.voice(f,1.2,.32,'triangle',t+i*.04,(i%2?1:-1)*.45,'fx',f*1.01,.004,.55);
-      this.voice(f*2,.8,.18,'sine',t+i*.04+.006,-(i%2?1:-1)*.35,'fx',f*2,.002,.5);
+      const f=196.00*Math.pow(2,n/12);
+      this.voice(f,1.5,.36,'triangle',t+i*.05,(i%2?1:-1)*.45,'fx',f*1.01,.004,.6);
     });
-    this.hiss(1.1,.55,1600,'bandpass',t+.04);
+    this.hiss(1.5,.65,1200,'bandpass',t+.04);
   }
 
   chord(kind=0){if(!this.ready())return;if(this.playSample('chime',.85))return;const t=this.ctx.currentTime;[0,3,7,12].forEach((n,i)=>this.voice(220*Math.pow(2,(n+kind)/12),.58,.11,'triangle',t+i*.052,(i-1.5)*.2));}

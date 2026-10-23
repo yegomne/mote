@@ -112,8 +112,43 @@ def generate_combo():
         
     write_wav("combo.wav", samples_l, samples_r)
 
-# 3. bomb.wav: 대구경 서브우퍼 폭발음 (Sub-bass Bomb Detonation)
+# 3. bomb.wav: 대구경 시네마틱 서브우퍼 폭발음 (Deep Sub-bass Cinematic Bomb Detonation)
 def generate_bomb():
+    duration = 1.6
+    num_samples = int(SAMPLE_RATE * duration)
+    samples_l = [0.0] * num_samples
+    samples_r = [0.0] * num_samples
+    
+    for i in range(num_samples):
+        t = i / SAMPLE_RATE
+        # Deep pitch drop: 95Hz down to 22Hz for massive cinematic weight
+        freq = 22.0 + 73.0 * math.exp(-t * 5.0)
+        phase = 2 * math.pi * (22.0 * t + 73.0 * (1 - math.exp(-t * 5.0)) / 5.0)
+        
+        # Sub-bass core with saturation
+        sub = math.sin(phase) * 0.85 * math.exp(-t * 1.8)
+        # Heavy saturation / warmth
+        sub = math.tanh(sub * 2.2) * 0.75
+        
+        # Low-frequency chest rumble (30Hz - 60Hz)
+        rumble_freq = 38.0 + 15.0 * math.sin(t * 18.0)
+        chest = math.sin(2 * math.pi * rumble_freq * t) * 0.45 * math.exp(-t * 2.2)
+        
+        # Debris & fire crackle noise
+        noise = (random.random() * 2 - 1)
+        noise_env = math.exp(-t * 2.5) if t > 0.015 else (t / 0.015)
+        debris = noise * 0.35 * noise_env
+        
+        # Initial heavy shockwave slam (thud)
+        thud = math.sin(2 * math.pi * 55 * t) * 0.6 * math.exp(-t * 25.0) if t < 0.15 else 0.0
+        
+        samples_l[i] = sub + chest + debris + thud
+        samples_r[i] = sub + chest * 0.98 + debris * 1.05 + thud
+        
+    write_wav("bomb.wav", samples_l, samples_r)
+
+# 4. laser.wav: 고출력 대구경 플라즈마 레이저 관통음 (Heavy Plasma Beam Arc Laser)
+def generate_laser():
     duration = 1.1
     num_samples = int(SAMPLE_RATE * duration)
     samples_l = [0.0] * num_samples
@@ -121,74 +156,48 @@ def generate_bomb():
     
     for i in range(num_samples):
         t = i / SAMPLE_RATE
-        # Pitch sweep: 150Hz -> 28Hz
-        freq = 28.0 + 122.0 * math.exp(-t * 8.0)
-        phase = 2 * math.pi * (28.0 * t + 122.0 * (1 - math.exp(-t * 8.0)) / 8.0)
+        # Heavy laser sweep: 450Hz down to 65Hz (heavy body, not thin screech)
+        freq = 65.0 + 385.0 * math.exp(-t * 7.0)
+        phase = 2 * math.pi * (65.0 * t + 385.0 * (1 - math.exp(-t * 7.0)) / 7.0)
         
-        # Sub-bass punch
-        sub = math.sin(phase) * 0.75 * math.exp(-t * 3.2)
-        # Distortion / saturation
-        sub = math.tanh(sub * 1.5) * 0.65
+        # Rich sawtooth & square plasma harmonics
+        saw = (math.sin(phase) + 0.5 * math.sin(phase * 2) + 0.3 * math.sin(phase * 3) + 0.2 * math.sin(phase * 4)) * 0.45 * math.exp(-t * 3.8)
+        # Sub-bass punch underneath laser
+        sub = math.sin(2 * math.pi * 55 * t) * 0.55 * math.exp(-t * 4.5)
+        # High-voltage arc sizzle
+        sizzle = (random.random() * 2 - 1) * 0.28 * math.exp(-t * 6.5)
         
-        # Fire noise rumble
-        noise = (random.random() * 2 - 1)
-        noise_env = math.exp(-t * 4.0) if t > 0.01 else (t / 0.01)
-        rumble = noise * 0.45 * noise_env
-        
-        # High impact shockwave snap in first 20ms
-        snap = (random.random() * 2 - 1) * math.exp(-t * 120) * 0.4 if t < 0.03 else 0.0
-        
-        samples_l[i] = sub + rumble + snap
-        samples_r[i] = sub + rumble * 0.95 + snap
-        
-    write_wav("bomb.wav", samples_l, samples_r)
-
-# 4. laser.wav: 고출력 번개 플라즈마 빔 (Lightning Arc Laser)
-def generate_laser():
-    duration = 0.65
-    num_samples = int(SAMPLE_RATE * duration)
-    samples_l = [0.0] * num_samples
-    samples_r = [0.0] * num_samples
-    
-    for i in range(num_samples):
-        t = i / SAMPLE_RATE
-        # Fast zap sweep: 1200Hz down to 80Hz
-        freq = 80.0 + 1120.0 * math.exp(-t * 18.0)
-        phase = 2 * math.pi * (80.0 * t + 1120.0 * (1 - math.exp(-t * 18.0)) / 18.0)
-        
-        # Sawtooth / plasma bite
-        beam = (math.sin(phase) + 0.4 * math.sin(phase * 2) + 0.2 * math.sin(phase * 3)) * 0.48 * math.exp(-t * 7.5)
-        # Electric sizzle
-        sizzle = (random.random() * 2 - 1) * 0.3 * math.exp(-t * 12.0)
-        # Low punch
-        punch = math.sin(2 * math.pi * 90 * t) * 0.35 * math.exp(-t * 9.0)
-        
-        samples_l[i] = beam + sizzle + punch
-        samples_r[i] = beam * 0.9 + sizzle * 1.1 + punch
+        val = math.tanh((saw + sub + sizzle) * 1.6) * 0.8
+        samples_l[i] = val
+        samples_r[i] = val * (0.95 + 0.05 * math.sin(t * 30.0))
         
     write_wav("laser.wav", samples_l, samples_r)
 
-# 5. nova.wav: 코스믹 전 화면 대폭발 (Cosmic Nova Shockwave)
+# 5. nova.wav: 코스믹 전 화면 메가톤급 대폭발 (Cosmic Megaton Nova Shockwave)
 def generate_nova():
-    duration = 1.35
+    duration = 2.0
     num_samples = int(SAMPLE_RATE * duration)
     samples_l = [0.0] * num_samples
     samples_r = [0.0] * num_samples
     
     for i in range(num_samples):
         t = i / SAMPLE_RATE
-        # Sweeping low boom
-        boom = math.sin(2 * math.pi * (22.0 + 90.0 * math.exp(-t * 4.0)) * t) * 0.6 * math.exp(-t * 2.2)
-        # Shimmering harmonic chord: 440, 554, 659, 880
-        chord = (math.sin(2 * math.pi * 440 * t) * 0.15 +
-                 math.sin(2 * math.pi * 554 * t) * 0.12 +
-                 math.sin(2 * math.pi * 659 * t) * 0.15 +
-                 math.sin(2 * math.pi * 880 * t) * 0.10) * math.exp(-t * 3.5)
-        # Ethereal whoosh
-        whoosh = (random.random() * 2 - 1) * 0.25 * math.exp(-t * 3.0)
+        # Deep earth-shaking shockwave (18Hz - 45Hz)
+        sub_boom = math.sin(2 * math.pi * (18.0 + 40.0 * math.exp(-t * 2.0)) * t) * 0.85 * math.exp(-t * 1.4)
+        sub_boom = math.tanh(sub_boom * 2.0) * 0.8
         
-        samples_l[i] = boom + chord + whoosh
-        samples_r[i] = boom + chord * 0.95 + whoosh * 1.05
+        # Multi-tonal resonant gong impact: 110Hz, 164Hz, 220Hz
+        gong = (math.sin(2 * math.pi * 110 * t) * 0.3 +
+                math.sin(2 * math.pi * 164.81 * t) * 0.25 +
+                math.sin(2 * math.pi * 220 * t) * 0.2) * math.exp(-t * 2.2)
+        
+        # Massive atmospheric whoosh
+        noise = (random.random() * 2 - 1) * 0.3 * math.exp(-t * 1.8)
+        
+        val_l = sub_boom + gong + noise
+        val_r = sub_boom + gong * 0.96 + noise * 1.04
+        samples_l[i] = val_l
+        samples_r[i] = val_r
         
     write_wav("nova.wav", samples_l, samples_r)
 

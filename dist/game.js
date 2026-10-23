@@ -1,6 +1,6 @@
 import {Soundscape} from './soundscape.mjs?v=6';
 import {ImpactFX} from './element-fx.mjs?v=7';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario} from './engine.mjs?v=8';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario} from './engine.mjs?v=9';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612']];
@@ -8,13 +8,14 @@ const shapes=[[[0,-.44],[.31,-.25],[.36,.23],[0,.43],[-.36,.23],[-.31,-.25]],[[0
 function readSave(){try{const s=JSON.parse(localStorage.getItem('solar-relic-v1')||'{}');return {level:Math.max(1,Math.min(STAGE_COUNT,+s.level||1)),unlocked:Math.max(1,Math.min(STAGE_COUNT,+s.unlocked||1)),best:Math.max(0,+s.best||0),reduced:!!s.reduced,sound:!!s.sound};}catch{return {level:1,unlocked:1,best:0,reduced:false,sound:false};}}
 const saved=readSave(),director=new Soundscape();
 document.addEventListener('pointerdown',()=>director.unlock(),{passive:true});document.addEventListener('keydown',()=>director.unlock(),{passive:true});
+document.addEventListener('touchmove',e=>{if(document.body.classList.contains('playing')&&!$('#modal')?.open){e.preventDefault();}},{passive:false});
 let growth;try{growth=JSON.parse(localStorage.getItem('solar-relic-growth-v2')||'{}');}catch{growth={};}
 growth??={};
 let totemLevels=Array.from({length:6},(_,i)=>{if(growth.levels&&growth.levels[i]!==undefined)return Math.max(0,Math.min(5,Math.floor(+growth.levels[i]||0)));return i===0?1:0;}),magicStars=Math.max(0,Math.floor(+growth.stars||0)),stageStars=Array.from({length:STAGE_COUNT},(_,i)=>Math.max(0,Math.min(3,Math.floor(+growth.stageStars?.[i]||0)))),totemChain={color:-1,count:0},totemFlash=-1,totemFlashUntil=0,totalTotemCasts=0;
 function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stringify({levels:totemLevels,stars:magicStars,stageStars}));}catch{}}
 function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return `마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초` ][i];}
-function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i);return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒미해금'}</small></b><small>${unlocked?t.color+' 연속 매치':'★'+t.unlockCost+' 해금 필요'}</small><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>openUpgrades(+b.dataset.totem));}
+function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i);return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>openUpgrades(+b.dataset.totem));}
 let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=90,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
 let pausedAt=0,lastFireTargets=[],finishing=false;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
@@ -117,36 +118,37 @@ async function clearCells(indices,creations=new Map(),chain=1){
   const result=affected(board,indices);
   const seals=damageSeals(sealState,result.cells);
   metrics.sealsBroken+=seals.broken;
-  for(const i of seals.damaged){burst(i,3,heavyCast?22:12);ring(i%8+.5,Math.floor(i/8)+.5,'#e8c779',.75);}
+  const hasSpecials=result.effects.length>0;
+  for(const i of seals.damaged){burst(i,3,heavyCast?28:16);ring(i%8+.5,Math.floor(i/8)+.5,'#e8c779',.85);}
   for(const {index,type,color}of result.effects){
     const r=Math.floor(index/8),c=index%8;
     if(type==='row'||type==='cross'){
       beam(r*8,r*8+7,'#7de0ff');
       flash('#7de0ff');
       director.laserDetonate();
-      burst(index,2,24);
-      shake();
+      burst(index,2,48);
+      heavyShake(1.6);
     }
     if(type==='col'||type==='cross'){
       beam(c,56+c,'#7de0ff');
       flash('#7de0ff');
       director.laserDetonate();
-      burst(index,2,24);
-      shake();
+      burst(index,2,48);
+      heavyShake(1.6);
     }
     if(type==='bomb'){
-      ring(c+.5,r+.5,'#ff5522',3.2);
-      flash('#ff6633');
+      ring(c+.5,r+.5,'#ff4400',4.2);
+      flash('#ff5522');
       director.bombDetonate();
-      burst(index,1,36);
-      shake();
+      burst(index,1,64);
+      heavyShake(2.2);
     }
     if(type==='nova'){
-      ring(c+.5,r+.5,'#e088ff',5.0);
-      flash('#ffb3ff');
+      ring(c+.5,r+.5,'#e066ff',6.5);
+      flash('#ff99ff');
       director.novaDetonate();
-      burst(index,4,48);
-      shake();
+      burst(index,4,84);
+      heavyShake(2.8);
     }
   }
   let gained=0,collected=0;
@@ -156,15 +158,15 @@ async function clearCells(indices,creations=new Map(),chain=1){
     metrics.colorCollected[g.color]++;
     gained+=50*Math.min(chain,4)*(performance.now()<frenzyUntil?3:1);
     if(g.crystal)collected++;
-    burst(i,g.color,heavyCast?24:chain>2?14:9);
+    burst(i,g.color,heavyCast?26:chain>2?16:10);
     if(!creations.has(i)){ghosts.push({g:{...g},life:1});board[i]=null;}
   }
   for(const [i,special]of creations){
     if(board[i]){
       board[i].special=special;
       board[i].crystal=false;
-      ring(i%8+.5,Math.floor(i/8)+.5,'#ffd54f',2.0);
-      burst(i,3,20);
+      ring(i%8+.5,Math.floor(i/8)+.5,'#ffd54f',2.2);
+      burst(i,3,24);
       flash('#ffe894');
       director.specialCreate(special);
     }
@@ -191,7 +193,7 @@ async function clearCells(indices,creations=new Map(),chain=1){
   if(chain>=3)shake();
   best=Math.max(best,score);
   update();
-  await wait(reduced?25:165);
+  await wait(reduced?25:hasSpecials?420:175);
 }
 function checkEnd(){
   if(ended||finishing)return;
@@ -381,22 +383,59 @@ if(g.special){
   ctx.stroke();ctx.shadowBlur=0;
 }ctx.restore();}
 function burst(i,color,count=10){if(reduced)count=3;const x=i%8+.5,y=Math.floor(i/8)+.5;for(let k=0;k<count&&particles.length<550;k++){const a=Math.random()*Math.PI*2,v=.6+Math.random()*2.8;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:.45+Math.random()*.5,max:1,size:.025+Math.random()*.05,color:PALETTE[color][k%2],rot:Math.random()*6});}}
-function ring(x,y,color,max=2){rings.push({x,y,color,max,r:.1,life:1});}
-function beam(a,b,color){const points=[],x1=a%8+.5,y1=Math.floor(a/8)+.5,x2=b%8+.5,y2=Math.floor(b/8)+.5;for(let n=0;n<=12;n++){const t=n/12;points.push([x1+(x2-x1)*t+(n&&n<12?(Math.random()-.5)*.28:0),y1+(y2-y1)*t+(n&&n<12?(Math.random()-.5)*.28:0)]);}beams.push({points,color,life:.65});}
+function ring(x,y,color,max=2){rings.push({x,y,color,max,r:.1,life:1.2,maxLife:1.2});}
+function beam(a,b,color){
+  const points=[],x1=a%8+.5,y1=Math.floor(a/8)+.5,x2=b%8+.5,y2=Math.floor(b/8)+.5;
+  for(let n=0;n<=16;n++){
+    const t=n/16;
+    points.push([x1+(x2-x1)*t+(n&&n<16?(Math.random()-.5)*.35:0),y1+(y2-y1)*t+(n&&n<16?(Math.random()-.5)*.35:0)]);
+  }
+  beams.push({points,color,life:1.2,maxLife:1.2});
+}
 function draw(now,dt){ctx.clearRect(0,0,boardSize,boardSize);const bg=ctx.createLinearGradient(0,0,boardSize,boardSize);bg.addColorStop(0,'#0c292e');bg.addColorStop(1,'#05191f');ctx.fillStyle=bg;ctx.fillRect(0,0,boardSize,boardSize);for(let i=0;i<64;i++){const x=i%8*cell,y=Math.floor(i/8)*cell;ctx.fillStyle=(Math.floor(i/8)+i%8)%2?'#183c3e44':'#03161c60';ctx.fillRect(x+1,y+1,cell-2,cell-2);ctx.strokeStyle='#a2bfa512';ctx.lineWidth=.5;ctx.strokeRect(x+.5,y+.5,cell-1,cell-1);if(sealState[i]>0){ctx.fillStyle=sealState[i]>1?'#80612b8a':'#b690353e';ctx.fillRect(x+2,y+2,cell-4,cell-4);ctx.strokeStyle='#e6c46ca8';ctx.lineWidth=sealState[i]>1?2:1;ctx.strokeRect(x+4,y+4,cell-8,cell-8);for(let n=0;n<sealState[i];n++){ctx.fillStyle='#f8d17b';ctx.fillRect(x+cell/2+(n-(sealState[i]-1)/2)*7-2,y+cell-6,4,3);}}}
 const hintOn=hintUntil>now||(now-lastAction>18000&&started&&!busy&&!activePower);if(hintOn&&!hint.length)hint=findMove(board,totemChain.color)||[];for(const i of (selected>=0?[selected]:hintOn?hint:[])){const x=i%8*cell,y=Math.floor(i/8)*cell;ctx.save();ctx.strokeStyle=selected===i?'#ffdf91':`rgba(208,243,193,${.45+.35*Math.sin(now/200)})`;ctx.lineWidth=2;ctx.shadowColor='#f1dc92';ctx.shadowBlur=12;ctx.beginPath();ctx.roundRect(x+3,y+3,cell-6,cell-6,8);ctx.stroke();ctx.restore();}
 board.forEach((g,i)=>{if(!g)return;const speed=Math.min(1,dt*19);g.x+=(g.tx-g.x)*speed;g.y+=(g.ty-g.y)*speed;const hovered=selected===i;drawGem(g,(g.x+.5)*cell,(g.y+.5)*cell,hovered?1.07:1,1,now);});
-for(const g of ghosts){g.life-=dt*5;drawGem(g.g,(g.g.x+.5)*cell,(g.g.y+.5)*cell,1+(1-g.life)*.45,Math.max(0,g.life),now);}ghosts=ghosts.filter(g=>g.life>0);
-ctx.save();ctx.globalCompositeOperation='lighter';for(const ring of rings){ring.r+=(ring.max-ring.r)*dt*6;ring.life-=dt*1.65;ctx.strokeStyle=ring.color;ctx.globalAlpha=Math.max(0,ring.life)*.7;ctx.lineWidth=2*ring.life;ctx.shadowBlur=15;ctx.shadowColor=ring.color;ctx.beginPath();ctx.arc(ring.x*cell,ring.y*cell,ring.r*cell,0,Math.PI*2);ctx.stroke();}rings=rings.filter(r=>r.life>0);ctx.shadowBlur=0;
-for(const b of beams){b.life-=dt*2.1;ctx.globalAlpha=Math.max(0,b.life);ctx.strokeStyle=b.color;ctx.lineWidth=5;ctx.shadowColor=b.color;ctx.shadowBlur=18;ctx.beginPath();b.points.forEach(([x,y],i)=>i?ctx.lineTo(x*cell,y*cell):ctx.moveTo(x*cell,y*cell));ctx.stroke();ctx.strokeStyle='#ffffff';ctx.lineWidth=1.4;ctx.stroke();}beams=beams.filter(b=>b.life>0);ctx.shadowBlur=0;
-for(const p of particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=3.4*dt;p.rot+=dt*5;ctx.save();ctx.translate(p.x*cell,p.y*cell);ctx.rotate(p.rot);ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(-p.size*cell/2,-p.size*cell/2,p.size*cell,p.size*cell);ctx.restore();}particles=particles.filter(p=>p.life>0);ctx.restore();for(const f of floats){f.life-=dt;f.y-=dt*.65;ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,f.life*2));ctx.textAlign='center';ctx.font=`600 ${cell*.34}px Georgia`;ctx.fillStyle=f.color;ctx.shadowColor='#02161b';ctx.shadowBlur=5;ctx.fillText(f.text,f.x*cell,f.y*cell);ctx.restore();}floats=floats.filter(f=>f.life>0);
+for(const g of ghosts){g.life-=dt*4.5;drawGem(g.g,(g.g.x+.5)*cell,(g.g.y+.5)*cell,1+(1-g.life)*.45,Math.max(0,g.life),now);}ghosts=ghosts.filter(g=>g.life>0);
+ctx.save();ctx.globalCompositeOperation='lighter';
+for(const ring of rings){
+  ring.r+=(ring.max-ring.r)*dt*4.2;
+  ring.life-=dt*0.95;
+  ctx.strokeStyle=ring.color;
+  ctx.globalAlpha=Math.max(0,ring.life)*.8;
+  ctx.lineWidth=3.5*ring.life;
+  ctx.shadowBlur=22;ctx.shadowColor=ring.color;
+  ctx.beginPath();ctx.arc(ring.x*cell,ring.y*cell,ring.r*cell,0,Math.PI*2);ctx.stroke();
+  if(ring.r>.55){
+    ctx.lineWidth=1.8*ring.life;
+    ctx.beginPath();ctx.arc(ring.x*cell,ring.y*cell,ring.r*cell*.6,0,Math.PI*2);ctx.stroke();
+  }
+}
+rings=rings.filter(r=>r.life>0);ctx.shadowBlur=0;
+for(const b of beams){
+  b.life-=dt*1.05;
+  const progress=Math.max(0,b.life/(b.maxLife||1));
+  ctx.globalAlpha=Math.max(0,b.life);
+  ctx.strokeStyle=b.color;
+  ctx.lineWidth=15*progress;
+  ctx.shadowColor=b.color;
+  ctx.shadowBlur=28;
+  ctx.beginPath();
+  b.points.forEach(([x,y],i)=>i?ctx.lineTo(x*cell,y*cell):ctx.moveTo(x*cell,y*cell));
+  ctx.stroke();
+  ctx.strokeStyle='#ffffff';
+  ctx.lineWidth=4*progress;
+  ctx.shadowBlur=12;
+  ctx.stroke();
+}
+beams=beams.filter(b=>b.life>0);ctx.shadowBlur=0;
+for(const p of particles){p.life-=dt*.85;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=3.0*dt;p.rot+=dt*5;ctx.save();ctx.translate(p.x*cell,p.y*cell);ctx.rotate(p.rot);ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(-p.size*cell/2,-p.size*cell/2,p.size*cell,p.size*cell);ctx.restore();}particles=particles.filter(p=>p.life>0);ctx.restore();for(const f of floats){f.life-=dt;f.y-=dt*.65;ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,f.life*2));ctx.textAlign='center';ctx.font=`600 ${cell*.34}px Georgia`;ctx.fillStyle=f.color;ctx.shadowColor='#02161b';ctx.shadowBlur=5;ctx.fillText(f.text,f.x*cell,f.y*cell);ctx.restore();}floats=floats.filter(f=>f.life>0);
 fx.draw(now,dt);if(paused){ctx.fillStyle='#031c2477';ctx.fillRect(0,0,boardSize,boardSize);}}
 const atm=$('#atmosphere'),ac=atm.getContext('2d');let aw=0,ah=0,ambient=Array.from({length:32},()=>({x:Math.random(),y:Math.random(),s:.4+Math.random()*1.6,speed:.01+Math.random()*.02,phase:Math.random()*6}));function atmosphere(now,dt){if(aw!==innerWidth||ah!==innerHeight){aw=innerWidth;ah=innerHeight;atm.width=aw;atm.height=ah;}ac.clearRect(0,0,aw,ah);if(reduced)return;for(const p of ambient){p.y-=dt*p.speed;if(p.y<0){p.y=1;p.x=Math.random();}const a=.15+.4*(.5+.5*Math.sin(now/1400+p.phase));ac.fillStyle=`rgba(234,198,112,${a})`;ac.shadowColor='#e9bc6a';ac.shadowBlur=9;ac.beginPath();ac.arc(p.x*aw+Math.sin(now/3000+p.phase)*15,p.y*ah,p.s,0,Math.PI*2);ac.fill();}}
 let uiTick=0;function tick(now){const elapsed=Math.min((now-lastTick)/1000,.15);lastTick=now;const dt=elapsed||.016;if(running&&!paused&&!ended){if(frozen>0){frozen=Math.max(0,frozen-elapsed);if(!frozen)frame.classList.remove('frozen-board');}else if(mode!=='zen'&&now>=impactUntil){time=Math.max(0,time-elapsed);}if(now>frenzyUntil&&frenzy>0&&now-lastAction>2500)frenzy=Math.max(0,frenzy-elapsed*1.8);if((busy||swapping)&&now-lastAction>2200&&activeCascades===0&&!finishing){busy=false;swapping=false;frame.setAttribute('aria-busy','false');checkEnd();}if(budgetEmpty()){if(busy)finishAfterBusy=true;else finish(false);}}
 if(!document.hidden){draw(now,dt);atmosphere(now,dt);}uiTick+=dt;if(uiTick>.15){update();uiTick=0;}requestAnimationFrame(tick);}
 initStage();renderTotems();syncPositions(true);time=objectives(level).time??90;update();requestAnimationFrame(tick);
 
-function updateTotemUI(){const col=totemChain.color,count=totemChain.count;$$('[data-totem]').forEach(el=>{const i=+el.dataset.totem,available=totemUnlocked(i),armed=available&&col===i&&count>=1,casting=totemFlash===i&&performance.now()<totemFlashUntil;el.classList.toggle('locked',!available);el.classList.toggle('armed',armed);el.classList.toggle('casting',casting);el.querySelector('.totem-level').textContent='Lv.'+totemLevels[i];el.querySelector('.power-meter i').style.width=available?(col===i?(count>=2?'100%':'50%'):'0%'):'0%';el.querySelector('.power-state').textContent=!available?'S'+TOTEMS[i].unlock:casting?'발동!':armed?(totemPower(i,totemLevels[i],count).multiplier>1?count+'연속 ×1.5':count>=2?count+'연속':'1/2'):'0/2';});$('#powerInstruction').textContent=col>=0?colorNames[col]+' '+count+'연속 · '+(totemUnlocked(col)?(totemLevels[col]<2?'기본 위력 · Lv.2 강화 시 3연속 1.5배 해금':count>=3?'1.5배 각성 중! 같은 색을 이어가세요':count===2?'다음 같은 색은 1.5배 각성':'같은 색을 한 번 더 맞추세요'):TOTEMS[col].unlock+'단계에서 토템 해금'):'같은 색 2번째 매치부터 자동 발동';$('#boardHint').textContent=col>=0?colorNames[col]+' '+count+'연속 · 같은 색이면 토템 발동':'같은 색을 두 번 연속 맞춰보세요';$('#starWallet').textContent='★ '+magicStars;}
+function updateTotemUI(){const col=totemChain.color,count=totemChain.count;$$('[data-totem]').forEach(el=>{const i=+el.dataset.totem,available=totemUnlocked(i),armed=available&&col===i&&count>=1,casting=totemFlash===i&&performance.now()<totemFlashUntil;el.classList.toggle('locked',!available);el.classList.toggle('armed',armed);el.classList.toggle('casting',casting);el.querySelector('.totem-level').textContent=available?'Lv.'+totemLevels[i]:'🔒';el.querySelector('.power-meter i').style.width=available?(col===i?(count>=2?'100%':'50%'):'0%'):'0%';el.querySelector('.power-state').textContent=!available?'🔒잠김':casting?'발동!':armed?(totemPower(i,totemLevels[i],count).multiplier>1?'×1.5':count>=2?'발동':'1/2'):'대기';});$('#powerInstruction').textContent=col>=0?colorNames[col]+' '+count+'연속 · '+(totemUnlocked(col)?(totemLevels[col]<2?'기본 위력 · Lv.2 강화 시 3연속 1.5배 해금':count>=3?'1.5배 각성 중! 같은 색을 이어가세요':count===2?'다음 같은 색은 1.5배 각성':'같은 색을 한 번 더 맞추세요'):TOTEMS[col].unlock+'단계에서 토템 해금'):'같은 색 2번째 매치부터 자동 발동';$('#boardHint').textContent=col>=0?colorNames[col]+' '+count+'연속 · 같은 색이면 토템 발동':'같은 색을 두 번 연속 맞춰보세요';$('#starWallet').textContent='★ '+magicStars;}
 async function castTotem(color,index){
   const l=totemLevels[color],t=TOTEMS[color],p=totemPower(color,l,totemChain.count),boost=p.multiplier>1;
   totemFlash=color;totemFlashUntil=performance.now()+1800;totalTotemCasts++;metrics.totemCasts++;if(boost)metrics.overdrives++;
@@ -415,7 +454,7 @@ async function castTotem(color,index){
   heavyCast=false;best=Math.max(best,score);update();
 }
 
-function openUpgrades(focus=-1){if(busy){toast('연쇄가 끝난 뒤 기술 성소를 열 수 있어요.');return;}if(running)pauseClock();const nextTarget=TOTEMS.map((t,i)=>({t,i,l:totemLevels[i]})).find(x=>x.l===0);const nextNeed=nextTarget?Math.max(0,nextTarget.t.unlockCost-magicStars):0;showModal(`<div class="modal-kicker">ANCIENT TECH RESEARCH SANCTUARY</div><h2>사원의 기술 성소 · 토템 해금 및 각성</h2><div class="wallet-title">★ ${magicStars} <small>보유 마법별 · 관문을 3성으로 클리어해 획득</small></div>${nextTarget?`<div style="text-align:center;margin:-4px 0 14px;"><span style="font-size:11px;color:#f0dcab;background:#103438cc;border:1px solid #d4b56844;padding:6px 14px;border-radius:20px;display:inline-block;">🎯 목표: <b>[${nextTarget.t.name}]</b> 해금까지 <b>★ ${nextNeed}개</b> 필요</span></div>`:''}<div class="upgrade-list">${TOTEMS.map((t,i)=>{const l=totemLevels[i],isLocked=l===0,cost=upgradeCost(l,i),canAfford=cost&&magicStars>=cost;return `<div class="upgrade-row ${focus===i?'focused':''} ${isLocked?'locked-row':''}" style="--accent:${t.accent}"><span class="upgrade-symbol totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${isLocked?'<i class="lock-icon" style="display:grid;place-items:center;height:100%;font-size:18px;">🔒</i>':''}</span><div><b>${t.name} <span style="color:${isLocked?'#88a096':t.accent}">${isLocked?'🔒 잠김':'Lv.'+l}</span></b><small>${isLocked?`<span style="color:#ffd58b;">★${t.unlockCost}개로 기술 해금</span> · ${t.desc}`:totemEffectText(i)}</small><span class="level-pips">${Array.from({length:5},(_,n)=>`<i class="${n<l?'filled':''}"></i>`).join('')}</span></div><button data-upgrade="${i}" class="${isLocked?'unlock-btn':''}" ${!cost||!canAfford?'disabled':''} style="${isLocked&&canAfford?'background:linear-gradient(120deg,#f3d289,#d69e46);color:#0a1c20;font-weight:700;box-shadow:0 0 15px #f3d28988;':''}">${isLocked?(canAfford?`★${cost} 즉시 해금!`:`★${cost} 해금`):!cost?'MAX':`★${cost} 강화`}</button></div>`;}).join('')}</div><p class="upgrade-help">관문을 3성으로 돌파하여 별을 모으고 원하는 기술을 직접 해금하세요!<br>해금된 토템은 같은 색 보석 2연속 매치 시 자동 발동합니다.</p><button id="upgradeClose" class="primary-button">${ended?'다음 스테이지 준비 →':'탐험으로 돌아가기 →'}</button>`);$$('[data-upgrade]').forEach(b=>b.onclick=()=>{const i=+b.dataset.upgrade,l=totemLevels[i],cost=upgradeCost(l,i);if(!cost||magicStars<cost)return;magicStars-=cost;const wasLocked=totemLevels[i]===0;totemLevels[i]++;persist();if(wasLocked){chord(12);flash('#ffe894');toast(`🎉 고대 기술 [${TOTEMS[i].name}] 해금 성공!`);}else{chord(5);toast(`✨ [${TOTEMS[i].name}] Lv.${totemLevels[i]} 강화 완료!`);}renderTotems();update();openUpgrades(i);});$('#upgradeClose').onclick=()=>{if(ended){if(level<STAGE_COUNT&&stageStars[level-1])level++;reset();}else resume();};}
+function openUpgrades(focus=-1){if(busy){toast('연쇄가 끝난 뒤 기술 성소를 열 수 있어요.');return;}if(running)pauseClock();const nextTarget=TOTEMS.map((t,i)=>({t,i,l:totemLevels[i]})).find(x=>x.l===0);const nextNeed=nextTarget?Math.max(0,nextTarget.t.unlockCost-magicStars):0;const sortedTotems=TOTEMS.map((t,i)=>({t,i,l:totemLevels[i]})).sort((a,b)=>a.t.priority-b.t.priority);showModal(`<div class="modal-kicker">ANCIENT TECH RESEARCH SANCTUARY</div><h2>사원의 기술 성소 · 토템 강화 & 각성</h2><div class="wallet-title">★ ${magicStars} <small>보유 마법별 · 관문을 3성으로 클리어해 획득</small></div><div class="upgrade-guide-banner"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><strong style="color:#ffe49e;font-size:11px;">🏆 사제장의 추천 육성 순위</strong><span style="font-size:8.5px;color:#85e3c0;background:#062624;border:1px solid #72d4b844;padding:2px 8px;border-radius:10px;">우선순위 추천순 정렬</span></div><div class="upgrade-guide-steps"><span>🥇 <b>1위 불</b> (봉인/광역초토화)</span>➔<span>🥈 <b>2위 시간</b> (타임오버방지)</span>➔<span>🥉 <b>3위 달</b> (특수보석생성)</span>➔<span>⚡ <b>4위 번개</b></span>➔<span>💎 <b>5위 비취</b></span>➔<span>👑 <b>6위 황금</b></span></div><div style="font-size:9px;color:#a8d1be;margin-top:4px;">💡 <b>핵심 공략:</b> 모든 토템은 <b>Lv.2 강화 시 3연속 매치 1.5배 각성</b>이 해금됩니다. 타임오버가 잦다면 <b>시간</b>, 봉인 격파가 어렵다면 <b>불</b>을 1순위로 올리세요!</div></div>${nextTarget?`<div style="text-align:center;margin:-6px 0 14px;"><span style="font-size:11px;color:#f0dcab;background:#103438cc;border:1px solid #d4b56844;padding:6px 14px;border-radius:20px;display:inline-block;">🎯 다음 미해금 기술: <b>[${nextTarget.t.name}]</b> 해금까지 <b>★ ${nextNeed}개</b> 필요</span></div>`:''}<div class="upgrade-list">${sortedTotems.map(({t,i,l})=>{const isLocked=l===0,cost=upgradeCost(l,i),canAfford=cost&&magicStars>=cost,spec=totemLevelSpecs(i,l);return `<div class="upgrade-row ${focus===i?'focused':''} ${isLocked?'locked-row':''}" style="--accent:${t.accent}"><span class="upgrade-symbol totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${isLocked?'<i class="lock-icon" style="display:grid;place-items:center;height:100%;font-size:18px;">🔒</i>':''}</span><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;"><span class="upgrade-priority-tag p-${t.priority}">${t.priorityTag}</span><b style="font-size:12px;margin:0;">${t.name} <span style="color:${isLocked?'#88a096':t.accent};font-size:11px;">${isLocked?'🔒 잠김':'Lv.'+l}</span></b></div><div class="upgrade-spec-box">${isLocked?`<span class="cur-val" style="color:#e57373;"><b>현재 효과:</b> 잠김 (기술 미보유 · 발동 불가)</span><span class="next-val"><b>해금 시:</b> ${spec.next} (${t.desc})</span>`:l>=5?`<span class="cur-val" style="color:#81c784;"><b>현재 [Lv.5 MAX]:</b> ${spec.cur}</span><span class="next-val" style="color:#ffd54f;">✨ 최고 레벨 궁극의 경지 달성 완료!</span>`:`<span class="cur-val"><b>현재 [Lv.${l}]:</b> ${spec.cur}</span><span class="next-val"><b>강화 시 [Lv.${l+1}]:</b> ${spec.next}</span>`}</div><span class="level-pips">${Array.from({length:5},(_,n)=>`<i class="${n<l?'filled':''}"></i>`).join('')}</span></div><button data-upgrade="${i}" class="${isLocked?'unlock-btn':''}" ${!cost||!canAfford?'disabled':''} style="${isLocked&&canAfford?'background:linear-gradient(120deg,#f3d289,#d69e46);color:#0a1c20;font-weight:700;box-shadow:0 0 15px #f3d28988;':''}">${isLocked?(canAfford?`★${cost} 즉시 해금!`:`★${cost} 해금`):!cost?'MAX':`★${cost} 강화`}</button></div>`;}).join('')}</div><p class="upgrade-help">관문을 3성으로 클리어해 마법별을 획득하고 강력한 토템 기술을 연구하세요!<br>해금된 토템은 인게임에서 같은 색 보석 2연속 매치 시 자동 발동합니다.</p><button id="upgradeClose" class="primary-button">${ended?'다음 스테이지 준비 →':'탐험으로 돌아가기 →'}</button>`);$$('[data-upgrade]').forEach(b=>b.onclick=()=>{const i=+b.dataset.upgrade,l=totemLevels[i],cost=upgradeCost(l,i);if(!cost||magicStars<cost)return;magicStars-=cost;const wasLocked=totemLevels[i]===0;totemLevels[i]++;persist();if(wasLocked){chord(12);flash('#ffe894');toast(`🎉 고대 기술 [${TOTEMS[i].name}] 해금 성공!`);}else{chord(5);toast(`✨ [${TOTEMS[i].name}] Lv.${totemLevels[i]} 강화 완료!`);}renderTotems();update();openUpgrades(i);});$('#upgradeClose').onclick=()=>{if(ended){if(level<STAGE_COUNT&&stageStars[level-1])level++;reset();}else resume();};}
 function openMap(chapter=chapterIndex(level)){
   if(busy){toast('연쇄가 끝난 뒤 지도를 열 수 있어요.');return;}
   if(running)pauseClock();

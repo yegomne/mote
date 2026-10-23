@@ -1,12 +1,66 @@
 export const SIZE=8, COLORS=6, STAGE_COUNT=100;
 export const TOTEMS=[
-  {name:'비취의 수확',color:'비취',icon:'gem',unlockCost:0,unlock:1,accent:'#6ee2ae',desc:'수정을 모으고 새 수정을 생성'},
-  {name:'불의 심판',color:'루비',icon:'sun',unlockCost:2,unlock:2,accent:'#ff8a89',desc:'불덩이와 폭발로 주변 보석 파괴'},
-  {name:'천둥의 분노',color:'사파이어',icon:'bolt',unlockCost:4,unlock:3,accent:'#80d7f1',desc:'움직인 보석 주변 사방으로 무작위 감전'},
-  {name:'황금의 축복',color:'황금',icon:'sun',unlockCost:6,unlock:5,accent:'#efcf7e',desc:'보너스 점수와 피버 3배 에너지'},
-  {name:'달의 선물',color:'자수정',icon:'moon',unlockCost:8,unlock:7,accent:'#c8a5ff',desc:'보석에 폭탄과 번개를 부여'},
-  {name:'시간의 숨결',color:'호박',icon:'freeze',unlockCost:10,unlock:10,accent:'#ffb781',desc:'남은 시간을 늘리고 시간을 정지'}
+  {name:'비취의 수확',shortName:'비취',color:'비취',icon:'gem',priority:5,priorityTag:'💎 5순위 · 수정 수확',unlockCost:0,unlock:1,accent:'#6ee2ae',desc:'수정을 즉시 회수하고 새 수정을 생성'},
+  {name:'불의 심판',shortName:'불',color:'루비',icon:'sun',priority:1,priorityTag:'🥇 1순위 추천 · 화력 종결',unlockCost:2,unlock:2,accent:'#ff8a89',desc:'광역 불덩이 융단폭격으로 보석과 봉인 분쇄'},
+  {name:'천둥의 분노',shortName:'번개',color:'사파이어',icon:'bolt',priority:4,priorityTag:'⚡ 4순위 · 사방 번개',unlockCost:4,unlock:3,accent:'#80d7f1',desc:'움직인 보석 주변 사방으로 번개 레이저 감전'},
+  {name:'황금의 축복',shortName:'황금',color:'황금',icon:'sun',priority:6,priorityTag:'👑 6순위 · 점수 폭발',unlockCost:6,unlock:5,accent:'#efcf7e',desc:'대량 보너스 점수 및 피버 3배 에너지 급속 충전'},
+  {name:'달의 선물',shortName:'달',color:'자수정',icon:'moon',priority:3,priorityTag:'🥉 3순위 추천 · 특수 생성',unlockCost:8,unlock:7,accent:'#c8a5ff',desc:'보석판에 폭탄, 번개 레이저, 노바 직접 부여'},
+  {name:'시간의 숨결',shortName:'시간',color:'호박',icon:'freeze',priority:2,priorityTag:'🥈 2순위 추천 · 시간 구원',unlockCost:10,unlock:10,accent:'#ffb781',desc:'제한 시간 대폭 연장 및 시간 정지 결계'}
 ];
+export function totemLevelSpecs(index, level){
+  if(level===0) return {cur:'잠김 (사용 불가)', next:`★${TOTEMS[index].unlockCost}개로 해금 시 즉시 기본 발동`};
+  const specs=[
+    // 0: 비취
+    [
+      {cur:'수정 2개 회수 · 2개 생성', next:'수정 3개 회수 · 3개 생성 & 3연속 1.5배 해금'},
+      {cur:'수정 3개 회수 · 3개 생성 (3연속 시 5개)', next:'수정 4개 회수 · 4개 생성 (3연속 시 6개)'},
+      {cur:'수정 4개 회수 · 4개 생성', next:'수정 5개 회수 · 5개 생성 (3연속 시 8개)'},
+      {cur:'수정 5개 회수 · 5개 생성', next:'수정 6개 회수 · 6개 생성 (최고 위력)'},
+      {cur:'수정 6개 회수 · 6개 생성 (3연속 시 9개 대수확)', next:'최고 레벨 (MAX)'}
+    ],
+    // 1: 불
+    [
+      {cur:'불덩이 1발 (반경 1칸 파괴)', next:'불덩이 2발로 증가 & 3연속 1.5배 각성 해금!'},
+      {cur:'불덩이 2발 (3연속 시 3발)', next:'불덩이 3발 폭격 (3연속 시 5발 대폭발)'},
+      {cur:'불덩이 3발 폭격', next:'폭발 반경 2칸(5×5) 대폭 확대! 초토화'},
+      {cur:'불덩이 4발 (폭발 반경 2칸)', next:'불덩이 5발 전방위 융단폭격 (사원 일소)'},
+      {cur:'불덩이 5발 (반경 2칸 · 3연속 시 8발)', next:'최고 레벨 (MAX)'}
+    ],
+    // 2: 번개
+    [
+      {cur:'주변 사방 5개 감전 (반경 1.5칸)', next:'감전 7개로 증가 & 3연속 1.5배 해금'},
+      {cur:'감전 7개 (3연속 시 11개 레이저)', next:'감전 9개 · 반경 2.3칸 전방위 관통'},
+      {cur:'감전 9개 (반경 2.3칸)', next:'감전 11개 · 전방위 벼락 폭풍'},
+      {cur:'감전 11개 (반경 2.7칸)', next:'감전 13개 번개망 (3연속 시 20개 감전)'},
+      {cur:'감전 13개 전 화면 뇌우 (3연속 시 20개)', next:'최고 레벨 (MAX)'}
+    ],
+    // 3: 황금
+    [
+      {cur:'보너스 +300점 · 피버 +20%', next:'보너스 +600점 · 피버 +25% & 3연속 1.5배 해금'},
+      {cur:'보너스 +600점 · 피버 +25%', next:'보너스 +900점 · 피버 +30% & 지속 +1.5초'},
+      {cur:'보너스 +900점 · 피버 +30%', next:'보너스 +1,200점 · 피버 +35% & 지속 +2초'},
+      {cur:'보너스 +1,200점 · 피버 +35%', next:'보너스 +1,500점 · 피버 +40% (점수 폭증)'},
+      {cur:'보너스 +1,500점 · 피버 +40% (3연속 시 2,250점)', next:'최고 레벨 (MAX)'}
+    ],
+    // 4: 달
+    [
+      {cur:'무작위 특수 보석 1개 (폭탄)', next:'특수 보석 2개 (폭탄+번개) & 3연속 1.5배'},
+      {cur:'특수 보석 2개 (폭탄+번개)', next:'특수 보석 3개 (십자 레이저 관통석 포함)'},
+      {cur:'특수 보석 3개', next:'특수 보석 4개 (폭탄2+레이저2 쏟아짐)'},
+      {cur:'특수 보석 4개', next:'궁극기 [노바 대폭발석] 확정 생성 해금!'},
+      {cur:'특수 보석 5개 (전 화면 노바 확정 생성)', next:'최고 레벨 (MAX)'}
+    ],
+    // 5: 시간
+    [
+      {cur:'시간 +5초 연장', next:'시간 +7초 & 3연속 1.5배 (+11초) 해금!'},
+      {cur:'시간 +7초 (3연속 시 +11초)', next:'시간 +9초 & 시간 정지 3초 결계 해금!'},
+      {cur:'시간 +9초 · 시간 정지 3초', next:'시간 +11초 · 시간 정지 4초 (안정적 공략)'},
+      {cur:'시간 +11초 · 시간 정지 4초', next:'시간 +13초 · 시간 정지 5초 (무한 플레이급)'},
+      {cur:'시간 +13초 · 시간 정지 5초 (3연속 시 +20초)', next:'최고 레벨 (MAX)'}
+    ]
+  ];
+  return specs[index]?.[level-1] || {cur:'최대 강화 완료', next:'MAX'};
+}
 export function advanceTotem(previous,color){const count=previous.color===color?previous.count+1:1;return {color,count,trigger:count>=2};}
 export function totemPower(color,level,streak){const multiplier=level>=2&&streak>=3?1.5:1;return {multiplier,harvest:Math.ceil((level+1)*multiplier),gifts:Math.ceil(level*multiplier),bonus:300*level*multiplier,energy:(15+5*level)*multiplier,seconds:(3+2*level)*multiplier,stasis:level>=3?level*multiplier:0};}
 export function fireTargets(level,previous=[],random=Math.random){const chosen=[],count=Math.max(1,Math.min(5,Math.floor(level)));for(let k=0;k<count;k++){let pool=Array.from({length:64},(_,i)=>i).filter(i=>!chosen.includes(i)&&!previous.includes(i));const spread=pool.filter(i=>chosen.every(j=>Math.hypot(i%8-j%8,Math.floor(i/8)-Math.floor(j/8))>=3));if(spread.length)pool=spread;chosen.push(pool[Math.min(pool.length-1,Math.floor(Math.max(0,random())*pool.length))]);}return chosen;}
