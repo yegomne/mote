@@ -464,7 +464,7 @@ export function stageScenario(level){
   const chapterTitle = chapters[ci][0];
   const chapterSub = chapters[ci][1];
   const story = STAGE_SCENARIOS_100[level - 1] || `${chapterTitle}의 제${local}관문입니다. 고대 사원의 시련을 통과하여 다음 방으로 전진하세요.`;
-  const image = `assets/stages/stage_${level}.jpg`;
+  const image = `assets/chapters/ch${ci + 1}.jpg`;
   return {
     chapterIndex: ci,
     chapterTitle,

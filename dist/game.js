@@ -744,7 +744,7 @@ function showScenarioBriefing(lvl=level){
   const st=stageDesign(lvl);
   const goals=stageGoals(st,{score:0,crystals:0,colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0});
   const criteria=stageStarCriteria(st);
-  const chImg=sc.image||`assets/stages/stage_${lvl}.jpg`;
+  const chImg=sc.image||`assets/chapters/ch${sc.chapterIndex+1}.jpg`;
 
   const activeBuffs=[];
   if(fortuneBuffs.timeBonusStages>0)activeBuffs.push(`⏳ 크로노스의 가호 (제한시간 +20초 · ${fortuneBuffs.timeBonusStages}관문 잔여)`);
