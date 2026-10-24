@@ -28,3 +28,27 @@
 .impact-ring.combo-ice{filter:drop-shadow(0 0 22px #e9ffff)}
 .impact-ring.combo-storm{filter:drop-shadow(0 0 26px #d7ffff)}
 @media(prefers-reduced-motion:reduce){.arena::after{transition:none;opacity:.15!important}.spell-projectile,.impact-ring,.monster-sprite{animation-duration:.01ms!important}}
+/* Character poses are separate light WebP atlases: idle, attack, guard, groggy. */
+.mage-sprite{position:absolute;left:11%;bottom:-5px;z-index:2;width:118px;height:118px;background:url('assets/otherworld-mage.webp') 0% 0%/300% 200% no-repeat;filter:drop-shadow(0 7px 8px #010c20);transform-origin:50% 80%;animation:mageIdle 2.8s ease-in-out infinite;will-change:transform}
+.mage-sprite[data-pose="cast"]{background-position:50% 0%;animation:mageCast .72s ease-out both}
+.mage-sprite[data-pose="guard"]{background-position:100% 0%;animation:mageGuard .7s ease-out both}
+.mage-sprite[data-pose="hurt"]{background-position:0% 100%;animation:mageHurt .65s ease-out both}
+.mage-sprite[data-pose="groggy"]{background-position:50% 100%;animation:mageGroggy 1s ease-in-out infinite}
+.mage-sprite[data-pose="victory"]{background-position:100% 100%;animation:mageVictory .9s ease-out both}
+.mage-sprite[data-pose="guard"]::after{content:'';position:absolute;inset:4%;border:3px solid #f6e29abb;border-radius:50%;box-shadow:0 0 17px 7px #e8ca7b8c,inset 0 0 18px #ffeab466;pointer-events:none}
+.monster-sprite[data-pose="attack"]{background-image:url('assets/otherworld-monsters-attack.webp')}
+.monster-sprite[data-pose="guard"]{background-image:url('assets/otherworld-monsters-guard.webp');animation:monsterGuard .65s ease-out both;filter:drop-shadow(0 0 16px #91caff)}
+.monster-sprite[data-pose="groggy"]{background-image:url('assets/otherworld-monsters-groggy.webp');animation:monsterGroggy 1.05s ease-in-out infinite;filter:drop-shadow(0 0 13px #edce7b)}
+.monster-sprite[data-pose="attack"].counter{animation:counter .55s ease-out}
+.monster-sprite[data-pose="groggy"].die{animation:die .8s ease-in forwards}
+@keyframes mageIdle{50%{transform:translate3d(0,-3px,0)}}
+@keyframes mageCast{35%{transform:translate3d(17px,-7px,0) scale(1.1);filter:drop-shadow(0 0 17px #ffe29a)}100%{transform:translate3d(0,0,0)}}
+@keyframes mageGuard{45%{transform:translate3d(-8px,1px,0) scale(1.07)}}
+@keyframes mageHurt{25%{transform:translate3d(-12px,5px,0) rotate(-8deg);filter:brightness(2)}65%{transform:translate3d(-4px,2px,0)}}
+@keyframes mageGroggy{50%{transform:translate3d(0,4px,0) rotate(-5deg)}}
+@keyframes mageVictory{30%{transform:translate3d(0,-16px,0) scale(1.12)}100%{transform:translate3d(0,0,0)}}
+@keyframes monsterGuard{40%{transform:translate3d(0,-7px,0) scale(.94)}100%{transform:translate3d(0,0,0)}}
+@keyframes monsterGroggy{50%{transform:translate3d(-3px,5px,0) rotate(-3deg)}}
+@media(max-width:760px){.mage-sprite{width:95px;height:95px;left:5%;bottom:-3px}}
+@media(max-width:380px){.mage-sprite{width:76px;height:76px;left:1%;bottom:-2px}}
+@media(prefers-reduced-motion:reduce){.mage-sprite,.monster-sprite[data-pose="guard"],.monster-sprite[data-pose="groggy"]{animation-duration:.01ms!important}}

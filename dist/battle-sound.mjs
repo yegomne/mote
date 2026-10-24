@@ -20,6 +20,8 @@ export class BattleSound{
  }
  combo(id){const t=this.ctx?.currentTime||0;if(id==='ice'){this.rush(.42,4800,.25,t);this.tone(1390,.6,.18,'sine',t,400);}else if(id==='storm'){this.spell(2,1.3);this.tone(70,.9,.22,'sine',t,28);}else if(id==='magma'){this.spell(1,1.2);this.tone(74,.85,.25,'triangle',t,33);}else if(id==='eclipse'){this.spell(4,1.25);this.tone(170,.8,.18,'sine',t,510);}else this.spell(0,1.25);}
  counter(){this.tone(115,.42,.31,'sawtooth',0,42);this.rush(.3,950,.2);}
+ guard(){const t=this.ctx?.currentTime||0;this.tone(660,.34,.17,'triangle',t,430);this.tone(990,.28,.11,'sine',t+.035,720);this.rush(.22,3300,.09,t);}
+ stun(){const t=this.ctx?.currentTime||0;this.tone(370,.42,.15,'sine',t,190);this.tone(280,.53,.1,'triangle',t+.12,105);}
  victory(){const t=this.ctx?.currentTime||0;[392,494,587,784,988].forEach((f,i)=>this.tone(f,.65,.18,'triangle',t+i*.09));}
  defeat(){const t=this.ctx?.currentTime||0;[340,260,190,120].forEach((f,i)=>this.tone(f,.5,.13,'triangle',t+i*.12,f*.72));}
  beat(){const c=this.ctx;if(!this.enabled||!c||c.state!=='running'||document.hidden||this.music===0)return;const now=c.currentTime;if(now-this.lastBeat<.52)return;this.lastBeat=now;const step=this.step++,roots=[110,98,130.8,87.3];const root=roots[Math.floor(step/8)%4];if(step%4===0)this.tone(root,.58,.09,'sine',now,root*.95,0,true);if(step%2===0)this.tone(root*2*(step%8===4?1.5:1.25),.27,.045,'triangle',now,root*2,0,true);}

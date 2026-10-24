@@ -20,6 +20,6 @@ const lines=['# 태양의 유산: 이세계 전투편 (101–150)','',
 '| 단계 | 막·구역 | 적 | 약점 / 저항 | 판·색 | 체력 | 반격 | 보상 | 사건 |','|---:|---|---|---|---|---:|---|---:|---|',
 ...Array.from({length:50},(_,i)=>{const d=stageDesign(i+101);return `| ${d.stage} | ${d.title} | ${d.name} | ${d.enemy.weak.map(j=>RUNES[j].name).join('·')} / ${d.enemy.resist.map(j=>RUNES[j].name).join('·')} | ${d.size}×${d.size}·${d.colors}색 | ${d.hp} | ${d.cadence}매치·${d.attack} | ◈ ${d.reward} | ${d.boss?'결전':d.guardian?(d.act<3?'문지기 · 토템 획득':'문지기'):d.step===0?'새 지역':d.step===5?'새 토템 실전':'전투'} |`;}),
 '','## 휴대폰 성능','',
-'- 배경과 12종 몬스터 아틀라스는 WebP 2개, 합계 약 1MB.','- 전투 연출은 DOM/CSS 변형을 재생합니다. 화면에 몬스터 1개와 투사체 1개만 유지합니다.','- 소리는 첫 터치 뒤 Web Audio로 생성하고 동시 음성 수를 제한합니다. 화면이 숨겨지면 음악 박동이 멈춥니다.','- 설정에서 모션 줄이기를 켜면 짧은 연출로 바뀝니다. 진행은 브라우저에 자동 저장됩니다.',''];
+'- 배경·마법사 6자세·12종 몬스터의 기본/공격/방어/그로기 그림은 WebP로 압축했습니다. 기본 화면에 필요한 이미지는 약 1.4MB입니다.','- 전투 연출은 DOM/CSS 변형을 재생합니다. 화면에 몬스터 1개, 마법사 1개, 투사체 1개만 유지합니다.','- 소리는 첫 터치 뒤 Web Audio로 생성하고 동시 음성 수를 제한합니다. 화면이 숨겨지면 음악 박동이 멈춥니다.','- 설정에서 모션 줄이기를 켜면 짧은 연출로 바뀝니다. 진행은 브라우저에 자동 저장됩니다.',''];
 fs.writeFileSync('OTHERWORLD_DESIGN.md',lines.join('\n'));
 console.log('Wrote OTHERWORLD_DESIGN.md: 50 stage rows');
