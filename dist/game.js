@@ -15,10 +15,23 @@ let totemLevels=Array.from({length:6},(_,i)=>{if(growth.levels&&growth.levels[i]
 let pendingTotemCasts=[],cascadeChain=Promise.resolve();
 let fortuneBuffs=Object.assign({timePenaltyStages:0,timeBonusStages:0,hardSeals:false,extraSpecials:false,feverBonusStages:0},growth.fortuneBuffs||{});
 function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stringify({levels:totemLevels,stars:magicStars,stageStars,fortuneBuffs}));}catch{}}
+function applyDivineBlessing(silent=false){
+  const wasMax=totemLevels.every(l=>l===5);
+  totemLevels=[5,5,5,5,5,5];
+  saveGrowth();
+  if(typeof renderTotems==='function')renderTotems();
+  if(typeof updateTotemUI==='function')updateTotemUI();
+  if(!wasMax&&!silent){
+    flash('#ffe894');chord(12);
+    toast('☀️ [신의 축복] 100관문 정복 완료! 모든 토템이 Lv.5 MAX로 각성했습니다!');
+  }
+}
 function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return `마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i);return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>openUpgrades(+b.dataset.totem));}
 let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
+const is100Completed=(stageStars[STAGE_COUNT-1]>=1)||(unlocked>=STAGE_COUNT)||(saved.unlocked>=STAGE_COUNT)||(saved.level>=STAGE_COUNT);
+if(is100Completed){applyDivineBlessing(true);}
 let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
@@ -339,6 +352,9 @@ function completeStage(win){
     unlocked=Math.max(unlocked,Math.min(STAGE_COUNT,level+1));
     chord(12);flash();
     for(let i=0;i<8;i++)burst(Math.floor(Math.random()*64),3,25);
+    if(level===STAGE_COUNT){
+      applyDivineBlessing(false);
+    }
   }
   persist();update();
   const stars=earnedStars,endingBonus=Number(frame.dataset.finaleBonus)||0;
@@ -353,6 +369,21 @@ function completeStage(win){
       <div><b>${crystals}</b><span>별빛 수정</span></div>
     </div>
     ${endingBonus?`<p class="stars-caption">종료 보너스 +${endingBonus.toLocaleString()}점 합산 완료</p>`:''}
+    
+    ${win&&level===STAGE_COUNT?`
+      <div class="divine-blessing-box" style="background:linear-gradient(135deg,#2e1e05,#4a3206);border:2px solid #ffd54f;border-radius:12px;padding:12px 14px;margin:12px 0;text-align:center;box-shadow:0 0 25px rgba(255,213,79,0.5);">
+        <div style="font-size:11px;color:#ffe57f;letter-spacing:1.5px;font-weight:bold;">☀️ DIVINE BLESSING · 신의 축복 강림 ☀️</div>
+        <h3 style="color:#ffffff;font-size:16px;margin:5px 0 6px;text-shadow:0 0 10px #ffea79;">6대 수호 토템 궁극 레벨 (Lv.5 MAX) 완전 해금!</h3>
+        <p style="font-size:11px;color:#fcebc2;line-height:1.6;margin:0;">
+          100개의 모든 시련을 이겨낸 위대한 탐험가여!<br>
+          태양신의 은총으로 <b>6대 원소 토템(비취·불·번개·황금·달·시간)</b>의<br>
+          모든 숨겨진 봉인이 풀리고 <b>최고 레벨(Lv.5 MAX)</b>로 각성했습니다!
+        </p>
+        <div style="display:flex;justify-content:center;gap:6px;margin-top:9px;font-size:11px;font-weight:bold;color:#ffe082;flex-wrap:wrap;">
+          <span>💎 비취 Lv.5</span> · <span>🔥 불 Lv.5</span> · <span>⚡ 번개 Lv.5</span> · <span>👑 황금 Lv.5</span> · <span>🌙 달 Lv.5</span> · <span>⏳ 시간 Lv.5</span>
+        </div>
+      </div>
+    `:''}
     
     <div class="result-star-breakdown" style="background:#051b20;border:1px solid #d4b56833;border-radius:10px;padding:8px 12px;margin:10px 0;text-align:left;font-size:10px;">
       <b style="color:#f0dcab;display:block;margin-bottom:4px;">★ 별 달성 내역:</b>
@@ -743,7 +774,13 @@ function openUpgrades(focus=-1){
     <div class="modal-kicker">ANCIENT TECH RESEARCH SANCTUARY</div>
     <h2>사원의 기술 성소 · 토템 강화 & 각성</h2>
     <div class="wallet-title">★ ${magicStars} <small>보유 마법별 · 관문을 3성으로 클리어해 획득</small></div>
-    ${nextTarget?`<div style="text-align:center;margin:-2px 0 12px;"><span style="font-size:11px;color:#f0dcab;background:#103438cc;border:1px solid #d4b56844;padding:6px 14px;border-radius:20px;display:inline-block;">🎯 다음 미해금 기술: <b>[${nextTarget.t.name}]</b> 해금까지 <b>★ ${nextNeed}개</b> 필요</span></div>`:''}
+    ${totemLevels.every(l=>l>=5)?`
+      <div style="text-align:center;margin:-2px 0 12px;">
+        <span style="font-size:11px;color:#ffe57f;background:linear-gradient(135deg,#362406,#4a3206);border:1.5px solid #ffd54f;padding:7px 16px;border-radius:20px;display:inline-block;box-shadow:0 0 15px rgba(255,213,79,0.35);">
+          ☀️ <b>[신의 축복]</b> 100관문 정복 완료 · 6대 수호 토템 모두 <b>궁극 레벨 (Lv.5 MAX)</b> 달성!
+        </span>
+      </div>
+    `:(nextTarget?`<div style="text-align:center;margin:-2px 0 12px;"><span style="font-size:11px;color:#f0dcab;background:#103438cc;border:1px solid #d4b56844;padding:6px 14px;border-radius:20px;display:inline-block;">🎯 다음 미해금 기술: <b>[${nextTarget.t.name}]</b> 해금까지 <b>★ ${nextNeed}개</b> 필요</span></div>`:'')}
     <div class="upgrade-list">
       ${TOTEMS.map((t,i)=>{
         const l=totemLevels[i],isLocked=l===0,status=canUpgradeTotem(i,l,level,totemLevels,magicStars),prereq=upgradePrerequisite(i,l+1),spec=totemLevelSpecs(i,l);
@@ -837,6 +874,7 @@ function openMap(chapter=chapterIndex(level)){
           <span>해금 관문 <b>${unlocked} / 100</b></span>
           <span>총 획득 별 <b>★ ${totalStars}</b></span>
           <span>보유 마법별 <b>★ ${magicStars}</b></span>
+          ${(unlocked>=STAGE_COUNT||stageStars[STAGE_COUNT-1]>=1)?`<span style="color:#ffe082;background:#382708;padding:2px 8px;border-radius:10px;border:1px solid #ffd54f;">☀️ 신의 축복 활성</span>`:''}
         </div>
         <div class="map-tabs">
           ${chapters.map((c,i)=>`<button data-chapter="${i}" class="${i===chapter?'active':''}">${String(i*20+1).padStart(2,'0')}–${((i+1)*20)}</button>`).join('')}
