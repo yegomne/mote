@@ -22,7 +22,7 @@ let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mo
 let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
-let particles=[],rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,cell=boardSize/8,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
+let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,cell=boardSize/8,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
 let lastHeavyShake=0,cameraAnimation;
 let stage=stageDesign(level),sealState=Array(64).fill(0),metrics={colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
 const fx=new ImpactFX(ctx,()=>cell,()=>reduced,(strength,element)=>{heavyShake(strength);if(element==='fire'||element==='thunder')director.impact(strength,element==='thunder'?2:1);});
@@ -69,7 +69,7 @@ function update(){document.body.classList.toggle('playing',started&&!ended);fram
 function accessBoard(){const input=$('#boardInput');if(!input.children.length)for(let i=0;i<64;i++){const b=document.createElement('button');b.dataset.cell=i;b.tabIndex=i===0?0:-1;input.append(b);}board.forEach((g,i)=>{const b=input.children[i];b.setAttribute('aria-label',`${Math.floor(i/8)+1}행 ${i%8+1}열 ${colorNames[g.color]}${g.special?' 특수 보석':''}${g.crystal?' 별빛 수정':''}${sealState[i]?' 봉인 '+sealState[i]+'겹':''}`);b.dataset.color=g.color;b.dataset.seal=sealState[i];});}
 function syncPositions(reset=false){board.forEach((g,i)=>{if(reset||g.x===undefined){g.x=i%8;g.y=Math.floor(i/8);}g.tx=i%8;g.ty=Math.floor(i/8);});accessBoard();}
 function start(){if(ended){reset();}if(started){if(paused){resumeClock();$('#modal').close();update();}else pause();return;}started=true;running=true;lastTick=performance.now();lastAction=lastTick;tone(523,.2);announce(stage.name,stage.tip,1700);update();}
-function reset(){initStage();pausedAt=0;frame.classList.remove('frozen-board');board=makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=2;totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);$('#modal').close();update();persist();}
+function reset(){initStage();pausedAt=0;frame.classList.remove('frozen-board');board=makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=2;totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];gemShards=[];currentCastColor=-1;ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);$('#modal').close();update();persist();}
 function ensureStarted(){if(finishing)return false;if(!started)start();return running&&!paused&&!ended;}
 function pause(){if(!started||ended){toast('보석을 연결하면 탐험이 시작됩니다.');return;}if(busy){toast('연쇄가 끝나면 잠시 쉴 수 있어요.');return;}pauseClock();showModal(`<div class="modal-kicker">TAKE A BREATH</div><h2>사원이 기다리고 있어요</h2><p style="text-align:center">잠시 쉬어도 괜찮아요.<br>돌아오면 바로 이어갈 수 있어요.</p><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="resumeBtn" class="primary-button">탐험 계속하기 →</button><button id="restartBtn" class="text-button">이 스테이지 처음부터 <span>↻</span></button>`);$('#resumeBtn').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};$('#restartBtn').onclick=()=>{reset();start();};update();}
 function resume(){if(started&&!ended){resumeClock();}$('#modal').close();update();}
@@ -231,7 +231,7 @@ async function clearCells(indices,creations=new Map(),chain=1){
     gained+=50*Math.min(chain,4)*(performance.now()<frenzyUntil?3:1);
     if(g.crystal)collected++;
     burst(i,g.color,heavyCast?26:chain>2?16:10);
-    if(!creations.has(i)){ghosts.push({g:{...g},life:1});board[i]=null;}
+    if(!creations.has(i)){ghosts.push({g:{...g},life:1,fireBurst:currentCastColor===1});board[i]=null;}
   }
   for(const [i,special]of creations){
     if(board[i]){
@@ -483,6 +483,7 @@ if(g.special){
   ctx.stroke();
 }ctx.restore();}
 function burst(i,color,count=10){const isMob=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window));if(reduced||isMob)count=Math.min(count,4);const x=i%8+.5,y=Math.floor(i/8)+.5;const maxParts=isMob?120:450;for(let k=0;k<count&&particles.length<maxParts;k++){const a=Math.random()*Math.PI*2,v=.6+Math.random()*2.4;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:.4+Math.random()*.4,max:1,size:.025+Math.random()*.04,color:PALETTE[color][k%2],rot:Math.random()*6});}}
+function shatterGem(i,color,centerIndex=-1){const isMob=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window));const gx=(i%8)+.5,gy=Math.floor(i/8)+.5;const cx=centerIndex>=0?(centerIndex%8)+.5:gx;const cy=centerIndex>=0?Math.floor(centerIndex/8)+.5:gy;let dx=gx-cx,dy=gy-cy;const dist=Math.hypot(dx,dy);if(dist<0.01){dx=(Math.random()-.5)*.5;dy=-1;}else{dx/=dist;dy/=dist;}const shardCount=isMob?5:8;const pal=PALETTE[color]||PALETTE[1];for(let k=0;k<shardCount&&gemShards.length<180;k++){const spread=(Math.random()-.5)*1.4;const speed=2.2+Math.random()*4.2;const angle=Math.atan2(dy,dx)+spread;gemShards.push({x:gx,y:gy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-(1.2+Math.random()*2.0),rot:Math.random()*Math.PI*2,vrot:(Math.random()-.5)*14,size:0.07+Math.random()*0.09,life:0.6+Math.random()*0.35,color:pal[k%3],edgeColor:k%2===0?'#ffffff':'#ffe57f',isEmber:false});}for(let k=0;k<3&&gemShards.length<180;k++){const ang=Math.random()*Math.PI*2,spd=1.5+Math.random()*3.0;gemShards.push({x:gx,y:gy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-1.5,rot:0,vrot:0,size:0.035,life:0.45+Math.random()*0.3,color:k===0?'#ffffff':k===1?'#ffea00':'#ff3d00',isEmber:true});}}
 function ring(x,y,color,max=2){rings.push({x,y,color,max,r:.1,life:1.2,maxLife:1.2});}
 function beam(a,b,color){
   const points=[],x1=a%8+.5,y1=Math.floor(a/8)+.5,x2=b%8+.5,y2=Math.floor(b/8)+.5;
@@ -495,7 +496,37 @@ function beam(a,b,color){
 function draw(now,dt){ctx.clearRect(0,0,boardSize,boardSize);const bg=ctx.createLinearGradient(0,0,boardSize,boardSize);bg.addColorStop(0,'#0c292e');bg.addColorStop(1,'#05191f');ctx.fillStyle=bg;ctx.fillRect(0,0,boardSize,boardSize);for(let i=0;i<64;i++){const x=i%8*cell,y=Math.floor(i/8)*cell;ctx.fillStyle=(Math.floor(i/8)+i%8)%2?'#183c3e44':'#03161c60';ctx.fillRect(x+1,y+1,cell-2,cell-2);ctx.strokeStyle='#a2bfa512';ctx.lineWidth=.5;ctx.strokeRect(x+.5,y+.5,cell-1,cell-1);if(sealState[i]>0){ctx.fillStyle=sealState[i]>1?'#80612b8a':'#b690353e';ctx.fillRect(x+2,y+2,cell-4,cell-4);ctx.strokeStyle='#e6c46ca8';ctx.lineWidth=sealState[i]>1?2:1;ctx.strokeRect(x+4,y+4,cell-8,cell-8);for(let n=0;n<sealState[i];n++){ctx.fillStyle='#f8d17b';ctx.fillRect(x+cell/2+(n-(sealState[i]-1)/2)*7-2,y+cell-6,4,3);}}}
 const hintOn=hintUntil>now||(now-lastAction>18000&&started&&!busy&&!activePower);if(hintOn&&!hint.length)hint=findMove(board,totemChain.color)||[];for(const i of (selected>=0?[selected]:hintOn?hint:[])){const x=i%8*cell,y=Math.floor(i/8)*cell;ctx.save();ctx.strokeStyle=selected===i?'#ffdf91':`rgba(208,243,193,${.45+.35*Math.sin(now/200)})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.roundRect(x+3,y+3,cell-6,cell-6,8);ctx.stroke();ctx.restore();}
 board.forEach((g,i)=>{if(!g)return;const speed=Math.min(1,dt*19);g.x+=(g.tx-g.x)*speed;g.y+=(g.ty-g.y)*speed;const hovered=selected===i;drawGem(g,(g.x+.5)*cell,(g.y+.5)*cell,hovered?1.07:1,1,now);});
-for(const g of ghosts){g.life-=dt*4.5;drawGem(g.g,(g.g.x+.5)*cell,(g.g.y+.5)*cell,1+(1-g.life)*.45,Math.max(0,g.life),now);}ghosts=ghosts.filter(g=>g.life>0);
+for(const g of ghosts){
+  if(g.fireBurst){
+    g.life-=dt*3.2;
+    const t=1-Math.max(0,g.life);
+    ctx.save();
+    ctx.translate((g.g.x+.5)*cell,(g.g.y+.5)*cell);
+    ctx.globalCompositeOperation='lighter';
+    const scale=1+t*.45;
+    ctx.scale(scale,scale);
+    ctx.globalAlpha=Math.max(0,g.life);
+    drawGem(g.g,0,0,1,Math.max(0,g.life),now);
+    ctx.strokeStyle='#ffffff';
+    ctx.lineWidth=2.0;
+    ctx.beginPath();
+    ctx.moveTo(-cell*.25,-cell*.2);
+    ctx.lineTo(0,cell*.08);
+    ctx.lineTo(cell*.25,-cell*.22);
+    ctx.moveTo(0,cell*.08);
+    ctx.lineTo(cell*.12,cell*.28);
+    ctx.stroke();
+    ctx.fillStyle=t<.35?'#ffffff':'#ff4900';
+    ctx.beginPath();
+    ctx.arc(0,0,cell*.38*t,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }else{
+    g.life-=dt*4.5;
+    drawGem(g.g,(g.g.x+.5)*cell,(g.g.y+.5)*cell,1+(1-g.life)*.45,Math.max(0,g.life),now);
+  }
+}
+ghosts=ghosts.filter(g=>g.life>0);
 ctx.save();ctx.globalCompositeOperation='lighter';
 for(const ring of rings){
   ring.r+=(ring.max-ring.r)*dt*4.2;
@@ -524,6 +555,39 @@ for(const b of beams){
   ctx.stroke();
 }
 beams=beams.filter(b=>b.life>0);
+for(const s of gemShards){
+  s.life-=dt*1.5;
+  s.x+=s.vx*dt;
+  s.y+=s.vy*dt;
+  s.vy+=6.5*dt;
+  s.rot+=s.vrot*dt;
+  const a=Math.max(0,s.life);
+  ctx.save();
+  ctx.translate(s.x*cell,s.y*cell);
+  ctx.rotate(s.rot);
+  ctx.globalAlpha=a;
+  if(s.isEmber){
+    ctx.fillStyle=s.color;
+    ctx.beginPath();
+    ctx.arc(0,0,s.size*cell,0,Math.PI*2);
+    ctx.fill();
+  }else{
+    const sz=s.size*cell;
+    ctx.fillStyle=s.color;
+    ctx.strokeStyle=s.edgeColor;
+    ctx.lineWidth=1.1;
+    ctx.beginPath();
+    ctx.moveTo(-sz*0.6,0);
+    ctx.lineTo(sz*0.25,-sz*0.75);
+    ctx.lineTo(sz*0.75,sz*0.25);
+    ctx.lineTo(-sz*0.15,sz*0.65);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+gemShards=gemShards.filter(s=>s.life>0);
 for(const p of particles){p.life-=dt*.85;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=3.0*dt;p.rot+=dt*5;ctx.save();ctx.translate(p.x*cell,p.y*cell);ctx.rotate(p.rot);ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(-p.size*cell/2,-p.size*cell/2,p.size*cell,p.size*cell);ctx.restore();}particles=particles.filter(p=>p.life>0);ctx.restore();for(const f of floats){f.life-=dt;f.y-=dt*.65;ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,f.life*2));ctx.textAlign='center';ctx.font=`600 ${cell*.34}px Georgia`;ctx.fillStyle=f.color;ctx.shadowColor='#02161b';ctx.shadowBlur=5;ctx.fillText(f.text,f.x*cell,f.y*cell);ctx.restore();}floats=floats.filter(f=>f.life>0);
 fx.draw(now,dt);if(paused){ctx.fillStyle='#031c2477';ctx.fillRect(0,0,boardSize,boardSize);}}
 const isMobileDevice=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window)||navigator.maxTouchPoints>0);
@@ -606,14 +670,50 @@ async function castTotem(color,index){
     frame.dataset.fireTargets=centers.join(',');
     const maxCellsByLevel=[0,8,12,16,20,24][l]||10;
     const maxAllowed=Math.min(26,Math.round(maxCellsByLevel*(boost?1.3:1)));
-    for(const [k,center]of centers.slice(0,totalMeteors).entries()){
-      const rr=Math.floor(center/8),cc=center%8;
-      fx.meteor(k%2?7:0,center,t.accent,1.15*(boost?1.25:1),k*.09);
+
+    const allDetonated=new Set();
+    currentCastColor=1;
+    for(const [k,center] of centers.slice(0,totalMeteors).entries()){
+      const rr=Math.floor(center/8), cc=center%8;
+      const cluster=[];
       for(let y=Math.max(0,rr-1);y<=Math.min(7,rr+1);y++)
-        for(let x=Math.max(0,cc-1);x<=Math.min(7,cc+1);x++)
-          cells.push(y*8+x);
+        for(let x=Math.max(0,cc-1);x<=Math.min(7,cc+1);x++){
+          const idx=y*8+x;
+          if(!allDetonated.has(idx)&&allDetonated.size<maxAllowed){
+            allDetonated.add(idx);
+            cluster.push(idx);
+          }
+        }
+
+      // 1. Launch hypersonic kinetic lance
+      fx.meteor(k%2?7:0,center,t.accent,1.25*(boost?1.3:1),0);
+
+      // 2. Wait for lance descent to impact the ground (~220ms)
+      await wait(reduced?30:220);
+
+      // 3. Ground impact recoil, sound & fiery blast ring
+      heavyShake(1.9);
+      director.bombDetonate();
+      ring(cc+.5,rr+.5,'#ff4400',3.5);
+      flash('#ff4411');
+
+      // 4. Detonate gems into multi-faceted crystal shards & embers!
+      const validCluster=cluster.filter(i=>board[i]);
+      if(validCluster.length){
+        for(const idx of validCluster){
+          if(board[idx]){
+            shatterGem(idx, board[idx].color, center);
+          }
+        }
+        await clearCells(validCluster,new Map(),1);
+      }
+      update();
+      await wait(reduced?20:90);
     }
-    cells=[...new Set(cells)].slice(0,maxAllowed);
+    currentCastColor=-1;
+    await settle();
+    heavyCast=false;best=Math.max(best,score);update();
+    return;
   }
   if(color===2){const shock=thunderTargets(l,totemChain.count,index);cells=shock.cells;frame.dataset.shockAnchor=index;frame.dataset.shockRadius=shock.radius;frame.dataset.shockTargets=cells.join(',');fx.storm(index,p.multiplier);fx.shockRange(index,shock.radius,t.accent);for(const hit of cells)if(hit!==index)fx.lightning(index,hit,t.accent,p.multiplier*.85);}
   if(color===0){const harvest=harvestTargets(board,l,totemChain.count);cells=harvest.collect;for(const i of cells)fx.siphon(i,index,t.accent,p.multiplier);harvest.create.forEach(i=>{board[i].crystal=true;ring(i%8+.5,Math.floor(i/8)+.5,t.accent,1.1);});fx.field(c+.5,r+.5,t.accent,p.multiplier,'jade');}
