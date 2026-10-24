@@ -1,5 +1,5 @@
 import {Soundscape} from './soundscape.mjs?v=6';
-import {ImpactFX} from './element-fx.mjs?v=7';
+import {ImpactFX} from './element-fx.mjs?v=8';
 import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=16';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
