@@ -1,5 +1,6 @@
 import {Soundscape} from './soundscape.mjs?v=6';
 import {ImpactFX} from './element-fx.mjs?v=8';
+import {initialState,newBattle} from './battle-engine.mjs?v=1';
 import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=16';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
@@ -30,7 +31,7 @@ function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return `마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i);return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>openUpgrades(+b.dataset.totem));}
 let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
-const is100Completed=(stageStars[STAGE_COUNT-1]>=1)||(unlocked>=STAGE_COUNT)||(saved.unlocked>=STAGE_COUNT)||(saved.level>=STAGE_COUNT);
+const is100Completed=stageStars[STAGE_COUNT-1]>=1;
 if(is100Completed){applyDivineBlessing(true);}
 let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
@@ -395,11 +396,12 @@ function completeStage(win){
     <p class="stars-caption">
       ${win?(level===STAGE_COUNT?'100개의 관문을 모두 돌파했습니다! 몬테주마의 전설이 완성되었습니다.':`마법별 +${newStars}개 (보유 ★${magicStars})<br>사원의 다음 문이 열렸습니다. 다음 관문으로 나아가세요!`):currentGoals().map(g=>(g.done?'✓ ':'· ')+g.label+' '+Math.min(g.value,g.target)+'/'+g.target).join('<br>')+'<br>휴식 모드에서 제한 없이 공략할 수도 있어요.'}
     </p>
-    <button id="nextBtn" class="primary-button">${win&&level<STAGE_COUNT?(level%5===0?'고대 운명의 카드 시험으로 →':'다음 관문으로 →'):'다시 도전하기 →'}</button>
+    <button id="nextBtn" class="primary-button">${win&&level===STAGE_COUNT?'🎁 보물상자를 여세요':win&&level<STAGE_COUNT?(level%5===0?'고대 운명의 카드 시험으로 →':'다음 관문으로 →'):'다시 도전하기 →'}</button>
     ${win?'<button id="resultUpgrade" class="text-button">토템 강화 <span>↗</span></button>':''}
     ${!win?'<button id="zenResult" class="text-button">시간 없는 휴식으로 <span>∞</span></button>':''}
   `);
   $('#nextBtn').onclick=()=>{
+    if(win&&level===STAGE_COUNT){openWorldChest();return;}
     if(win&&level<STAGE_COUNT){
       if(level%5===0){
         openFortuneCardModal(level,()=>{
@@ -1159,6 +1161,14 @@ $('#titleSoundBtn').onclick=showSoundSettings;
 $('#titleHelpBtn').onclick=help;
 $('#titleMapBtn').onclick=()=>openMap();
 $('#titleUpgradeBtn').onclick=()=>openUpgrades();
+function openWorldChest(){
+  if(stageStars[STAGE_COUNT-1]<1){toast('100단계를 먼저 클리어해야 합니다.');return;}
+  showModal(`<div class="modal-kicker">THE NINE REALMS</div><h2>태양의 보물상자</h2><p style="text-align:center;line-height:1.8;">상자 안에서 이세계의 문이 열립니다.<br><b>입장하면 이곳의 1~100단계로 돌아올 수 없습니다.</b><br>6대 토템의 힘을 가지고 101단계 전투를 시작합니다.</p><button id="enterWorld" class="primary-button">상자를 열고 이세계로 간다 →</button><button id="stayTemple" class="text-button" style="justify-content:center">아직 사원에 머무르기</button>`);
+  $('#enterWorld').onclick=()=>{const next=initialState(totemLevels);next.battle=newBattle(next);try{localStorage.setItem('solar-relic-otherworld-v1',JSON.stringify(next));location.replace('otherworld.html');}catch{toast('저장 공간을 사용할 수 없어 이동하지 못했습니다.');}};
+  $('#stayTemple').onclick=()=>$('#modal').close();
+}
+$('#titleChestBtn').hidden=stageStars[STAGE_COUNT-1]<1;
+$('#titleChestBtn').onclick=openWorldChest;
 $('#homeBtn').onclick=showTitleScreen;
 $('#brandLink').onclick=e=>{e.preventDefault();showTitleScreen();};
 
