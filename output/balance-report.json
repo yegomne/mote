@@ -4,27 +4,27 @@
     {
       "stage": 1,
       "random": {
-        "wins": 30,
+        "wins": 29,
         "total": 30,
-        "averageScore": 4953
+        "averageScore": 3688
       },
       "goalAware": {
         "wins": 30,
         "total": 30,
-        "averageScore": 4922
+        "averageScore": 3350
       }
     },
     {
       "stage": 2,
       "random": {
-        "wins": 13,
+        "wins": 6,
         "total": 30,
-        "averageScore": 8840
+        "averageScore": 6130
       },
       "goalAware": {
-        "wins": 30,
+        "wins": 28,
         "total": 30,
-        "averageScore": 6698
+        "averageScore": 4502
       }
     },
     {
@@ -32,90 +32,90 @@
       "random": {
         "wins": 26,
         "total": 30,
-        "averageScore": 8547
+        "averageScore": 5287
       },
       "goalAware": {
         "wins": 30,
         "total": 30,
-        "averageScore": 8280
+        "averageScore": 5425
       }
     },
     {
       "stage": 4,
       "random": {
-        "wins": 22,
+        "wins": 10,
         "total": 30,
-        "averageScore": 8710
+        "averageScore": 6010
       },
       "goalAware": {
-        "wins": 29,
+        "wins": 24,
         "total": 30,
-        "averageScore": 13148
+        "averageScore": 7235
       }
     },
     {
       "stage": 5,
       "random": {
-        "wins": 9,
+        "wins": 7,
         "total": 30,
-        "averageScore": 7475
+        "averageScore": 4110
       },
       "goalAware": {
-        "wins": 26,
+        "wins": 20,
         "total": 30,
-        "averageScore": 8087
+        "averageScore": 8137
       }
     },
     {
       "stage": 9,
       "random": {
-        "wins": 19,
+        "wins": 5,
         "total": 30,
-        "averageScore": 12922
+        "averageScore": 5487
       },
       "goalAware": {
-        "wins": 30,
+        "wins": 29,
         "total": 30,
-        "averageScore": 12025
+        "averageScore": 6990
       }
     },
     {
       "stage": 10,
       "random": {
-        "wins": 13,
+        "wins": 8,
         "total": 30,
-        "averageScore": 16235
+        "averageScore": 8672
       },
       "goalAware": {
-        "wins": 29,
+        "wins": 21,
         "total": 30,
-        "averageScore": 19335
+        "averageScore": 14328
       }
     },
     {
       "stage": 20,
       "random": {
-        "wins": 1,
+        "wins": 0,
         "total": 30,
-        "averageScore": 16275
+        "averageScore": 7430
       },
       "goalAware": {
-        "wins": 26,
+        "wins": 11,
         "total": 30,
-        "averageScore": 29260
+        "averageScore": 16000
       }
     },
     {
       "stage": 30,
       "random": {
-        "wins": 2,
+        "wins": 1,
         "total": 30,
-        "averageScore": 20965
+        "averageScore": 9363
       },
       "goalAware": {
-        "wins": 28,
+        "wins": 15,
         "total": 30,
-        "averageScore": 37840
+        "averageScore": 20017
       }
     },
     {
@@ -123,12 +123,12 @@
       "random": {
         "wins": 0,
         "total": 30,
-        "averageScore": 21562
+        "averageScore": 9430
       },
       "goalAware": {
-        "wins": 27,
+        "wins": 18,
         "total": 30,
-        "averageScore": 52690
+        "averageScore": 28987
       }
     },
     {
@@ -136,12 +136,12 @@
       "random": {
         "wins": 0,
         "total": 30,
-        "averageScore": 23992
+        "averageScore": 12003
       },
       "goalAware": {
-        "wins": 29,
+        "wins": 19,
         "total": 30,
-        "averageScore": 76177
+        "averageScore": 39193
       }
     },
     {
@@ -149,12 +149,12 @@
       "random": {
         "wins": 0,
         "total": 30,
-        "averageScore": 24540
+        "averageScore": 15390
       },
       "goalAware": {
-        "wins": 28,
+        "wins": 17,
         "total": 30,
-        "averageScore": 98965
+        "averageScore": 46960
       }
     }
   ]

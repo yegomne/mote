@@ -19,36 +19,28 @@ def simulate_stage(level):
     local = (level - 1) % 20 + 1
     beat = (level - 1) % 10
     
-    # Calibrated Target Curve for Arcade Fun:
-    # Level 1: ~4,500 pts
-    # Level 10: ~12,000 pts
-    # Level 20: ~22,000 pts
-    # Level 50: ~50,000 pts
-    # Level 100: ~100,000 pts
-    base_target = 4500 + chapter * 12000 + (local - 1) * 650
-    if beat == 9: # Boss Stage (10, 20, 30...)
+    # 50-second blitz target curve (< 1 minute):
+    base_target = 3000 + chapter * 6500 + (local - 1) * 350
+    if beat == 9: # Boss Stage (55s)
         base_target = int(base_target * 1.20)
-    elif beat == 4: # Bonus Room (5, 15, 25...)
+    elif beat == 4: # Bonus Room (35s)
         base_target = int(base_target * 0.85)
 
-    base_crystals = 4 + chapter + (local // 8)
-    time_limit = 90 - chapter * 2
+    base_crystals = 3 + chapter + (local // 10)
+    time_limit = 50 - chapter * 2
     if beat == 4:
-        time_limit = 60
+        time_limit = 35
     elif beat == 9:
-        time_limit = 105
+        time_limit = 55
 
     # 3-Star Criteria
     star2_score = int(base_target * 1.3)
     star3_score = int(base_target * 1.6)
+    alt_star3_score = int(base_target * 1.85) # High score path if crystals short
 
-    # Alternate 3-Star (if crystals short)
-    alt_star3_score = int(base_target * 1.9) # High score path
-
-    # Simulate 50 Player Runs per Stage
+    # Simulate 50 Player Runs per Stage - Player plays the FULL round (does not end in middle!)
     runs = []
     for _ in range(50):
-        # Player speed: 0.5 to 0.8 moves per second
         sim_time = time_limit
         score = 0
         crystals = 0
@@ -57,22 +49,22 @@ def simulate_stage(level):
         seals_broken = 0
         best_combo = 1
         
-        while sim_time > 0 and score < star3_score * 1.4:
-            move_cost = random.uniform(1.2, 2.2)
+        while sim_time > 0:
+            move_cost = random.uniform(1.2, 1.8)
             sim_time -= move_cost
             moves += 1
             
             # Match simulation: 3-gem, 4-gem, cascade
             combo = 1
             r = random.random()
-            if r < 0.60:
+            if r < 0.65:
                 match_cells = 3
-            elif r < 0.85:
+            elif r < 0.88:
                 match_cells = 4
                 combo = 2
             else:
                 match_cells = 5
-                combo = random.randint(2, 5)
+                combo = random.randint(2, 4)
             
             best_combo = max(best_combo, combo)
             match_score = match_cells * 50 * combo
@@ -82,45 +74,44 @@ def simulate_stage(level):
                 crystals += 1
                 
             # Totem cast simulation (approx 1 cast per 4-5 moves)
-            totem_power_mult = 1.0 + chapter * 0.35 # Upgraded totems in later chapters
+            totem_power_mult = 1.0 + chapter * 0.25
             if moves % random.randint(3, 5) == 0:
                 totem_casts += 1
                 totem_type = random.randint(0, 5)
-                if totem_type == 1: # Fire - restored massive blast
-                    fire_cells = min(30, int(random.randint(12, 28) * totem_power_mult))
-                    match_score += fire_cells * 70
-                    crystals += random.randint(1, 3)
+                if totem_type == 1: # Fire - Toned down controlled precision blast (1~3 meteors, max 16 cells)
+                    fire_cells = min(16, int(random.randint(6, 14) * totem_power_mult))
+                    match_score += fire_cells * 60
+                    if random.random() < 0.3:
+                        crystals += 1
                 elif totem_type == 2: # Thunder
-                    match_score += int(14 * 65 * totem_power_mult)
+                    match_score += int(10 * 55 * totem_power_mult)
                 elif totem_type == 3: # Gold
-                    match_score += int(random.randint(1500, 4500) * totem_power_mult)
+                    match_score += int(random.randint(1200, 3000) * totem_power_mult)
                 elif totem_type == 0: # Jade
-                    crystals += random.randint(2, 5)
+                    crystals += random.randint(1, 3)
                 elif totem_type == 5: # Time
-                    sim_time += random.randint(6, 12)
+                    sim_time = min(58, sim_time + random.randint(3, 7))
+                elif totem_type == 4: # Lunar
+                    match_score += 600
             
             score += match_score
-            
-            # Check if player hit stop condition (finished with 3 stars)
-            if score >= star3_score and crystals >= base_crystals and sim_time >= 15:
-                break
                 
-        # Evaluate stars:
+        # Evaluate stars at the end of the round:
         # Standard: score >= target & crystals >= base_crystals
         passed_standard = (score >= base_target and crystals >= base_crystals)
-        # Alternate pass: crystals short, but score >= 130% target or high time
-        passed_alternate = (score >= int(base_target * 1.25) and sim_time >= 10)
+        # Alternate pass: crystals short, but score >= 125% target
+        passed_alternate = (score >= int(base_target * 1.25))
         passed = passed_standard or passed_alternate
         
         stars = 0
         if passed:
             stars = 1
-            if score >= star2_score and (sim_time >= 15 or crystals >= base_crystals):
+            if score >= star2_score and (crystals >= base_crystals or best_combo >= 3):
                 stars = 2
-            # 3 Stars: Either standard 3-star or Alternate 3-star (High Score + Time)
-            if score >= star3_score and crystals >= base_crystals and sim_time >= 15:
+            # 3 Stars: Either standard 3-star or Alternate 3-star (High Score without enough crystals)
+            if score >= star3_score and crystals >= base_crystals and (best_combo >= 3 or totem_casts >= 2):
                 stars = 3
-            elif score >= alt_star3_score and sim_time >= 15: # Alternate route!
+            elif score >= alt_star3_score and (best_combo >= 3 or totem_casts >= 2): # Alternate route!
                 stars = 3
                 
         runs.append({
