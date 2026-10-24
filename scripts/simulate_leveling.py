@@ -20,7 +20,7 @@ def simulate_stage(level):
     beat = (level - 1) % 10
     
     # 50-second blitz target curve (< 1 minute):
-    base_target = 3000 + chapter * 6500 + (local - 1) * 350
+    base_target = 3200 + chapter * 7500 + (local - 1) * 400
     if beat == 9: # Boss Stage (55s)
         base_target = int(base_target * 1.20)
     elif beat == 4: # Bonus Room (35s)
@@ -73,26 +73,26 @@ def simulate_stage(level):
             if random.random() < 0.12 * match_cells:
                 crystals += 1
                 
-            # Totem cast simulation (approx 1 cast per 4-5 moves)
-            totem_power_mult = 1.0 + chapter * 0.25
+            # Totem cast simulation (approx 1 cast per 4 moves)
+            totem_power_mult = 1.0 + chapter * 0.35
             if moves % random.randint(3, 5) == 0:
                 totem_casts += 1
                 totem_type = random.randint(0, 5)
-                if totem_type == 1: # Fire - Toned down controlled precision blast (1~3 meteors, max 16 cells)
-                    fire_cells = min(16, int(random.randint(6, 14) * totem_power_mult))
-                    match_score += fire_cells * 60
-                    if random.random() < 0.3:
+                if totem_type == 1: # Fire - Buffed solid punch: 2~4 meteors, 12~24 cells destroyed
+                    fire_cells = min(24, int(random.randint(10, 18) * totem_power_mult))
+                    match_score += fire_cells * 65
+                    if random.random() < 0.4:
                         crystals += 1
                 elif totem_type == 2: # Thunder
-                    match_score += int(10 * 55 * totem_power_mult)
+                    match_score += int(12 * 60 * totem_power_mult)
                 elif totem_type == 3: # Gold
-                    match_score += int(random.randint(1200, 3000) * totem_power_mult)
+                    match_score += int(random.randint(1500, 3500) * totem_power_mult)
                 elif totem_type == 0: # Jade
                     crystals += random.randint(1, 3)
-                elif totem_type == 5: # Time
-                    sim_time = min(58, sim_time + random.randint(3, 7))
+                elif totem_type == 5: # Time - NERFED (+2~4s max, capped at 54s)
+                    sim_time = min(54, sim_time + random.uniform(2.0, 3.8))
                 elif totem_type == 4: # Lunar
-                    match_score += 600
+                    match_score += int(800 * totem_power_mult)
             
             score += match_score
                 

@@ -26,8 +26,8 @@ assert.equal(FORTUNE_CARDS.length,9);assert.ok(stageStarCriteria(stageDesign(1))
 for(let round=0;round<250;round++){b=makeBoard();for(let step=0;step<12;step++){const move=findMove(b);if(!move)break;const [a,c]=move;[b[a],b[c]]=[b[c],b[a]];let depth=0;while((groups=findMatches(b)).length&&depth++<60){const create=specialCreations(groups,[c,a]),result=affected(b,groups.flatMap(g=>g.cells));for(const i of result.cells)if(!create.has(i))b[i]=null;for(const [i,s]of create)if(b[i])b[i].special=s;collapse(b);assert.equal(b.length,64);assert.ok(b.every(Boolean));assert.equal(new Set(b.map(g=>g.id)).size,64);}assert.ok(depth<60,'cascade terminates');}checks++;}
 console.log(`PASS: ${checks} checks, including 3,000 simulated turns, special chains, gravity and power targeting.`);
 
-for(let l=1;l<=5;l++){let previous=[];for(let n=0;n<100;n++){const targets=fireTargets(l,previous);const expected=Math.max(1,Math.min(3,Math.ceil(l/2)));assert.equal(targets.length,expected);assert.equal(new Set(targets).size,expected);assert.ok(targets.every(i=>Number.isInteger(i)&&i>=0&&i<64&&!previous.includes(i)));previous=targets;}}
-for(const value of [0,.2,.999999,1])assert.equal(new Set(fireTargets(5,[],()=>value)).size,3);
+for(let l=1;l<=5;l++){let previous=[];for(let n=0;n<100;n++){const targets=fireTargets(l,previous);const expected=Math.max(2,Math.min(4,Math.floor(1.5+l*0.55)));assert.equal(targets.length,expected);assert.equal(new Set(targets).size,expected);assert.ok(targets.every(i=>Number.isInteger(i)&&i>=0&&i<64&&!previous.includes(i)));previous=targets;}}
+for(const value of [0,.2,.999999,1])assert.equal(new Set(fireTargets(5,[],()=>value)).size,4);
 const timed=stageDesign(10);assert.equal(extendTime(timed,999,totemPower(5,5,3)),timed.timeCap);
 assert.ok(Array.from({length:100},(_,i)=>stageDesign(i+1)).every(s=>!s.overdriveTarget),'upgrading must never be a mandatory spending gate');
 assert.ok(stageDesign(1).target>600&&stageDesign(10).target>2600);

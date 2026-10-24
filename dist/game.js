@@ -1,6 +1,6 @@
 import {Soundscape} from './soundscape.mjs?v=6';
 import {ImpactFX} from './element-fx.mjs?v=7';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=15';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=16';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612']];
@@ -13,7 +13,7 @@ let growth;try{growth=JSON.parse(localStorage.getItem('solar-relic-growth-v2')||
 growth??={};
 let totemLevels=Array.from({length:6},(_,i)=>{if(growth.levels&&growth.levels[i]!==undefined)return Math.max(0,Math.min(5,Math.floor(+growth.levels[i]||0)));return i===0?1:0;}),magicStars=Math.max(0,Math.floor(+growth.stars||0)),stageStars=Array.from({length:STAGE_COUNT},(_,i)=>Math.max(0,Math.min(3,Math.floor(+growth.stageStars?.[i]||0)))),totemChain={color:-1,count:0},totemFlash=-1,totemFlashUntil=0,totalTotemCasts=0;
 let pendingTotemCasts=[],cascadeChain=Promise.resolve();
-let fortuneBuffs=Object.assign({timePenaltyStages:0,timeBonusStages:0,hardSeals:false,extraSpecials:false,instantTotemStages:0},growth.fortuneBuffs||{});
+let fortuneBuffs=Object.assign({timePenaltyStages:0,timeBonusStages:0,hardSeals:false,extraSpecials:false,feverBonusStages:0},growth.fortuneBuffs||{});
 function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stringify({levels:totemLevels,stars:magicStars,stageStars,fortuneBuffs}));}catch{}}
 function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return `마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초` ][i];}
@@ -24,15 +24,17 @@ function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;runnin
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
 let particles=[],rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,cell=boardSize/8,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
 let lastHeavyShake=0,cameraAnimation;
-let stage=stageDesign(level),sealState=Array(64).fill(0),metrics={colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer;
+let stage=stageDesign(level),sealState=Array(64).fill(0),metrics={colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
 const fx=new ImpactFX(ctx,()=>cell,()=>reduced,(strength,element)=>{heavyShake(strength);if(element==='fire'||element==='thunder')director.impact(strength,element==='thunder'?2:1);});
 function initStage(){
   finishing=false;lastFireTargets=[];goalsMetAnnounced=false;
   for(const key of ['finale','finaleBonus','castColor','castMultiplier','fireTargets','shockAnchor','shockRadius','shockTargets'])delete frame.dataset[key];
   stage=stageDesign(level);
   let stageTime=stage.time;
-  if(fortuneBuffs.timeBonusStages>0){stageTime=Math.min(58,stageTime+10);fortuneBuffs.timeBonusStages--;}
+  if(fortuneBuffs.timeBonusStages>0){stageTime=Math.min(54,stageTime+8);fortuneBuffs.timeBonusStages--;}
   if(fortuneBuffs.timePenaltyStages>0){stageTime=Math.max(25,stageTime-8);fortuneBuffs.timePenaltyStages--;}
+  activeFeverBonus=fortuneBuffs.feverBonusStages>0;
+  if(fortuneBuffs.feverBonusStages>0)fortuneBuffs.feverBonusStages--;
   stage.time=stageTime;
   sealState=Array(64).fill(0);
   const sealHpAdd=fortuneBuffs.hardSeals?1:0;
@@ -111,18 +113,13 @@ async function trySwap(a,b){
     combo++;
     const sameColorMatch=groups.find(g=>(g.cells.includes(b)||g.cells.includes(a))&&g.color===totemChain.color)??groups.find(g=>g.color===totemChain.color);
     const primary=sameColorMatch??groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];
-    const instantBuff=(fortuneBuffs&&fortuneBuffs.instantTotemStages>0);
     totemChain=advanceTotem(totemChain,primary.color);
-    const shouldTrigger=totemUnlocked(primary.color)&&(totemChain.trigger||instantBuff);
-    if(shouldTrigger){
+    if(totemUnlocked(primary.color)&&totemChain.trigger){
       pendingTotemCasts.push({
         color:primary.color,
         anchor:b,
         streak:totemChain.count
       });
-      if(instantBuff){
-        totemChain.trigger=false;
-      }
     }
     updateTotemUI();
     queueCascade(groups,[b,a]);
@@ -164,14 +161,12 @@ async function resolve(groups,preferred=[]){
       const matchingColorGroup=groups.find(g=>g.color===totemChain.color);
       if(matchingColorGroup){
         totemChain=advanceTotem(totemChain,matchingColorGroup.color);
-        const instantBuff=(fortuneBuffs&&fortuneBuffs.instantTotemStages>0);
-        if(totemUnlocked(matchingColorGroup.color)&&(totemChain.trigger||instantBuff)){
+        if(totemUnlocked(matchingColorGroup.color)&&totemChain.trigger){
           pendingTotemCasts.push({
             color:matchingColorGroup.color,
             anchor:matchingColorGroup.cells[0],
             streak:totemChain.count
           });
-          if(instantBuff)totemChain.trigger=false;
         }
         updateTotemUI();
       }
@@ -253,8 +248,9 @@ async function clearCells(indices,creations=new Map(),chain=1){
   if(collected)tone(1100,.22,'sine',.06);
   frenzy=Math.min(100,frenzy+result.cells.length*.85);
   if(frenzy>=100&&performance.now()>=frenzyUntil){
-    frenzy=0;frenzyUntil=performance.now()+7000;
-    announce('SOLAR AWAKENING','태양의 각성 · 모든 점수 3배',1500);
+    const feverDur=7000+(activeFeverBonus?3000:0);
+    frenzy=0;frenzyUntil=performance.now()+feverDur;
+    announce('SOLAR AWAKENING',activeFeverBonus?'불타는 각성 · 점수 3배 (+3초)':'태양의 각성 · 모든 점수 3배',1500);
     chord(7);flash();shake();
   }
   if(gained){
@@ -599,16 +595,20 @@ async function castTotem(color,index){
   showCinematic(color,l,p.multiplier);announce(t.name+' · Lv.'+l,(boost?'위력 ×1.5 · ':'')+t.color+' '+totemChain.count+'연속',1450);director.power(color,p.multiplier);vibrate(boost?[55,35,100,30,75]:[40,35,80]);
   let cells=[];const r=Math.floor(index/8),c=index%8;
   if(color===1){
-    const baseCount=Math.max(1,Math.min(3,Math.ceil(l/2)));
-    const totalMeteors=boost?Math.min(4,baseCount+1):baseCount;
-    const centers=fireTargets(totalMeteors,lastFireTargets);
+    const baseCount=Math.max(2,Math.min(4,Math.floor(1.5+l*0.55)));
+    const totalMeteors=boost?Math.min(5,baseCount+1):baseCount;
+    const centers=fireTargets(l,lastFireTargets);
+    while(centers.length<totalMeteors){
+      const pool=Array.from({length:64},(_,i)=>i).filter(i=>!centers.includes(i));
+      centers.push(pool[Math.floor(Math.random()*pool.length)]);
+    }
     lastFireTargets=centers;
     frame.dataset.fireTargets=centers.join(',');
-    const maxCellsByLevel=[0,5,8,11,14,18][l]||8;
-    const maxAllowed=Math.min(20,Math.round(maxCellsByLevel*(boost?1.3:1)));
+    const maxCellsByLevel=[0,8,12,16,20,24][l]||10;
+    const maxAllowed=Math.min(26,Math.round(maxCellsByLevel*(boost?1.3:1)));
     for(const [k,center]of centers.slice(0,totalMeteors).entries()){
       const rr=Math.floor(center/8),cc=center%8;
-      fx.meteor(k%2?7:0,center,t.accent,1.0*(boost?1.2:1),k*.09);
+      fx.meteor(k%2?7:0,center,t.accent,1.15*(boost?1.25:1),k*.09);
       for(let y=Math.max(0,rr-1);y<=Math.min(7,rr+1);y++)
         for(let x=Math.max(0,cc-1);x<=Math.min(7,cc+1);x++)
           cells.push(y*8+x);
@@ -617,7 +617,7 @@ async function castTotem(color,index){
   }
   if(color===2){const shock=thunderTargets(l,totemChain.count,index);cells=shock.cells;frame.dataset.shockAnchor=index;frame.dataset.shockRadius=shock.radius;frame.dataset.shockTargets=cells.join(',');fx.storm(index,p.multiplier);fx.shockRange(index,shock.radius,t.accent);for(const hit of cells)if(hit!==index)fx.lightning(index,hit,t.accent,p.multiplier*.85);}
   if(color===0){const harvest=harvestTargets(board,l,totemChain.count);cells=harvest.collect;for(const i of cells)fx.siphon(i,index,t.accent,p.multiplier);harvest.create.forEach(i=>{board[i].crystal=true;ring(i%8+.5,Math.floor(i/8)+.5,t.accent,1.1);});fx.field(c+.5,r+.5,t.accent,p.multiplier,'jade');}
-  if(color===3){const bonus=p.bonus*(performance.now()<frenzyUntil?3:1);score+=bonus;frenzy=Math.min(100,frenzy+p.energy);if(frenzy>=100){frenzy=0;frenzyUntil=performance.now()+(6000+l*500);announce('SOLAR AWAKENING','황금 토템 · 점수 3배',1400);}floats.push({x:4,y:3,text:'+'+bonus,life:1.4,color:'#ffda82'});fx.field(c+.5,r+.5,t.accent,p.multiplier,'solar');}
+  if(color===3){const bonus=p.bonus*(performance.now()<frenzyUntil?3:1);score+=bonus;frenzy=Math.min(100,frenzy+p.energy);if(frenzy>=100){frenzy=0;frenzyUntil=performance.now()+(6000+l*500+(activeFeverBonus?3000:0));announce('SOLAR AWAKENING','황금 토템 · 점수 3배',1400);}floats.push({x:4,y:3,text:'+'+bonus,life:1.4,color:'#ffda82'});fx.field(c+.5,r+.5,t.accent,p.multiplier,'solar');}
   if(color===4){const gifts=lunarTargets(board,l,totemChain.count);metrics.specialsMade+=gifts.length;gifts.forEach(({index:i,special},k)=>{board[i].special=special;fx.meteor(index,i,t.accent,.75,k*.06,'gift');});fx.field(c+.5,r+.5,t.accent,p.multiplier,'lunar');}
   if(color===5){let text='시간의 축복';if(mode!=='zen'){const next=extendTime(stage,time,p),gained=next-time;time=next;text='+'+gained.toFixed(1).replace('.0','')+'초';}if(p.stasis){frozen=Math.max(frozen,p.stasis);frame.classList.add('frozen-board');}floats.push({x:4,y:3,text,life:1.4,color:'#ffd7a1'});fx.field(4,4,t.accent,p.multiplier,'clock');}
   if(cells.length){
@@ -828,7 +828,7 @@ function showScenarioBriefing(lvl=level){
   const activeBuffs=[];
   if(fortuneBuffs.timeBonusStages>0)activeBuffs.push(`⏳ 크로노스의 가호 (제한시간 +20초 · ${fortuneBuffs.timeBonusStages}관문 잔여)`);
   if(fortuneBuffs.timePenaltyStages>0)activeBuffs.push(`⚠️ 모래시계 균열 (제한시간 -10초 · ${fortuneBuffs.timePenaltyStages}관문 잔여)`);
-  if(fortuneBuffs.instantTotemStages>0)activeBuffs.push(`🔮 초능력 폭주 (단 1회 매치로 토템 즉시 발동! · ${fortuneBuffs.instantTotemStages}관문 잔여)`);
+  if(fortuneBuffs.feverBonusStages>0)activeBuffs.push(`🔥 불타는 피버 (피버 지속시간 +3초 연장 · ${fortuneBuffs.feverBonusStages}관문 잔여)`);
   if(fortuneBuffs.hardSeals)activeBuffs.push(`🛡️ 굳어버린 봉인 (이번 관문 모든 봉인 내구도 +1)`);
   if(fortuneBuffs.extraSpecials)activeBuffs.push(`🌟 황금빛 서광 (시작 시 특수 보석 3개 자동 배치)`);
 

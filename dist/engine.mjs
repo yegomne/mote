@@ -1,11 +1,11 @@
 export const SIZE=8, COLORS=6, STAGE_COUNT=100;
 export const TOTEMS=[
   {name:'비취의 수확',shortName:'비취',color:'비취',icon:'gem',roleTag:'💎 수정 수확',unlockCost:3,unlockStage:1,unlock:1,accent:'#6ee2ae',desc:'수정을 즉시 회수하고 새 수정을 생성'},
-  {name:'불의 심판',shortName:'불',color:'루비',icon:'sun',roleTag:'🔥 정밀 폭격',unlockCost:4,unlockStage:5,unlock:2,accent:'#ff8a89',desc:'불덩이 정밀 폭격으로 십자 반경의 보석과 봉인 분쇄'},
+  {name:'불의 심판',shortName:'불',color:'루비',icon:'sun',roleTag:'🔥 집중 폭격',unlockCost:4,unlockStage:5,unlock:2,accent:'#ff8a89',desc:'화염 운석 집중 폭격으로 십자 반경의 보석과 봉인 분쇄'},
   {name:'천둥의 분노',shortName:'번개',color:'사파이어',icon:'bolt',roleTag:'⚡ 사방 번개',unlockCost:5,unlockStage:10,unlock:3,accent:'#80d7f1',desc:'움직인 보석 주변 사방으로 번개 레이저 감전'},
   {name:'황금의 축복',shortName:'황금',color:'황금',icon:'sun',roleTag:'👑 점수 증폭',unlockCost:6,unlockStage:15,unlock:5,accent:'#efcf7e',desc:'대량 보너스 점수 및 피버 3배 에너지 급속 충전'},
   {name:'달의 선물',shortName:'달',color:'자수정',icon:'moon',roleTag:'🌙 특수 생성',unlockCost:7,unlockStage:20,unlock:7,accent:'#c8a5ff',desc:'보석판에 폭탄, 번개 레이저, 노바 직접 부여'},
-  {name:'시간의 숨결',shortName:'시간',color:'호박',icon:'freeze',roleTag:'⏳ 시간 연장',unlockCost:8,unlockStage:25,unlock:10,accent:'#ffb781',desc:'제한 시간 대폭 연장 및 시간 정지 결계'}
+  {name:'시간의 숨결',shortName:'시간',color:'호박',icon:'freeze',roleTag:'⏳ 시간 연장',unlockCost:8,unlockStage:25,unlock:10,accent:'#ffb781',desc:'제한 시간 소폭 연장 및 시간 정지 결계'}
 ];
 export function totemLevelSpecs(index, level){
   if(level===0) return {cur:'잠김 (사용 불가)', next:`★${TOTEMS[index].unlockCost}개로 해금 시 즉시 기본 발동`};
@@ -18,13 +18,13 @@ export function totemLevelSpecs(index, level){
       {cur:'수정 5개 회수 · 5개 생성', next:'수정 6개 회수 · 6개 생성 (최고 위력)'},
       {cur:'수정 6개 회수 · 6개 생성 (3연속 시 9개 대수확)', next:'최고 레벨 (MAX)'}
     ],
-    // 1: 불 (하향 및 밸런스 조정)
+    // 1: 불 (2~4발 집중 폭격 & 타격감 강화)
     [
-      {cur:'불덩이 1발 (반경 1칸 파괴)', next:'불덩이 2발로 증가 & 3연속 1.5배 각성 해금!'},
-      {cur:'불덩이 2발 (3연속 시 3발)', next:'불덩이 2발 폭격 (반경 1칸)'},
-      {cur:'불덩이 2발 폭격 (반경 1칸)', next:'불덩이 3발로 증가!'},
-      {cur:'불덩이 3발 (반경 1칸)', next:'불덩이 3발 정밀 폭격 (3연속 시 4발)'},
-      {cur:'불덩이 3발 (반경 1칸 · 3연속 시 4발)', next:'최고 레벨 (MAX)'}
+      {cur:'불덩이 2발 (반경 1칸 파괴)', next:'불덩이 2발 & 3연속 1.5배 각성(3발) 해금!'},
+      {cur:'불덩이 2발 (3연속 시 3발)', next:'불덩이 3발 폭격 (반경 1칸)'},
+      {cur:'불덩이 3발 폭격 (반경 1칸)', next:'불덩이 3발 (3연속 시 4발)'},
+      {cur:'불덩이 3발 (3연속 시 4발)', next:'불덩이 4발로 증가!'},
+      {cur:'불덩이 4발 폭격 (3연속 시 5발)', next:'최고 레벨 (MAX)'}
     ],
     // 2: 번개
     [
@@ -50,20 +50,20 @@ export function totemLevelSpecs(index, level){
       {cur:'특수 보석 4개', next:'궁극기 [노바 대폭발석] 확정 생성 해금!'},
       {cur:'특수 보석 5개 (전 화면 노바 확정 생성)', next:'최고 레벨 (MAX)'}
     ],
-    // 5: 시간
+    // 5: 시간 (스릴감을 위한 연장 시간 너프)
     [
-      {cur:'시간 +5초 연장', next:'시간 +7초 & 3연속 1.5배 (+11초) 해금!'},
-      {cur:'시간 +7초 (3연속 시 +11초)', next:'시간 +9초 & 시간 정지 3초 결계 해금!'},
-      {cur:'시간 +9초 · 시간 정지 3초', next:'시간 +11초 · 시간 정지 4초 (안정적 공략)'},
-      {cur:'시간 +11초 · 시간 정지 4초', next:'시간 +13초 · 시간 정지 5초 (무한 플레이급)'},
-      {cur:'시간 +13초 · 시간 정지 5초 (3연속 시 +20초)', next:'최고 레벨 (MAX)'}
+      {cur:'시간 +2.0초 연장', next:'시간 +2.5초 & 3연속 1.5배 (+3.8초) 해금!'},
+      {cur:'시간 +2.5초 (3연속 시 +3.8초)', next:'시간 +3.0초 & 시간 정지 0.7초 결계 해금!'},
+      {cur:'시간 +3.0초 · 시간 정지 0.7초', next:'시간 +3.5초 · 시간 정지 1.4초 (안정적 공략)'},
+      {cur:'시간 +3.5초 · 시간 정지 1.4초', next:'시간 +4.0초 · 시간 정지 2.1초'},
+      {cur:'시간 +4.0초 · 시간 정지 2.1초 (3연속 시 +6초)', next:'최고 레벨 (MAX)'}
     ]
   ];
   return specs[index]?.[level-1] || {cur:'최대 강화 완료', next:'MAX'};
 }
 export function advanceTotem(previous,color){const count=previous.color===color?previous.count+1:1;return {color,count,trigger:count>=2};}
-export function totemPower(color,level,streak){const multiplier=level>=2&&streak>=3?1.5:1;return {multiplier,harvest:Math.ceil((level+1)*multiplier),gifts:Math.ceil(level*multiplier),bonus:300*level*multiplier,energy:(15+5*level)*multiplier,seconds:(3+2*level)*multiplier,stasis:level>=3?level*multiplier:0};}
-export function fireTargets(level,previous=[],random=Math.random){const chosen=[],count=Math.max(1,Math.min(3,Math.ceil(level/2)));for(let k=0;k<count;k++){let pool=Array.from({length:64},(_,i)=>i).filter(i=>!chosen.includes(i)&&!previous.includes(i));const spread=pool.filter(i=>chosen.every(j=>Math.hypot(i%8-j%8,Math.floor(i/8)-Math.floor(j/8))>=3));if(spread.length)pool=spread;chosen.push(pool[Math.min(pool.length-1,Math.floor(Math.max(0,random())*pool.length))]);}return chosen;}
+export function totemPower(color,level,streak){const multiplier=level>=2&&streak>=3?1.5:1;const seconds=(1.5+level*0.5)*multiplier;const stasis=level>=3?(level-2)*0.7*multiplier:0;return {multiplier,harvest:Math.ceil((level+1)*multiplier),gifts:Math.ceil(level*multiplier),bonus:300*level*multiplier,energy:(15+5*level)*multiplier,seconds,stasis};}
+export function fireTargets(level,previous=[],random=Math.random){const chosen=[],count=Math.max(2,Math.min(4,Math.floor(1.5+level*0.55)));for(let k=0;k<count;k++){let pool=Array.from({length:64},(_,i)=>i).filter(i=>!chosen.includes(i)&&!previous.includes(i));const spread=pool.filter(i=>chosen.every(j=>Math.hypot(i%8-j%8,Math.floor(i/8)-Math.floor(j/8))>=3));if(spread.length)pool=spread;chosen.push(pool[Math.min(pool.length-1,Math.floor(Math.max(0,random())*pool.length))]);}return chosen;}
 function sample(pool,count,random){const rest=[...pool],picked=[];while(rest.length&&picked.length<count)picked.push(rest.splice(Math.min(rest.length-1,Math.floor(Math.max(0,random())*rest.length)),1)[0]);return picked;}
 export function thunderTargets(level,streak,anchor,random=Math.random){const l=Math.max(1,Math.min(5,level)),multiplier=totemPower(2,l,streak).multiplier,radius=1.5+(l-1)*.4+(multiplier>1?.6:0),x=anchor%8,y=Math.floor(anchor/8),count=Math.ceil((5+(l-1)*2)*multiplier),cells=[anchor],pool=Array.from({length:64},(_,i)=>i).filter(i=>i!==anchor&&Math.hypot(i%8-x,Math.floor(i/8)-y)<=radius),sectors=Array(4).fill(0),sector=i=>Math.floor((Math.atan2(Math.floor(i/8)-y,i%8-x)+Math.PI/4+Math.PI*2)%(Math.PI*2)/(Math.PI/2));while(pool.length&&cells.length<count){const available=[...new Set(pool.map(sector))],least=Math.min(...available.map(q=>sectors[q])),options=pool.filter(i=>sectors[sector(i)]===least),hit=sample(options,1,random)[0];cells.push(hit);sectors[sector(hit)]++;pool.splice(pool.indexOf(hit),1);}return {anchor,radius,cells};}
 export function harvestTargets(board,level,streak,random=Math.random){const p=totemPower(0,level,streak),collect=sample(board.flatMap((g,i)=>g?.crystal?[i]:[]),p.harvest,random),create=sample(board.flatMap((g,i)=>g&&!g.crystal?[i]:[]),p.harvest,random);return {collect,create};}
@@ -323,16 +323,16 @@ export const FORTUNE_CARDS = [
     }
   },
   {
-    id: 'instant_totem',
+    id: 'fever_surge',
     type: 'fortune',
-    title: '🔮 초능력 폭주',
-    summary: '다음 2관문 1회 매치 즉시 토템 발동',
-    desc: '토템의 마력이 극한으로 끓어오릅니다. 다음 2개 관문에서 같은 색 단 1번 매치로 토템이 발동합니다!',
+    title: '🔥 불타는 피버',
+    summary: '다음 2관문 피버 지속 시간 +3초',
+    desc: '사원의 열기가 고조됩니다. 다음 2개 관문 동안 피버 모드 지속 시간이 3초 연장됩니다!',
     image: 'assets/cards/sun_blessing.jpg',
     apply(state){
       state.fortuneBuffs = state.fortuneBuffs || {};
-      state.fortuneBuffs.instantTotemStages = 2;
-      return '다음 2개 관문에서 단 1번의 매치로 토템이 즉시 폭발합니다!';
+      state.fortuneBuffs.feverBonusStages = 2;
+      return '다음 2개 관문 동안 피버 지속 시간이 +3초 늘어납니다!';
     }
   }
 ];
@@ -358,7 +358,7 @@ const STAGE_NAMES={awakening:'새벽의 보석',totem:'수호자의 응답',colo
 const STAGE_TIPS={awakening:'4·5매치와 토템을 이어 제한 시간 안에 목표를 달성하세요.',totem:'같은 색을 이어가세요. 토템 Lv.2부터 3연속 위력 1.5배!',colors:'목표 색과 특수 보석을 함께 만드는 교환을 찾으세요.',seals:'흩어진 봉인을 공략하세요. 위·옆 매치와 토템이 한 겹씩 깹니다.',bonus:'60초 보물방! 특수 보석과 토템으로 보물을 빠르게 모으세요.',cascade:'제한 시간 안에 도전하세요. 보드 아래쪽에서 연쇄를 설계하세요.',special:'4개·5개·T자 매치로 특수 보석을 직접 만드세요.',ritual:'목표 색을 모으면서 봉인까지 깨는 수를 찾으세요.',overdrive:'토템을 여러 번 발동하세요. Lv.2의 3연속 1.5배가 공략을 돕습니다.',guardian:'제한 시간 안에 봉인, 수정, 토템 목표를 모두 달성하세요.'};
 function sealsFor(level,count,hp){const chosen=[],available=Array.from({length:64},(_,i)=>i),distance=(a,b)=>Math.abs(a%8-b%8)+Math.abs(Math.floor(a/8)-Math.floor(b/8));for(let k=0;k<count;k++){available.sort((a,b)=>{const rank=i=>chosen.length?Math.min(...chosen.map(j=>distance(i,j))):0;return rank(b)-rank(a)||((a*19+level*7)%67)-((b*19+level*7)%67);});chosen.push(available.shift());}return chosen.map(index=>({index,hp}));}
 export function stageDesign(level){const chapter=chapterIndex(level),local=(level-1)%20+1,beat=(level-1)%10,type=STAGE_TYPES[beat],second=local>10?1:0;
-  let rawTarget = 3000 + chapter * 6500 + (local - 1) * 350;
+  let rawTarget = 3200 + chapter * 7500 + (local - 1) * 400;
   if(beat === 9) rawTarget = Math.round(rawTarget * 1.20);
   else if(beat === 4) rawTarget = Math.round(rawTarget * 0.85);
 
@@ -397,15 +397,15 @@ export function stageDesign(level){const chapter=chapterIndex(level),local=(leve
   if(type === 'overdrive'){ stage.name = '토템의 시험'; stage.totemTarget = 2 + Math.floor(chapter / 2); stage.specialTarget = 2; stage.time = 50 - chapter * 2; }
   if(type === 'guardian'){ stage.target = Math.round(stage.target * 1.20 / 50) * 50; stage.time = 55; stage.seals = sealsFor(level, 8 + chapter * 2 + second, hp); stage.totemTarget = 2 + Math.floor(chapter / 2); stage.name = ['비취의 수문장','정글의 쌍둥이 수호자','폭풍의 거인','달그림자 사제','황금 태양의 심장'][chapter]; }
 
-  if(level === 1){ stage.name = '첫 번째 빛'; stage.tip = '50초 동안 3,000점과 수정 3개를 모으세요! 목표 달성 후에도 끝까지 최고 점수에 도전하세요.'; stage.target = 3000; stage.crystals = 3; stage.time = 50; }
-  if(level === 2){ stage.name = '두 번의 부름'; stage.tip = '50초 동안 같은 색 보석을 2연속 맞춰 토템을 발동하세요! 3,350점 돌파가 목표입니다.'; stage.target = 3350; stage.crystals = 3; stage.time = 50; }
-  if(level === 3){ stage.name = '비취를 찾아서'; stage.tip = '50초 동안 비취 12개와 수정 3개를 모으세요. 목표 달성 후 3성 고득점을 노려보세요!'; stage.target = 3700; stage.crystals = 3; stage.time = 50; }
-  if(level === 4){ stage.name = '비취 정령의 문'; stage.tip = '50초 동안 사원의 봉인을 깨고 3성에 도전하세요.'; stage.target = 4050; stage.crystals = 3; stage.time = 50; }
+  if(level === 1){ stage.name = '첫 번째 빛'; stage.tip = '50초 동안 3,200점과 수정 3개를 모으세요! 목표 달성 후에도 끝까지 최고 점수에 도전하세요.'; stage.target = 3200; stage.crystals = 3; stage.time = 50; }
+  if(level === 2){ stage.name = '두 번의 부름'; stage.tip = '50초 동안 같은 색 보석을 2연속 맞춰 토템을 발동하세요! 3,600점 돌파가 목표입니다.'; stage.target = 3600; stage.crystals = 3; stage.time = 50; }
+  if(level === 3){ stage.name = '비취를 찾아서'; stage.tip = '50초 동안 비취 12개와 수정 3개를 모으세요. 목표 달성 후 3성 고득점을 노려보세요!'; stage.target = 4000; stage.crystals = 3; stage.time = 50; }
+  if(level === 4){ stage.name = '비취 정령의 문'; stage.tip = '50초 동안 사원의 봉인을 깨고 3성에 도전하세요.'; stage.target = 4400; stage.crystals = 3; stage.time = 50; }
   if(level === 7) stage.name = '달의 선물';
   if(level === 9) stage.tip = '50초 동안 토템과 콤보 연계! 3연속 1.5배 각성으로 고득점을 달성하세요.';
   if(level === 10) stage.tip = '55초 보스전! 봉인과 토템을 집중 공략하고 제1장 수문장으로 전진하세요.';
 
-  stage.timeCap = Math.min(58, stage.time + 10);
+  stage.timeCap = Math.min(54, stage.time + 5);
   return stage;
 }
 export function extendTime(stage,time,p){return Math.min(stage.timeCap,time+p.seconds);}
