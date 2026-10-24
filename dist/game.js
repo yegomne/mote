@@ -1,6 +1,6 @@
 import {Soundscape} from './soundscape.mjs?v=6';
 import {ImpactFX} from './element-fx.mjs?v=7';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=12';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=13';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612']];
@@ -74,10 +74,13 @@ function resume(){if(started&&!ended){resumeClock();}$('#modal').close();update(
 function showModal(html){$('#modalContent').innerHTML=html;if(!$('#modal').open)$('#modal').showModal();}
 function help(){if(busy){toast('연쇄가 끝난 뒤 도움말을 열 수 있어요.');return;}const was=running;if(was&&!busy){pauseClock();}showModal(`<div class="modal-kicker">THE ART OF MATCHING</div><h2>아주 간단한 탐험 방법</h2><div class="help-row"><span>01</span><div><b>보석 3개를 나란히</b><small>옆 보석으로 스와이프하거나 두 보석을 차례로 터치하세요.<br>키보드: 방향키 이동 · Enter 선택</small></div></div><div class="help-row"><span>02</span><div><b>길게 연결하면 더 강하게</b><small>4개 → 한 줄 번개 / 5개 → 같은 색 제거<br>T·L자 → 폭탄 / 같은 색 두 번부터 → 자동 토템</small></div></div><div class="help-row"><span>03</span><div><b>같은 색 두 번째부터 자동 발동</b><small>예: 빨강 → 빨강 = 불 토템! 토템 Lv.2로 강화하면 세 번째부터 1.5배 위력이 해금됩니다. Lv.1은 계속 기본 위력입니다. 다른 색을 맞추면 연속 횟수가 초기화됩니다. 자동 낙하 연쇄는 연속 색을 바꾸지 않습니다.</small></div></div><div class="help-row"><span>04</span><div><b>점수와 별빛 수정을 모으세요</b><small>반짝이는 작은 별이 수정입니다. 목표 점수와 수정 수를 모두 채우면 다음 스테이지! 클리어 마법별로 토템을 Lv.5까지 강화하세요. 전체 100개 스테이지.</small></div></div><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="helpClose" class="primary-button">알겠어요 · 탐험으로 →</button>`);$('#helpClose').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};}
 async function trySwap(a,b){
-  if(swapping||!ensureStarted()||!adjacent(a,b))return;
-  if(!board[a]||!board[b])return;
+  if(swapping||!ensureStarted())return;
   swapping=true;
   try{
+    if(activeCascades>0||busy){
+      await cascadeChain;
+    }
+    if(!adjacent(a,b)||!board[a]||!board[b])return;
     selected=-1;hint=[];lastAction=performance.now();
     [board[a],board[b]]=[board[b],board[a]];
     syncPositions();tone(280,.06);
@@ -98,7 +101,8 @@ async function trySwap(a,b){
       return;
     }
     combo++;
-    const primary=groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];
+    const sameColorMatch=groups.find(g=>(g.cells.includes(b)||g.cells.includes(a))&&g.color===totemChain.color)??groups.find(g=>g.color===totemChain.color);
+    const primary=sameColorMatch??groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];
     const instantBuff=(fortuneBuffs&&fortuneBuffs.instantTotemStages>0);
     totemChain=advanceTotem(totemChain,primary.color);
     const shouldTrigger=totemUnlocked(primary.color)&&(totemChain.trigger||instantBuff);
@@ -143,6 +147,22 @@ function queueCascade(groups,preferred=[]){
 }
 async function resolve(groups,preferred=[]){
   for(let depth=0;groups.length&&depth<24;depth++){
+    if(depth>0&&totemChain.color>=0){
+      const matchingColorGroup=groups.find(g=>g.color===totemChain.color);
+      if(matchingColorGroup){
+        totemChain=advanceTotem(totemChain,matchingColorGroup.color);
+        const instantBuff=(fortuneBuffs&&fortuneBuffs.instantTotemStages>0);
+        if(totemUnlocked(matchingColorGroup.color)&&(totemChain.trigger||instantBuff)){
+          pendingTotemCasts.push({
+            color:matchingColorGroup.color,
+            anchor:matchingColorGroup.cells[0],
+            streak:totemChain.count
+          });
+          if(instantBuff)totemChain.trigger=false;
+        }
+        updateTotemUI();
+      }
+    }
     const creation=specialCreations(groups,preferred);
     metrics.specialsMade+=creation.size;metrics.bestCascade=Math.max(metrics.bestCascade,combo);
     const cells=[...new Set(groups.flatMap(g=>g.cells))].filter(i=>board[i]);
@@ -549,7 +569,30 @@ async function castTotem(color,index){
   impactUntil=performance.now()+(reduced?0:900);heavyCast=true;
   showCinematic(color,l,p.multiplier);announce(t.name+' · Lv.'+l,(boost?'위력 ×1.5 · ':'')+t.color+' '+totemChain.count+'연속',1450);director.power(color,p.multiplier);vibrate(boost?[55,35,100,30,75]:[40,35,80]);
   let cells=[];const r=Math.floor(index/8),c=index%8;
-  if(color===1){const centers=fireTargets(l,lastFireTargets);lastFireTargets=centers;frame.dataset.fireTargets=centers.join(',');for(const [k,center]of centers.entries()){const rr=Math.floor(center/8),cc=center%8,rad=l>=4?2:1;fx.meteor(k%2?7:0,center,t.accent,1.1*p.multiplier,k*.085);for(let y=Math.max(0,rr-rad);y<=Math.min(7,rr+rad);y++)for(let x=Math.max(0,cc-rad);x<=Math.min(7,cc+rad);x++)cells.push(y*8+x);}cells=amplifyCells([...new Set(cells)],p.multiplier,centers[0]);}
+  if(color===1){
+    const baseCount=Math.max(1,Math.min(3,Math.ceil(l/2)));
+    const totalMeteors=boost?Math.min(4,baseCount+1):baseCount;
+    const centers=fireTargets(totalMeteors*2-1,lastFireTargets);
+    lastFireTargets=centers;
+    frame.dataset.fireTargets=centers.join(',');
+    const maxCellsByLevel=[0,5,8,11,14,18][l]||8;
+    const maxAllowed=Math.min(24,Math.round(maxCellsByLevel*(boost?1.35:1)));
+    for(const [k,center]of centers.slice(0,totalMeteors).entries()){
+      const rr=Math.floor(center/8),cc=center%8;
+      fx.meteor(k%2?7:0,center,t.accent,1.0*(boost?1.2:1),k*.09);
+      if(l===1){
+        [center,center-8,center+8,center-1,center+1].forEach(pos=>{
+          const pr=Math.floor(pos/8),pc=pos%8;
+          if(pr>=0&&pr<8&&pc>=0&&pc<8&&Math.abs(pr-rr)+Math.abs(pc-cc)<=1)cells.push(pos);
+        });
+      }else{
+        for(let y=Math.max(0,rr-1);y<=Math.min(7,rr+1);y++)
+          for(let x=Math.max(0,cc-1);x<=Math.min(7,cc+1);x++)
+            cells.push(y*8+x);
+      }
+    }
+    cells=[...new Set(cells)].slice(0,maxAllowed);
+  }
   if(color===2){const shock=thunderTargets(l,totemChain.count,index);cells=shock.cells;frame.dataset.shockAnchor=index;frame.dataset.shockRadius=shock.radius;frame.dataset.shockTargets=cells.join(',');fx.storm(index,p.multiplier);fx.shockRange(index,shock.radius,t.accent);for(const hit of cells)if(hit!==index)fx.lightning(index,hit,t.accent,p.multiplier*.85);}
   if(color===0){const harvest=harvestTargets(board,l,totemChain.count);cells=harvest.collect;for(const i of cells)fx.siphon(i,index,t.accent,p.multiplier);harvest.create.forEach(i=>{board[i].crystal=true;ring(i%8+.5,Math.floor(i/8)+.5,t.accent,1.1);});fx.field(c+.5,r+.5,t.accent,p.multiplier,'jade');}
   if(color===3){const bonus=p.bonus*(performance.now()<frenzyUntil?3:1);score+=bonus;frenzy=Math.min(100,frenzy+p.energy);if(frenzy>=100){frenzy=0;frenzyUntil=performance.now()+(6000+l*500);announce('SOLAR AWAKENING','황금 토템 · 점수 3배',1400);}floats.push({x:4,y:3,text:'+'+bonus,life:1.4,color:'#ffda82'});fx.field(c+.5,r+.5,t.accent,p.multiplier,'solar');}

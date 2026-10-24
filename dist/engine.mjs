@@ -20,11 +20,11 @@ export function totemLevelSpecs(index, level){
     ],
     // 1: 불
     [
-      {cur:'불덩이 1발 (반경 1칸 파괴)', next:'불덩이 2발로 증가 & 3연속 1.5배 각성 해금!'},
-      {cur:'불덩이 2발 (3연속 시 3발)', next:'불덩이 3발 폭격 (3연속 시 5발 대폭발)'},
-      {cur:'불덩이 3발 폭격', next:'폭발 반경 2칸(5×5) 대폭 확대! 초토화'},
-      {cur:'불덩이 4발 (폭발 반경 2칸)', next:'불덩이 5발 전방위 융단폭격 (사원 일소)'},
-      {cur:'불덩이 5발 (반경 2칸 · 3연속 시 8발)', next:'최고 레벨 (MAX)'}
+      {cur:'불덩이 1발 (십자 5칸 폭발)', next:'불덩이 3×3 폭발로 확대 & 3연속 1.5배 각성 해금!'},
+      {cur:'불덩이 1발 (3×3 폭발 · 3연속 시 2발)', next:'불덩이 2발 폭격 (정밀 분쇄)'},
+      {cur:'불덩이 2발 폭격 (최대 11칸 파괴)', next:'불덩이 2발 3×3 광역 폭격으로 강화'},
+      {cur:'불덩이 2발 (3×3 폭발 · 3연속 시 3발)', next:'불덩이 3발 융단폭격 해금'},
+      {cur:'불덩이 3발 (3×3 폭격 · 3연속 시 4발)', next:'최고 레벨 (MAX)'}
     ],
     // 2: 번개
     [
@@ -63,7 +63,7 @@ export function totemLevelSpecs(index, level){
 }
 export function advanceTotem(previous,color){const count=previous.color===color?previous.count+1:1;return {color,count,trigger:count>=2};}
 export function totemPower(color,level,streak){const multiplier=level>=2&&streak>=3?1.5:1;return {multiplier,harvest:Math.ceil((level+1)*multiplier),gifts:Math.ceil(level*multiplier),bonus:300*level*multiplier,energy:(15+5*level)*multiplier,seconds:(3+2*level)*multiplier,stasis:level>=3?level*multiplier:0};}
-export function fireTargets(level,previous=[],random=Math.random){const chosen=[],count=Math.max(1,Math.min(5,Math.floor(level)));for(let k=0;k<count;k++){let pool=Array.from({length:64},(_,i)=>i).filter(i=>!chosen.includes(i)&&!previous.includes(i));const spread=pool.filter(i=>chosen.every(j=>Math.hypot(i%8-j%8,Math.floor(i/8)-Math.floor(j/8))>=3));if(spread.length)pool=spread;chosen.push(pool[Math.min(pool.length-1,Math.floor(Math.max(0,random())*pool.length))]);}return chosen;}
+export function fireTargets(level,previous=[],random=Math.random){const chosen=[],count=Math.max(1,Math.min(3,Math.ceil(level/2)));for(let k=0;k<count;k++){let pool=Array.from({length:64},(_,i)=>i).filter(i=>!chosen.includes(i)&&!previous.includes(i));const spread=pool.filter(i=>chosen.every(j=>Math.hypot(i%8-j%8,Math.floor(i/8)-Math.floor(j/8))>=3));if(spread.length)pool=spread;chosen.push(pool[Math.min(pool.length-1,Math.floor(Math.max(0,random())*pool.length))]);}return chosen;}
 function sample(pool,count,random){const rest=[...pool],picked=[];while(rest.length&&picked.length<count)picked.push(rest.splice(Math.min(rest.length-1,Math.floor(Math.max(0,random())*rest.length)),1)[0]);return picked;}
 export function thunderTargets(level,streak,anchor,random=Math.random){const l=Math.max(1,Math.min(5,level)),multiplier=totemPower(2,l,streak).multiplier,radius=1.5+(l-1)*.4+(multiplier>1?.6:0),x=anchor%8,y=Math.floor(anchor/8),count=Math.ceil((5+(l-1)*2)*multiplier),cells=[anchor],pool=Array.from({length:64},(_,i)=>i).filter(i=>i!==anchor&&Math.hypot(i%8-x,Math.floor(i/8)-y)<=radius),sectors=Array(4).fill(0),sector=i=>Math.floor((Math.atan2(Math.floor(i/8)-y,i%8-x)+Math.PI/4+Math.PI*2)%(Math.PI*2)/(Math.PI/2));while(pool.length&&cells.length<count){const available=[...new Set(pool.map(sector))],least=Math.min(...available.map(q=>sectors[q])),options=pool.filter(i=>sectors[sector(i)]===least),hit=sample(options,1,random)[0];cells.push(hit);sectors[sector(hit)]++;pool.splice(pool.indexOf(hit),1);}return {anchor,radius,cells};}
 export function harvestTargets(board,level,streak,random=Math.random){const p=totemPower(0,level,streak),collect=sample(board.flatMap((g,i)=>g?.crystal?[i]:[]),p.harvest,random),create=sample(board.flatMap((g,i)=>g&&!g.crystal?[i]:[]),p.harvest,random);return {collect,create};}
