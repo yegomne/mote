@@ -1,6 +1,6 @@
 import {Soundscape} from './soundscape.mjs?v=6';
 import {ImpactFX} from './element-fx.mjs?v=7';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=13';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=14';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612']];
@@ -18,7 +18,7 @@ function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stri
 function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return `마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i);return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>openUpgrades(+b.dataset.totem));}
-let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=90,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
+let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=90,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
 let pausedAt=0,lastFireTargets=[],finishing=false;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
@@ -67,14 +67,18 @@ function update(){document.body.classList.toggle('playing',started&&!ended);fram
 function accessBoard(){const input=$('#boardInput');if(!input.children.length)for(let i=0;i<64;i++){const b=document.createElement('button');b.dataset.cell=i;b.tabIndex=i===0?0:-1;input.append(b);}board.forEach((g,i)=>{const b=input.children[i];b.setAttribute('aria-label',`${Math.floor(i/8)+1}행 ${i%8+1}열 ${colorNames[g.color]}${g.special?' 특수 보석':''}${g.crystal?' 별빛 수정':''}${sealState[i]?' 봉인 '+sealState[i]+'겹':''}`);b.dataset.color=g.color;b.dataset.seal=sealState[i];});}
 function syncPositions(reset=false){board.forEach((g,i)=>{if(reset||g.x===undefined){g.x=i%8;g.y=Math.floor(i/8);}g.tx=i%8;g.ty=Math.floor(i/8);});accessBoard();}
 function start(){if(ended){reset();}if(started){if(paused){resumeClock();$('#modal').close();update();}else pause();return;}started=true;running=true;lastTick=performance.now();lastAction=lastTick;tone(523,.2);announce(stage.name,stage.tip,1700);update();}
-function reset(){initStage();pausedAt=0;frame.classList.remove('frozen-board');board=makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??90;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;finishAfterBusy=false;shuffleLeft=2;totemChain={color:-1,count:0};totalTotemCasts=0;combo=1;particles=[];ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);$('#modal').close();update();persist();}
+function reset(){initStage();pausedAt=0;frame.classList.remove('frozen-board');board=makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??90;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=2;totemChain={color:-1,count:0};totalTotemCasts=0;combo=1;particles=[];ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);$('#modal').close();update();persist();}
 function ensureStarted(){if(finishing)return false;if(!started)start();return running&&!paused&&!ended;}
 function pause(){if(!started||ended){toast('보석을 연결하면 탐험이 시작됩니다.');return;}if(busy){toast('연쇄가 끝나면 잠시 쉴 수 있어요.');return;}pauseClock();showModal(`<div class="modal-kicker">TAKE A BREATH</div><h2>사원이 기다리고 있어요</h2><p style="text-align:center">잠시 쉬어도 괜찮아요.<br>돌아오면 바로 이어갈 수 있어요.</p><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="resumeBtn" class="primary-button">탐험 계속하기 →</button><button id="restartBtn" class="text-button">이 스테이지 처음부터 <span>↻</span></button>`);$('#resumeBtn').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};$('#restartBtn').onclick=()=>{reset();start();};update();}
 function resume(){if(started&&!ended){resumeClock();}$('#modal').close();update();}
 function showModal(html){$('#modalContent').innerHTML=html;if(!$('#modal').open)$('#modal').showModal();}
 function help(){if(busy){toast('연쇄가 끝난 뒤 도움말을 열 수 있어요.');return;}const was=running;if(was&&!busy){pauseClock();}showModal(`<div class="modal-kicker">THE ART OF MATCHING</div><h2>아주 간단한 탐험 방법</h2><div class="help-row"><span>01</span><div><b>보석 3개를 나란히</b><small>옆 보석으로 스와이프하거나 두 보석을 차례로 터치하세요.<br>키보드: 방향키 이동 · Enter 선택</small></div></div><div class="help-row"><span>02</span><div><b>길게 연결하면 더 강하게</b><small>4개 → 한 줄 번개 / 5개 → 같은 색 제거<br>T·L자 → 폭탄 / 같은 색 두 번부터 → 자동 토템</small></div></div><div class="help-row"><span>03</span><div><b>같은 색 두 번째부터 자동 발동</b><small>예: 빨강 → 빨강 = 불 토템! 토템 Lv.2로 강화하면 세 번째부터 1.5배 위력이 해금됩니다. Lv.1은 계속 기본 위력입니다. 다른 색을 맞추면 연속 횟수가 초기화됩니다. 자동 낙하 연쇄는 연속 색을 바꾸지 않습니다.</small></div></div><div class="help-row"><span>04</span><div><b>점수와 별빛 수정을 모으세요</b><small>반짝이는 작은 별이 수정입니다. 목표 점수와 수정 수를 모두 채우면 다음 스테이지! 클리어 마법별로 토템을 Lv.5까지 강화하세요. 전체 100개 스테이지.</small></div></div><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="helpClose" class="primary-button">알겠어요 · 탐험으로 →</button>`);$('#helpClose').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};}
 async function trySwap(a,b){
-  if(swapping||!ensureStarted())return;
+  if(!ensureStarted())return;
+  if(swapping){
+    queuedSwap=[a,b];
+    return;
+  }
   swapping=true;
   try{
     if(activeCascades>0||busy){
@@ -97,7 +101,10 @@ async function trySwap(a,b){
         board=makeBoard();syncPositions(true);
         announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');
       }
-      if(budgetEmpty()&&activeCascades===0)finish(false);
+      if(budgetEmpty()&&activeCascades===0){
+        const stars=evaluateStageStars(stage,{...metrics,score,crystals},0);
+        finish(stars>=1);
+      }
       return;
     }
     combo++;
@@ -122,6 +129,11 @@ async function trySwap(a,b){
     console.error('trySwap error:',err);
   }finally{
     swapping=false;
+    if(queuedSwap&&!ended&&running&&!paused){
+      const [nA,nB]=queuedSwap;
+      queuedSwap=null;
+      trySwap(nA,nB);
+    }
   }
 }
 function queueCascade(groups,preferred=[]){
@@ -262,8 +274,14 @@ async function clearCells(indices,creations=new Map(),chain=1){
 function checkEnd(){
   if(ended||finishing)return;
   const obj=objectives(level);
-  if(currentGoals().every(g=>g.done)){finish(true);return;}
-  if(budgetEmpty()){finish(false);return;}
+  const sealCleared=stage.seals.length===0||metrics.sealsBroken>=stage.seals.length;
+  const altPass=score>=Math.round(stage.target*1.85)&&sealCleared;
+  if(currentGoals().every(g=>g.done)||altPass){finish(true);return;}
+  if(budgetEmpty()){
+    const stars=evaluateStageStars(stage,{...metrics,score,crystals},0);
+    if(stars>=1){finish(true);return;}
+    finish(false);return;
+  }
   if(!findMove(board)){board=makeBoard();syncPositions(true);announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');}
   persist();
 }
@@ -370,7 +388,7 @@ function completeStage(win){
   if($('#zenResult'))$('#zenResult').onclick=()=>{mode='zen';reset();start();};
 }
 function select(i){
-  if(swapping||paused||ended||$('#modal').open)return;
+  if(paused||ended||$('#modal').open)return;
   if(i<0||i>=64||!board[i])return;
   if(selected===i){selected=-1;return;}
   if(selected>=0&&adjacent(selected,i)){
@@ -539,7 +557,11 @@ function tick(now){
     else if(mode!=='zen'&&now>=impactUntil){time=Math.max(0,time-elapsed);}
     if(now>frenzyUntil&&frenzy>0&&now-lastAction>2500)frenzy=Math.max(0,frenzy-elapsed*1.8);
     if((busy||swapping)&&now-lastAction>2200&&activeCascades===0&&!finishing){busy=false;swapping=false;frame.setAttribute('aria-busy','false');checkEnd();}
-    if(budgetEmpty()){if(busy)finishAfterBusy=true;else finish(false);}
+    if(budgetEmpty()){
+      const stars=evaluateStageStars(stage,{...metrics,score,crystals},0);
+      if(busy)finishAfterBusy=true;
+      else finish(stars>=1);
+    }
   }
   const titleActive=!$('#titleScreen')?.classList.contains('hide');
   if(!document.hidden){
@@ -570,36 +592,33 @@ async function castTotem(color,index){
   showCinematic(color,l,p.multiplier);announce(t.name+' · Lv.'+l,(boost?'위력 ×1.5 · ':'')+t.color+' '+totemChain.count+'연속',1450);director.power(color,p.multiplier);vibrate(boost?[55,35,100,30,75]:[40,35,80]);
   let cells=[];const r=Math.floor(index/8),c=index%8;
   if(color===1){
-    const baseCount=Math.max(1,Math.min(3,Math.ceil(l/2)));
-    const totalMeteors=boost?Math.min(4,baseCount+1):baseCount;
-    const centers=fireTargets(totalMeteors*2-1,lastFireTargets);
+    const centers=fireTargets(l,lastFireTargets);
     lastFireTargets=centers;
     frame.dataset.fireTargets=centers.join(',');
-    const maxCellsByLevel=[0,5,8,11,14,18][l]||8;
-    const maxAllowed=Math.min(24,Math.round(maxCellsByLevel*(boost?1.35:1)));
-    for(const [k,center]of centers.slice(0,totalMeteors).entries()){
-      const rr=Math.floor(center/8),cc=center%8;
-      fx.meteor(k%2?7:0,center,t.accent,1.0*(boost?1.2:1),k*.09);
-      if(l===1){
-        [center,center-8,center+8,center-1,center+1].forEach(pos=>{
-          const pr=Math.floor(pos/8),pc=pos%8;
-          if(pr>=0&&pr<8&&pc>=0&&pc<8&&Math.abs(pr-rr)+Math.abs(pc-cc)<=1)cells.push(pos);
-        });
-      }else{
-        for(let y=Math.max(0,rr-1);y<=Math.min(7,rr+1);y++)
-          for(let x=Math.max(0,cc-1);x<=Math.min(7,cc+1);x++)
-            cells.push(y*8+x);
-      }
+    for(const [k,center]of centers.entries()){
+      const rr=Math.floor(center/8),cc=center%8,rad=l>=4?2:1;
+      fx.meteor(k%2?7:0,center,t.accent,1.1*p.multiplier,k*.085);
+      for(let y=Math.max(0,rr-rad);y<=Math.min(7,rr+rad);y++)
+        for(let x=Math.max(0,cc-rad);x<=Math.min(7,cc+rad);x++)
+          cells.push(y*8+x);
     }
-    cells=[...new Set(cells)].slice(0,maxAllowed);
+    cells=amplifyCells([...new Set(cells)],p.multiplier,centers[0]);
   }
   if(color===2){const shock=thunderTargets(l,totemChain.count,index);cells=shock.cells;frame.dataset.shockAnchor=index;frame.dataset.shockRadius=shock.radius;frame.dataset.shockTargets=cells.join(',');fx.storm(index,p.multiplier);fx.shockRange(index,shock.radius,t.accent);for(const hit of cells)if(hit!==index)fx.lightning(index,hit,t.accent,p.multiplier*.85);}
   if(color===0){const harvest=harvestTargets(board,l,totemChain.count);cells=harvest.collect;for(const i of cells)fx.siphon(i,index,t.accent,p.multiplier);harvest.create.forEach(i=>{board[i].crystal=true;ring(i%8+.5,Math.floor(i/8)+.5,t.accent,1.1);});fx.field(c+.5,r+.5,t.accent,p.multiplier,'jade');}
   if(color===3){const bonus=p.bonus*(performance.now()<frenzyUntil?3:1);score+=bonus;frenzy=Math.min(100,frenzy+p.energy);if(frenzy>=100){frenzy=0;frenzyUntil=performance.now()+(6000+l*500);announce('SOLAR AWAKENING','황금 토템 · 점수 3배',1400);}floats.push({x:4,y:3,text:'+'+bonus,life:1.4,color:'#ffda82'});fx.field(c+.5,r+.5,t.accent,p.multiplier,'solar');}
   if(color===4){const gifts=lunarTargets(board,l,totemChain.count);metrics.specialsMade+=gifts.length;gifts.forEach(({index:i,special},k)=>{board[i].special=special;fx.meteor(index,i,t.accent,.75,k*.06,'gift');});fx.field(c+.5,r+.5,t.accent,p.multiplier,'lunar');}
   if(color===5){let text='시간의 축복';if(mode!=='zen'){const next=extendTime(stage,time,p),gained=next-time;time=next;text='+'+gained.toFixed(1).replace('.0','')+'초';}if(p.stasis){frozen=Math.max(frozen,p.stasis);frame.classList.add('frozen-board');}floats.push({x:4,y:3,text,life:1.4,color:'#ffd7a1'});fx.field(4,4,t.accent,p.multiplier,'clock');}
-  update();await wait(reduced?20:420);
-  if(cells.length){const valid=[...new Set(cells)].filter(i=>board[i]);if(valid.length){await clearCells(valid,new Map(),1);await settle();}}else{accessBoard();await wait(reduced?20:200);}
+  if(cells.length){
+    update();
+    await wait(reduced?20:300);
+    const valid=[...new Set(cells)].filter(i=>board[i]);
+    if(valid.length){await clearCells(valid,new Map(),1);await settle();}
+  }else{
+    update();
+    accessBoard();
+    await wait(reduced?15:90);
+  }
   heavyCast=false;best=Math.max(best,score);update();
 }
 

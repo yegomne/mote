@@ -20,11 +20,11 @@ export function totemLevelSpecs(index, level){
     ],
     // 1: 불
     [
-      {cur:'불덩이 1발 (십자 5칸 폭발)', next:'불덩이 3×3 폭발로 확대 & 3연속 1.5배 각성 해금!'},
-      {cur:'불덩이 1발 (3×3 폭발 · 3연속 시 2발)', next:'불덩이 2발 폭격 (정밀 분쇄)'},
-      {cur:'불덩이 2발 폭격 (최대 11칸 파괴)', next:'불덩이 2발 3×3 광역 폭격으로 강화'},
-      {cur:'불덩이 2발 (3×3 폭발 · 3연속 시 3발)', next:'불덩이 3발 융단폭격 해금'},
-      {cur:'불덩이 3발 (3×3 폭격 · 3연속 시 4발)', next:'최고 레벨 (MAX)'}
+      {cur:'불덩이 1발 (반경 1칸 파괴)', next:'불덩이 2발로 증가 & 3연속 1.5배 각성 해금!'},
+      {cur:'불덩이 2발 (3연속 시 3발)', next:'불덩이 3발 폭격 (3연속 시 5발 대폭발)'},
+      {cur:'불덩이 3발 폭격', next:'폭발 반경 2칸(5×5) 대폭 확대! 초토화'},
+      {cur:'불덩이 4발 (폭발 반경 2칸)', next:'불덩이 5발 전방위 융단폭격 (사원 일소)'},
+      {cur:'불덩이 5발 (반경 2칸 · 3연속 시 8발)', next:'최고 레벨 (MAX)'}
     ],
     // 2: 번개
     [
@@ -63,7 +63,7 @@ export function totemLevelSpecs(index, level){
 }
 export function advanceTotem(previous,color){const count=previous.color===color?previous.count+1:1;return {color,count,trigger:count>=2};}
 export function totemPower(color,level,streak){const multiplier=level>=2&&streak>=3?1.5:1;return {multiplier,harvest:Math.ceil((level+1)*multiplier),gifts:Math.ceil(level*multiplier),bonus:300*level*multiplier,energy:(15+5*level)*multiplier,seconds:(3+2*level)*multiplier,stasis:level>=3?level*multiplier:0};}
-export function fireTargets(level,previous=[],random=Math.random){const chosen=[],count=Math.max(1,Math.min(3,Math.ceil(level/2)));for(let k=0;k<count;k++){let pool=Array.from({length:64},(_,i)=>i).filter(i=>!chosen.includes(i)&&!previous.includes(i));const spread=pool.filter(i=>chosen.every(j=>Math.hypot(i%8-j%8,Math.floor(i/8)-Math.floor(j/8))>=3));if(spread.length)pool=spread;chosen.push(pool[Math.min(pool.length-1,Math.floor(Math.max(0,random())*pool.length))]);}return chosen;}
+export function fireTargets(level,previous=[],random=Math.random){const chosen=[],count=Math.max(1,Math.min(5,Math.floor(level)));for(let k=0;k<count;k++){let pool=Array.from({length:64},(_,i)=>i).filter(i=>!chosen.includes(i)&&!previous.includes(i));const spread=pool.filter(i=>chosen.every(j=>Math.hypot(i%8-j%8,Math.floor(i/8)-Math.floor(j/8))>=3));if(spread.length)pool=spread;chosen.push(pool[Math.min(pool.length-1,Math.floor(Math.max(0,random())*pool.length))]);}return chosen;}
 function sample(pool,count,random){const rest=[...pool],picked=[];while(rest.length&&picked.length<count)picked.push(rest.splice(Math.min(rest.length-1,Math.floor(Math.max(0,random())*rest.length)),1)[0]);return picked;}
 export function thunderTargets(level,streak,anchor,random=Math.random){const l=Math.max(1,Math.min(5,level)),multiplier=totemPower(2,l,streak).multiplier,radius=1.5+(l-1)*.4+(multiplier>1?.6:0),x=anchor%8,y=Math.floor(anchor/8),count=Math.ceil((5+(l-1)*2)*multiplier),cells=[anchor],pool=Array.from({length:64},(_,i)=>i).filter(i=>i!==anchor&&Math.hypot(i%8-x,Math.floor(i/8)-y)<=radius),sectors=Array(4).fill(0),sector=i=>Math.floor((Math.atan2(Math.floor(i/8)-y,i%8-x)+Math.PI/4+Math.PI*2)%(Math.PI*2)/(Math.PI/2));while(pool.length&&cells.length<count){const available=[...new Set(pool.map(sector))],least=Math.min(...available.map(q=>sectors[q])),options=pool.filter(i=>sectors[sector(i)]===least),hit=sample(options,1,random)[0];cells.push(hit);sectors[sector(hit)]++;pool.splice(pool.indexOf(hit),1);}return {anchor,radius,cells};}
 export function harvestTargets(board,level,streak,random=Math.random){const p=totemPower(0,level,streak),collect=sample(board.flatMap((g,i)=>g?.crystal?[i]:[]),p.harvest,random),create=sample(board.flatMap((g,i)=>g&&!g.crystal?[i]:[]),p.harvest,random);return {collect,create};}
@@ -140,40 +140,67 @@ export function stageStarCriteria(stage){
   const targetScore = stage.target;
   const star2Score = Math.round(targetScore * 1.3 / 50) * 50;
   const star3Score = Math.round(targetScore * 1.6 / 50) * 50;
+  const altStar3Score = Math.round(targetScore * 1.85 / 50) * 50;
   const hasSeals = stage.seals && stage.seals.length > 0;
   return {
-    star1: { stars: 1, title: '★ 1성: 기본 돌파', desc: `목표 점수 ${targetScore.toLocaleString()}점 & 수정 ${stage.crystals}개` },
-    star2: { stars: 2, title: '★★ 2성: 숙련 제패', score: star2Score, desc: `점수 ${star2Score.toLocaleString()}점 (+30%) & 잔여 15초+ (or 3콤보)` },
+    star1: {
+      stars: 1,
+      title: '★ 1성: 기본 돌파',
+      desc: `목표 점수 ${targetScore.toLocaleString()}점 & 수정 ${stage.crystals}개 (or 점수 +25% 초과)`
+    },
+    star2: {
+      stars: 2,
+      title: '★★ 2성: 숙련 제패',
+      score: star2Score,
+      desc: `점수 ${star2Score.toLocaleString()}점 (+30%) & 잔여 15초+ (or 3콤보)`
+    },
     star3: {
       stars: 3,
       title: '★★★ 3성: 완벽한 정복',
       score: star3Score,
       desc: hasSeals
-        ? `점수 ${star3Score.toLocaleString()}점 (+60%) & 봉인 100% 완전 파괴`
-        : `점수 ${star3Score.toLocaleString()}점 (+60%) & 잔여 25초+ (or 특수보석 4개)`
+        ? `점수 ${star3Score.toLocaleString()}점 & 봉인 완전 파괴 (수정 부족 시 ${altStar3Score.toLocaleString()}점 하이스코어로 3성!)`
+        : `점수 ${star3Score.toLocaleString()}점 & 잔여 15초+ (수정 부족 시 ${altStar3Score.toLocaleString()}점 슈퍼 스코어로 3성!)`
     }
   };
 }
 
 export function evaluateStageStars(stage, metrics, remainingTime=0){
   const m = { ...metrics };
-  if(m.score === undefined) m.score = stage.target;
-  if(m.crystals === undefined) m.crystals = stage.crystals;
-  const goals = stageGoals(stage, m);
-  if(!goals.every(g => g.done)) return 0;
   const targetScore = stage.target;
+  const currentScore = m.score || 0;
+  const currentCrystals = m.crystals || 0;
   const star2Score = Math.round(targetScore * 1.3 / 50) * 50;
   const star3Score = Math.round(targetScore * 1.6 / 50) * 50;
+  const altStar3Score = Math.round(targetScore * 1.85 / 50) * 50;
   const hasSeals = stage.seals && stage.seals.length > 0;
+  const sealCleared = hasSeals ? ((m.sealsBroken || 0) >= stage.seals.length) : true;
+
+  // Basic pass: Either score >= target & crystals >= target, OR score >= 125% target!
+  const hasMinScore = currentScore >= targetScore;
+  const hasCrystals = currentCrystals >= stage.crystals;
+  const altPass = currentScore >= Math.round(targetScore * 1.25);
+  
+  if (!((hasMinScore && hasCrystals && sealCleared) || (altPass && sealCleared))) {
+    return 0; // Failed
+  }
 
   let stars = 1;
-  const star2Cond = m.score >= star2Score && (remainingTime >= 15 || (m.bestCascade || 0) >= 3);
-  if(star2Cond) stars = 2;
+  // 2-Star: Score >= 130% AND (has crystals OR 3+ combo OR 15s remaining)
+  if (currentScore >= star2Score && (hasCrystals || (m.bestCascade || 0) >= 3 || remainingTime >= 15)) {
+    stars = 2;
+  }
 
-  const sealCleared = hasSeals ? ((m.sealsBroken || 0) >= stage.seals.length) : true;
-  const extraCond = hasSeals ? sealCleared : (remainingTime >= 25 || (m.specialsMade || 0) >= 4);
+  // 3-Star:
+  // Route A (Standard): Score >= 160% + Crystals 100% + remaining time >= 15s (or specials >= 3)
+  // Route B (Alternate - crystals short): Score >= 185% + remaining time >= 10s (or specials >= 4 / fever)
+  const routeA = (currentScore >= star3Score && hasCrystals && (remainingTime >= 15 || (m.specialsMade || 0) >= 3));
+  const routeB = (currentScore >= altStar3Score && (remainingTime >= 10 || (m.bestCascade || 0) >= 4 || (m.specialsMade || 0) >= 4));
 
-  if(stars >= 2 && m.score >= star3Score && extraCond) stars = 3;
+  if (stars >= 2 && (routeA || routeB)) {
+    stars = 3;
+  }
+
   return stars;
 }
 
@@ -331,28 +358,55 @@ const STAGE_NAMES={awakening:'새벽의 보석',totem:'수호자의 응답',colo
 const STAGE_TIPS={awakening:'4·5매치와 토템을 이어 제한 시간 안에 목표를 달성하세요.',totem:'같은 색을 이어가세요. 토템 Lv.2부터 3연속 위력 1.5배!',colors:'목표 색과 특수 보석을 함께 만드는 교환을 찾으세요.',seals:'흩어진 봉인을 공략하세요. 위·옆 매치와 토템이 한 겹씩 깹니다.',bonus:'60초 보물방! 특수 보석과 토템으로 보물을 빠르게 모으세요.',cascade:'제한 시간 안에 도전하세요. 보드 아래쪽에서 연쇄를 설계하세요.',special:'4개·5개·T자 매치로 특수 보석을 직접 만드세요.',ritual:'목표 색을 모으면서 봉인까지 깨는 수를 찾으세요.',overdrive:'토템을 여러 번 발동하세요. Lv.2의 3연속 1.5배가 공략을 돕습니다.',guardian:'제한 시간 안에 봉인, 수정, 토템 목표를 모두 달성하세요.'};
 function sealsFor(level,count,hp){const chosen=[],available=Array.from({length:64},(_,i)=>i),distance=(a,b)=>Math.abs(a%8-b%8)+Math.abs(Math.floor(a/8)-Math.floor(b/8));for(let k=0;k<count;k++){available.sort((a,b)=>{const rank=i=>chosen.length?Math.min(...chosen.map(j=>distance(i,j))):0;return rank(b)-rank(a)||((a*19+level*7)%67)-((b*19+level*7)%67);});chosen.push(available.shift());}return chosen.map(index=>({index,hp}));}
 export function stageDesign(level){const chapter=chapterIndex(level),local=(level-1)%20+1,beat=(level-1)%10,type=STAGE_TYPES[beat],second=local>10?1:0;
- const stage={level,chapter,type,name:STAGE_NAMES[type],tip:STAGE_TIPS[type],target:4500+chapter*6000+(local-1)*650,crystals:5+chapter*2+Math.floor((local-1)/5),time:85-chapter*3-second*5,focusColor:null,colorTarget:0,seals:[],comboTarget:0,specialTarget:0,totemTarget:0,overdriveTarget:0};
- const hp=chapter>=3?3:chapter>=1||local>10?2:1;
- if(type==='awakening'&&level>1){stage.specialTarget=2+chapter;stage.seals=sealsFor(level,4+chapter*2,hp);}
- if(type==='totem')stage.totemTarget=2+chapter+second;
- if(type==='colors'){stage.focusColor=(chapter+Math.floor((level-1)/10))%6;stage.colorTarget=18+chapter*6+second*3;}
- if(type==='seals')stage.seals=sealsFor(level,10+chapter*3+second*2,hp);
- if(type==='bonus'){stage.time=60;stage.target=Math.round(stage.target*.72);stage.crystals=Math.max(4,stage.crystals-1);stage.seals=sealsFor(level,6+chapter*2,hp);}
- if(type==='cascade'){stage.comboTarget=3+(chapter>=3?1:0);stage.time=95-chapter*5;stage.specialTarget=2+chapter;}
- if(type==='special')stage.specialTarget=3+chapter+second;
- if(type==='ritual'){stage.focusColor=(chapter+1)%6;stage.colorTarget=16+chapter*5;stage.seals=sealsFor(level,10+chapter*3,hp);}
- if(type==='overdrive'){stage.name='토템의 시험';stage.totemTarget=3+chapter+second;stage.specialTarget=2+chapter;stage.time=105-chapter*5;}
- if(type==='guardian'){stage.target+=3500;stage.time=120-chapter*5;stage.seals=sealsFor(level,14+chapter*3+second*2,hp);stage.totemTarget=3+chapter;stage.name=['비취의 수문장','정글의 쌍둥이 수호자','폭풍의 거인','달그림자 사제','황금 태양의 심장'][chapter];}
- if(level===1){stage.name='첫 번째 빛';stage.tip='90초 안에 1,800점과 수정 3개를 모으세요. 4개를 맞추면 특수 보석!';stage.target=1800;stage.crystals=3;stage.time=90;}
- if(level===2){stage.name='두 번의 부름';stage.tip='같은 빨강이나 파랑을 두 번 이어 맞추세요. 토템 2회가 목표입니다.';stage.target=3200;stage.crystals=4;stage.time=90;}
- if(level===3){stage.name='비취를 찾아서';stage.tip='비취 18개와 수정 5개를 모으세요. 목표 색을 만드는 교환이 중요합니다.';stage.target=4500;}
- if(level===4){stage.name='비취 정령의 문';stage.tip='비취 토템 해금! 흩어진 봉인 10개를 제한 시간 안에 공략하세요.';}
- if(level===7)stage.name='달의 선물';
- if(level===9)stage.tip='토템 3회와 특수 보석 2개! 토템 Lv.2부터 3연속 위력 1.5배가 해금됩니다.';
- if(level===10)stage.tip='황금 토템 해금! 120초 안에 봉인 14개와 토템 3회를 달성하세요.';
- stage.target=Math.round(stage.target*(1+(level>=6?.15:0)+chapter*.09)/50)*50;
- stage.timeCap=stage.time+25;
- return stage;
+  let rawTarget = 4500 + chapter * 12000 + (local - 1) * 650;
+  if(beat === 9) rawTarget = Math.round(rawTarget * 1.20);
+  else if(beat === 4) rawTarget = Math.round(rawTarget * 0.85);
+
+  const crystals = 4 + chapter + Math.floor(local / 8);
+  let time = 90 - chapter * 2;
+  if(beat === 4) time = 60;
+  else if(beat === 9) time = 105;
+
+  const stage = {
+    level,
+    chapter,
+    type,
+    name: STAGE_NAMES[type],
+    tip: STAGE_TIPS[type],
+    target: Math.round(rawTarget / 50) * 50,
+    crystals,
+    time,
+    focusColor: null,
+    colorTarget: 0,
+    seals: [],
+    comboTarget: 0,
+    specialTarget: 0,
+    totemTarget: 0,
+    overdriveTarget: 0
+  };
+
+  const hp = chapter >= 3 ? 3 : chapter >= 1 || local > 10 ? 2 : 1;
+  if(type === 'awakening' && level > 1){ stage.specialTarget = 2 + chapter; stage.seals = sealsFor(level, 4 + chapter * 2, hp); }
+  if(type === 'totem') stage.totemTarget = 2 + chapter + second;
+  if(type === 'colors'){ stage.focusColor = (chapter + Math.floor((level - 1) / 10)) % 6; stage.colorTarget = 18 + chapter * 6 + second * 3; }
+  if(type === 'seals') stage.seals = sealsFor(level, 8 + chapter * 3 + second * 2, hp);
+  if(type === 'bonus'){ stage.time = 60; stage.target = Math.round(stage.target * 0.85 / 50) * 50; stage.crystals = Math.max(4, stage.crystals - 1); stage.seals = sealsFor(level, 6 + chapter * 2, hp); }
+  if(type === 'cascade'){ stage.comboTarget = 3 + (chapter >= 3 ? 1 : 0); stage.time = 95 - chapter * 3; stage.specialTarget = 2 + chapter; }
+  if(type === 'special') stage.specialTarget = 3 + chapter + second;
+  if(type === 'ritual'){ stage.focusColor = (chapter + 1) % 6; stage.colorTarget = 16 + chapter * 5; stage.seals = sealsFor(level, 10 + chapter * 3, hp); }
+  if(type === 'overdrive'){ stage.name = '토템의 시험'; stage.totemTarget = 3 + chapter + second; stage.specialTarget = 2 + chapter; stage.time = 105 - chapter * 3; }
+  if(type === 'guardian'){ stage.target = Math.round(stage.target * 1.25 / 50) * 50; stage.time = 120 - chapter * 3; stage.seals = sealsFor(level, 12 + chapter * 3 + second * 2, hp); stage.totemTarget = 3 + chapter; stage.name = ['비취의 수문장','정글의 쌍둥이 수호자','폭풍의 거인','달그림자 사제','황금 태양의 심장'][chapter]; }
+
+  if(level === 1){ stage.name = '첫 번째 빛'; stage.tip = '90초 동안 4,500점과 수정 4개를 모으세요! 4개 연결 시 특수 보석이 생성됩니다.'; stage.target = 4500; stage.crystals = 4; stage.time = 90; }
+  if(level === 2){ stage.name = '두 번의 부름'; stage.tip = '같은 색 보석을 2연속 맞춰 토템을 발동하세요! 5,500점 돌파가 목표입니다.'; stage.target = 5500; stage.crystals = 4; stage.time = 90; }
+  if(level === 3){ stage.name = '비취를 찾아서'; stage.tip = '비취 18개와 수정 5개를 모으세요. 특수 보석과 연속 연쇄를 노리세요!'; stage.target = 6500; stage.crystals = 5; stage.time = 90; }
+  if(level === 4){ stage.name = '비취 정령의 문'; stage.tip = '비취 토템 해금! 사원의 봉인들을 특수 보석과 토템 폭발로 날려버리세요.'; stage.target = 7500; stage.crystals = 5; stage.time = 90; }
+  if(level === 7) stage.name = '달의 선물';
+  if(level === 9) stage.tip = '토템 3회와 특수 보석 2개! 토템 Lv.2부터 3연속 위력 1.5배 각성이 열립니다.';
+  if(level === 10) stage.tip = '황금 토템 해금! 봉인 12개와 토템 3회를 달성하고 제1장 수문장으로 전진하세요.';
+
+  stage.timeCap = stage.time + 30;
+  return stage;
 }
 export function extendTime(stage,time,p){return Math.min(stage.timeCap,time+p.seconds);}
 export function stageGoals(stage,metrics){const goals=[{id:'score',label:'점수',value:metrics.score,target:stage.target},{id:'crystals',label:'수정',value:metrics.crystals,target:stage.crystals}];if(stage.colorTarget)goals.push({id:'color',label:colorNames[stage.focusColor],value:metrics.colorCollected?.[stage.focusColor]||0,target:stage.colorTarget,color:stage.focusColor});if(stage.seals.length)goals.push({id:'seals',label:'봉인',value:metrics.sealsBroken||0,target:stage.seals.length});if(stage.comboTarget)goals.push({id:'combo',label:'최대 연쇄',value:metrics.bestCascade||0,target:stage.comboTarget});if(stage.specialTarget)goals.push({id:'special',label:'특수 보석 생성',value:metrics.specialsMade||0,target:stage.specialTarget});if(stage.totemTarget)goals.push({id:'totem',label:'토템 발동',value:metrics.totemCasts||0,target:stage.totemTarget});if(stage.overdriveTarget)goals.push({id:'overdrive',label:'1.5배 각성',value:metrics.overdrives||0,target:stage.overdriveTarget});return goals.map(g=>({...g,done:g.value>=g.target}));}
