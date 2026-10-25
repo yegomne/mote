@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {STAGE_COUNT,TOTEMS,stageDesign,stageScenario,makeStageBoard,findMatches,findMove,collapse} from './dist/engine.mjs';
-import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmAffinity,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './dist/realm.mjs';
+import {STAGE_COUNT,TOTEMS,stageDesign,stageScenario,makeStageBoard,makeRealmBoard,findMatches,findMove,collapse} from './dist/engine.mjs';
+import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmAvailableColors,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmAffinity,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './dist/realm.mjs';
 
 assert.equal(STAGE_COUNT,200);
 assert.equal(REALM_ACTS.length,10);
@@ -26,6 +26,8 @@ assert.equal(realmGateStars(realmStage(102)),2,'a different monster requires two
 assert.equal(realmGateStars(realmStage(109)),3,'a boss entrance requires three stars');
 assert.equal(realmGateStars(realmStage(110)),3,'a new act requires three stars');
 assert.equal(realmGateStars(realmStage(200)),0);
+const colorSave=freshRealmSave();assert.equal(realmAvailableColors(colorSave),6);
+for(let unlocked=1;unlocked<=3;unlocked++){colorSave.newLevels[unlocked-1]=1;assert.equal(realmAvailableColors(colorSave),6+unlocked);for(let sample=0;sample<80;sample++){const board=makeRealmBoard(6+unlocked);for(let color=6;color<6+unlocked;color++)assert.ok(board.filter(g=>g.color===color).length>=5,'every unlocked gem must be visible on the board');}}
 for(const n of [101,106,116,126,150,200]){
   const d=realmStage(n),b=makeStageBoard(n);b[0]=null;collapse(b,d.colors);assert.ok(b.every(Boolean));assert.ok(b.every(g=>g.color<d.colors));
 }
@@ -54,6 +56,7 @@ const hpBeforeWave=battle.heroHP;battle.enemyHP=0;assert.ok(realmNextWave(stage,
 stage=realmStage(105);battle=freshRealmBattle(stage,save);const reward=realmReward(stage,battle,save);assert.ok(reward.coins>=stage.reward);assert.equal(save.newLevels[0],1);
 stage=realmStage(115);battle=freshRealmBattle(stage,save);realmReward(stage,battle,save);assert.equal(save.newLevels[1],1);
 stage=realmStage(125);battle=freshRealmBattle(stage,save);realmReward(stage,battle,save);assert.equal(save.newLevels[2],1);
+assert.equal(realmReward(stage,freshRealmBattle(stage,save),save).unlock,-1,'replaying an unlock stage does not claim the same totem again');
 save.coins=10000;assert.ok(realmBuy(save,'gear','staff'));assert.equal(save.gear.staff,1);assert.ok(realmBuy(save,'scroll','storm'));assert.ok(realmBuy(save,'totem','6'));assert.equal(save.newLevels[0],2);
 battle=freshRealmBattle(realmStage(130),save);battle.previousSpell=6;const combo=realmCast(realmStage(130),battle,save,2,5,2);assert.equal(combo.combo,REALM_SCROLLS[0].name);
 assert.equal(combo.comboArt,0);

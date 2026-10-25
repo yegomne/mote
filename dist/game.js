@@ -1,7 +1,7 @@
 import {Soundscape} from './soundscape.mjs?v=7';
 import {ImpactFX} from './element-fx.mjs?v=9';
-import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=5';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=21';
+import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmAvailableColors,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=6';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,makeRealmBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=22';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612'],['#d9ffff','#44d5ee','#128ab3','#074268'],['#fff1c6','#cda767','#806044','#38342c'],['#e4fff1','#95eacb','#48ab96','#156c77']];
@@ -13,6 +13,7 @@ document.addEventListener('touchmove',e=>{if(document.body.classList.contains('p
 let growth;try{growth=JSON.parse(localStorage.getItem('solar-relic-growth-v2')||'{}');}catch{growth={};}
 growth??={};
 let realmSave={...freshRealmSave(),...growth.realm,gear:{...freshRealmSave().gear,...growth.realm?.gear},newLevels:[...freshRealmSave().newLevels.map((v,i)=>growth.realm?.newLevels?.[i]??v)]};
+for(const [i,gate] of [105,115,125].entries())if(saved.level>gate||realmSave.cleared?.includes(gate))realmSave.newLevels[i]=Math.max(1,realmSave.newLevels[i]);
 let totemLevels=Array.from({length:9},(_,i)=>i<6?growth.levels?.[i]!==undefined?Math.max(0,Math.min(5,Math.floor(+growth.levels[i]||0))):i===0?1:0:realmSave.newLevels[i-6]),magicStars=Math.max(0,Math.floor(+growth.stars||0)),stageStars=Array.from({length:STAGE_COUNT},(_,i)=>Math.max(0,Math.min(3,Math.floor(+growth.stageStars?.[i]||0)))),totemChain={color:-1,count:0},totemFlash=-1,totemFlashUntil=0,totalTotemCasts=0;
 let pendingTotemCasts=[],cascadeChain=Promise.resolve(),activeRealmTurn=null;
 let fortuneBuffs=Object.assign({timePenaltyStages:0,timeBonusStages:0,hardSeals:false,extraSpecials:false,feverBonusStages:0},growth.fortuneBuffs||{});
@@ -31,20 +32,23 @@ function applyDivineBlessing(silent=false){
 function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return i<6?`마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`:`${TOTEMS[i].unlockStage}단계 승리 후 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초`,`물결 ${3+l}칸 · 치유`,`대지 충격 · 보호막`,`대각선 칼바람 · 반격 지연` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.slice(0,level>100?9:6).map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i),art=i<6?'totem-art':'realm-totem-art',position=i<6?`${(i%3)*50}% ${Math.floor(i/3)*100}%`:`${(i-6)*50}% 50%`;return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon ${art}" style="background-position:${position}">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>+b.dataset.totem>=6?openRealmShop():openUpgrades(+b.dataset.totem));}
-let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
+let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=saved.level>100?makeRealmBoard(realmAvailableColors(realmSave)):makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
 const is100Completed=stageStars[99]>=1||level>100;
 if(is100Completed){applyDivineBlessing(true);}
-let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false;
+let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false,realmCounterElapsed=0;
+const REALM_COUNTER_TICK=7;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
 let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,cell=boardSize/8,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
 let lastHeavyShake=0,cameraAnimation;
 let stage=stageDesign(level),realmBattle=level>100?freshRealmBattle(stage,realmSave):null,sealState=Array(64).fill(0),metrics={colorCollected:Array(9).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
+function makeCurrentBoard(){return level>100?makeRealmBoard(stage.colors):makeBoard(stage.colors||6);}
 const fx=new ImpactFX(ctx,()=>cell,()=>reduced,(strength,element)=>{heavyShake(strength);if(element==='fire'||element==='thunder'||element==='earth')director.impact(strength,element==='thunder'?2:element==='earth'?0:1);});
 function initStage(){
   finishing=false;lastFireTargets=[];goalsMetAnnounced=false;
   for(const key of ['finale','finaleBonus','castColor','castMultiplier','fireTargets','shockAnchor','shockRadius','shockTargets'])delete frame.dataset[key];
   stage=stageDesign(level);
+  if(level>100)stage.colors=realmAvailableColors(realmSave);
   realmBattle=level>100?freshRealmBattle(stage,realmSave):null;
   if(level>100){$('#realmMage').dataset.pose='idle';$('#realmMonster').dataset.pose='idle';realmPack.dataset.pose='idle';realmPack.classList.remove('spawn');}
   document.body.classList.toggle('realm',level>100);
@@ -77,7 +81,7 @@ function budgetEmpty(){return level<=100&&mode!=='zen'&&time<=0;}
 document.body.classList.toggle('reduced-motion',reduced);
 function persist(){try{localStorage.setItem('solar-relic-v1',JSON.stringify({level,unlocked,best,reduced,sound}));saveGrowth();}catch{}}
 function toast(text){$('#toast').textContent=text;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2400);}
-function announce(title,sub='',duration=1200){const el=$('#boardMessage');el.replaceChildren(document.createTextNode(title));if(sub){const small=document.createElement('small');small.textContent=sub;el.append(small);}el.classList.add('show');clearTimeout(messageTimer);messageTimer=setTimeout(()=>el.classList.remove('show'),duration);}
+function announce(title,sub='',duration=1200){const el=level>100?$('#realmCombatNotice'):$('#boardMessage');$('#boardMessage').classList.remove('show');el.replaceChildren(document.createTextNode(title));if(sub){const small=document.createElement('small');small.textContent=sub;el.append(small);}el.classList.add('show');clearTimeout(messageTimer);messageTimer=setTimeout(()=>el.classList.remove('show'),duration);}
 function tone(freq=440,dur=.12,type='sine',vol=.07){director.ui(freq,dur,type,vol);}
 function chord(kind=0){director.chord(kind);}
 function vibrate(n=20){if(!reduced&&navigator.vibrate)navigator.vibrate(n);}
@@ -87,7 +91,7 @@ function update(){document.body.classList.toggle('playing',started&&!ended);fram
 function accessBoard(){const input=$('#boardInput');if(!input.children.length)for(let i=0;i<64;i++){const b=document.createElement('button');b.dataset.cell=i;b.tabIndex=i===0?0:-1;input.append(b);}board.forEach((g,i)=>{const b=input.children[i];b.setAttribute('aria-label',`${Math.floor(i/8)+1}행 ${i%8+1}열 ${colorNames[g.color]}${g.special?' 특수 보석':''}${g.crystal?' 별빛 수정':''}${sealState[i]?' 봉인 '+sealState[i]+'겹':''}`);b.dataset.color=g.color;b.dataset.seal=sealState[i];});}
 function syncPositions(reset=false){board.forEach((g,i)=>{if(reset||g.x===undefined){g.x=i%8;g.y=Math.floor(i/8);}g.tx=i%8;g.ty=Math.floor(i/8);});accessBoard();}
 function start(){if(ended){reset();}if(started){if(paused){resumeClock();$('#modal').close();update();}else pause();return;}started=true;running=true;lastTick=performance.now();lastAction=lastTick;tone(523,.2);announce(stage.name,stage.tip,1700);update();}
-function reset(){initStage();pausedAt=0;frame.classList.remove('frozen-board');board=makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=level>100?Infinity:2;totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];gemShards=[];currentCastColor=-1;ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);renderTotems();$('#modal').close();update();persist();}
+function reset(){initStage();pausedAt=0;realmCounterElapsed=0;frame.classList.remove('frozen-board');board=level>100?makeCurrentBoard():makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=level>100?Infinity:2;totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];gemShards=[];currentCastColor=-1;ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);renderTotems();$('#modal').close();update();persist();}
 function ensureStarted(){if(finishing)return false;if(!started)start();return running&&!paused&&!ended;}
 function pause(){if(!started||ended){toast('보석을 연결하면 탐험이 시작됩니다.');return;}if(busy){toast('연쇄가 끝나면 잠시 쉴 수 있어요.');return;}pauseClock();showModal(`<div class="modal-kicker">TAKE A BREATH</div><h2>사원이 기다리고 있어요</h2><p style="text-align:center">잠시 쉬어도 괜찮아요.<br>돌아오면 바로 이어갈 수 있어요.</p><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="resumeBtn" class="primary-button">탐험 계속하기 →</button><button id="restartBtn" class="text-button">이 스테이지 처음부터 <span>↻</span></button>`);$('#resumeBtn').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};$('#restartBtn').onclick=()=>{reset();start();};update();}
 function resume(){if(started&&!ended){resumeClock();}$('#modal').close();update();}
@@ -118,7 +122,7 @@ async function trySwap(a,b){
       await wait(reduced?15:90);
       tone(150,.08,'triangle');
       if(!findMove(board)){
-        board=makeBoard(stage.colors||6);syncPositions(true);
+        board=makeCurrentBoard();syncPositions(true);
         announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');
       }
       if(budgetEmpty()&&activeCascades===0){
@@ -175,7 +179,7 @@ function queueCascade(groups,preferred=[]){
       activeRealmTurn=null;
       activeCascades=Math.max(0,activeCascades-1);
       if(activeCascades===0){
-        if(level>100&&realmBattle?.phase==='playing')await combatAfterTurn();
+        // Realm counterattacks are driven by elapsed active play time in tick().
         busy=false;frame.setAttribute('aria-busy','false');checkEnd();update();
       }
     }
@@ -208,7 +212,7 @@ async function resolve(groups,preferred=[]){
     preferred=[];combo++;
   }
   if(!activeCascades&&findMatches(board).length===0&&!findMove(board)){
-    board=makeBoard(stage.colors||6);syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');
+    board=makeCurrentBoard();syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');
   }
 }
 async function settle(recurse=true){collapse(board,stage.colors||6);syncPositions();await wait(reduced?20:185);if(recurse){const groups=findMatches(board);if(groups.length){combo++;await resolve(groups);}}}
@@ -296,6 +300,7 @@ async function clearCells(indices,creations=new Map(),chain=1){
   await wait(reduced?25:hasSpecials?420:175);
 }
 const realmPack=document.createElement('div');realmPack.id='realmPack';realmPack.className='realm-pack';realmPack.hidden=true;realmPack.setAttribute('aria-hidden','true');$('.realm-scene').append(realmPack);
+const realmCombatNotice=document.createElement('div');realmCombatNotice.id='realmCombatNotice';realmCombatNotice.className='realm-combat-notice';realmCombatNotice.setAttribute('role','status');$('#realmArena').append(realmCombatNotice);
 const realmScrollBurst=document.createElement('div');realmScrollBurst.id='realmScrollBurst';realmScrollBurst.className='realm-scroll-burst';realmScrollBurst.setAttribute('aria-hidden','true');$('.realm-scene').append(realmScrollBurst);
 function realmDollLayers(){return REALM_GEAR_SLOTS.map(slot=>`<img class="realm-gear-layer gear-${slot}" data-gear-layer="${slot}" alt="" aria-hidden="true" hidden>`).join('');}
 $('#realmMage').innerHTML=realmDollLayers();
@@ -305,7 +310,7 @@ function realmPose(who,pose,duration=0){if(level<=100)return;const el=$(who==='m
 function updateRealmUI(){
  const arena=$('#realmArena');arena.hidden=level<=100;if(level<=100)return;
  updateRealmDoll();
- const d=realmStage(level),b=realmBattle,foe=REALM_FOES[b.enemyId],sprite=foe.sprite,pack=d.enemyId===0&&d.waves>1,remaining=d.waves-b.wave+1,encounter=realmEncounterHP(d,b);
+ const d=stage,b=realmBattle,foe=REALM_FOES[b.enemyId],sprite=foe.sprite,pack=d.enemyId===0&&d.waves>1,remaining=d.waves-b.wave+1,encounter=realmEncounterHP(d,b);
  document.body.style.setProperty('--realm-art',`url('${realmBackdrop(d,b.enemyId)}')`);
  $('#realmMonster').hidden=pack;realmPack.hidden=!pack;
  if(pack&&realmPack.dataset.count!==String(remaining)){realmPack.innerHTML=Array.from({length:remaining},()=>'<span></span>').join('');realmPack.dataset.count=String(remaining);}
@@ -313,18 +318,20 @@ function updateRealmUI(){
  $('#realmEnemyName').textContent=pack?`${foe.name} ×${remaining}`:d.waves>1?`${foe.name} · ${b.wave}/${d.waves}`:foe.name;
  $('#realmEnemyHP').textContent=`${encounter.current} / ${encounter.max}`;$('#realmHeroHP').textContent=`${b.heroHP} / ${b.heroMax}${b.shield?' · 방어 '+b.shield:''}`;
  $('#realmEnemyFill').style.width=`${Math.max(0,encounter.current/encounter.max*100)}%`;$('#realmHeroFill').style.width=`${Math.max(0,b.heroHP/b.heroMax*100)}%`;
- $('#realmAffinity').textContent=`약점 ${foe.weak.map(i=>TOTEMS[i].shortName).join('·')} / 저항 ${foe.resist.map(i=>TOTEMS[i].shortName).join('·')}`;$('#realmCharge').textContent=b.delay?'그로기 · 반격 지연':`반격까지 ${d.cadence-b.charge}매치`;
+ $('#realmAffinity').textContent=`약점 ${foe.weak.map(i=>TOTEMS[i].shortName).join('·')} / 저항 ${foe.resist.map(i=>TOTEMS[i].shortName).join('·')}`;updateRealmCounterLabel();
  $('#mobileGoal').textContent=`적 체력 ${encounter.current}/${encounter.max} · ◈ ${realmSave.coins}`;$('#targetScore').textContent=encounter.max;$('#crystalCount').textContent=`적 체력 ${encounter.current} / ${encounter.max}`;$('#goalProgress').style.width=`${Math.max(0,(1-encounter.current/encounter.max)*100)}%`;
- $('#timer').textContent='∞';$('#timerLabel').textContent='이동 제한 없음';$('#shuffleCount').textContent='∞';$('#goalChips').innerHTML=`<span class="goal-chip">${d.colors}색 · 특수돌+${realmResonanceThreshold(d).toLocaleString()}점 공명</span><span class="goal-chip">◈ ${realmSave.coins} 코인</span>`;
+ const newGems=['물','대지','바람'].slice(0,d.colors-6).join('·');
+ $('#timer').textContent='∞';$('#timerLabel').textContent='이동 제한 없음';$('#shuffleCount').textContent='∞';$('#goalChips').innerHTML=`<span class="goal-chip" style="--chip-color:${newGems?'#91e4e8':'#dec486'}">${d.colors}색 · ${newGems?'새 보석 '+newGems:'특수돌+'+realmResonanceThreshold(d).toLocaleString()+'점 공명'}</span><span class="goal-chip">◈ ${realmSave.coins} 코인</span>`;
 }
 function showRealmDamage(text,color='#ffe4a0'){const el=$('#realmDamage');el.textContent=text;el.style.color=color;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
 function combatCast(color,anchor){if(level<=100||!realmBattle||realmBattle.phase!=='playing')return;const result=realmCast(stage,realmBattle,realmSave,color,totemLevels[color],totemChain.count);if(!result)return;realmPose('mage','cast',900);realmPose('monster',result.affinity<1?'guard':'hurt',750);const orb=$('#realmSpell');orb.dataset.element=['jade','fire','thunder','solar','moon','time','water','earth','wind'][color];orb.style.setProperty('--spell',TOTEMS[color].accent);orb.classList.remove('fly');void orb.offsetWidth;orb.classList.add('fly');showRealmDamage(`${result.combo?result.combo+' · ':''}−${result.damage}`,TOTEMS[color].accent);if(result.combo){realmScrollBurst.style.backgroundPosition=`${result.comboArt%4*100/3}% ${Math.floor(result.comboArt/4)*100}%`;realmScrollBurst.classList.remove('burst');void realmScrollBurst.offsetWidth;realmScrollBurst.classList.add('burst');toast(`${result.combo} 연계 마법! ${result.damage} 피해`);director.resonance(2);}else if(result.affinity>1)toast(`약점 적중! ${result.damage} 피해`);director.impact(result.boost>1?1.5:1,color===2?2:color===1?1:0);updateRealmUI();}
 function combatResonance(hit){realmPose('mage','cast',850);realmPose('monster','hurt',850);const orb=$('#realmSpell');orb.dataset.element='resonance';orb.style.setProperty('--spell','#fff2ad');orb.classList.remove('fly');void orb.offsetWidth;orb.classList.add('fly');showRealmDamage(`공명 −${hit.damage}`,'#fff2ad');announce('특수돌 공명!',`${hit.score.toLocaleString()}점 · 특수돌 ${hit.specials}개 폭발 → 추가 공격`,1000);director.resonance(hit.power);vibrate([30,30,65]);updateRealmUI();}
-async function combatAfterTurn(){if(level<=100||!realmBattle||realmBattle.phase!=='playing'||realmBattle.enemyHP<=0)return;const event=realmCounter(stage,realmBattle,realmSave);if(event?.delayed){realmPose('monster','groggy',750);toast('몬스터 그로기 · 반격 지연');}else if(event?.damage||event?.blocked){realmPose('monster','attack',650);realmPose('mage',event.damage?'hurt':'guard',750);showRealmDamage(event.damage?`마법사 −${event.damage}`:'방어!',event.damage?'#ff8b78':'#a2ebd9');director.impact(1,1);vibrate(event.damage?45:20);await wait(reduced?25:420);}if(event?.defeat)realmPose('mage','groggy');updateRealmUI();}
-function showCombatWave(){if(stage.enemyId===0){realmPack.classList.remove('spawn');void realmPack.offsetWidth;realmPack.classList.add('spawn');realmPose('monster','idle');announce('슬라임 한 마리 격파!',`${stage.waves-realmBattle.wave+1}마리 남았습니다.`,1000);}else{realmPose('monster','groggy',700);announce(`${realmBattle.wave}/${stage.waves} 연전`,'새로운 적이 나타났습니다. 생명력 일부 회복!',1200);}}
+function updateRealmCounterLabel(){if(level<=100||!realmBattle)return;const seconds=Math.max(1,Math.ceil((stage.cadence-realmBattle.charge+realmBattle.delay)*REALM_COUNTER_TICK-realmCounterElapsed));$('#realmCharge').textContent=realmBattle.delay?`그로기 · 반격 약 ${seconds}초`:`반격까지 약 ${seconds}초`;}
+function combatCounterEvent(event){if(!event)return;if(event.delayed){realmPose('monster','groggy',750);toast('몬스터 그로기 · 반격 지연');}else if(event.damage||event.blocked){realmPose('monster','attack',650);realmPose('mage',event.damage?'hurt':'guard',750);showRealmDamage(event.damage?`마법사 −${event.damage}`:'방어!',event.damage?'#ff8b78':'#a2ebd9');director.impact(1,1);vibrate(event.damage?45:20);}if(event.defeat)realmPose('mage','groggy');updateRealmUI();if(event.burn||event.defeat)checkEnd();}
+function showCombatWave(){realmCounterElapsed=0;if(stage.enemyId===0){realmPack.classList.remove('spawn');void realmPack.offsetWidth;realmPack.classList.add('spawn');realmPose('monster','idle');announce('슬라임 한 마리 격파!',`${stage.waves-realmBattle.wave+1}마리 남았습니다.`,1000);}else{realmPose('monster','groggy',700);announce(`${realmBattle.wave}/${stage.waves} 연전`,'새로운 적이 나타났습니다. 생명력 일부 회복!',1200);}}
 function checkEnd(){
   if(ended||finishing)return;
-  if(level>100){if(realmBattle?.heroHP<=0){finish(false);return;}if(realmBattle?.enemyHP<=0){if(realmNextWave(stage,realmBattle)){showCombatWave();update();return;}finish(true);return;}if(!findMove(board)){board=makeBoard(stage.colors);syncPositions(true);}persist();return;}
+  if(level>100){if(realmBattle?.heroHP<=0){finish(false);return;}if(realmBattle?.enemyHP<=0){if(realmNextWave(stage,realmBattle)){showCombatWave();update();return;}finish(true);return;}if(!findMove(board)){board=makeCurrentBoard();syncPositions(true);}persist();return;}
   const obj=objectives(level);
   const allGoalsDone=currentGoals().every(g=>g.done);
   if(allGoalsDone&&!goalsMetAnnounced){
@@ -339,7 +346,7 @@ function checkEnd(){
     finish(standardWin||stars>=1);
     return;
   }
-  if(!findMove(board)){board=makeBoard(stage.colors||6);syncPositions(true);announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');}
+  if(!findMove(board)){board=makeCurrentBoard();syncPositions(true);announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');}
   persist();
 }
 async function finish(requestedWin){
@@ -398,7 +405,7 @@ function completeRealmStage(win){
   const next=level<REALM_LAST?realmStage(level+1):null;
   const gateText=win&&next?`<div class="realm-gate-result ${canAdvance?'open':'closed'}"><b>다음 상대 · ${next.enemy.name}</b><span>해금 조건 ${required}★ · 최고 성취 ${stageStars[level-1]}★</span><strong>${canAdvance?'길이 열렸습니다':'별이 부족합니다 · 이 전투를 다시 도전하세요'}</strong></div>`:'';
   const nextLabel=win?level===REALM_LAST?'여정의 지도 보기':canAdvance?'다음 전투 →':'별 더 모아 재도전 →':'이 전투 재도전 →';
-  showModal(`<div class="modal-kicker">${win?'THE NINE REALMS · VICTORY':'THE NINE REALMS · RETRY'}</div><h2>${win?level===200?'아홉 토템의 수호자':d.name+' 격파':'마법사는 다시 일어납니다'}</h2><div class="result-stars">${win?starMarks(stars):'✦'}</div><p class="stars-caption">${win?`이번 전투 ${stars}★ · 최고 ${stageStars[level-1]}★ · 생명력 70% 이상 3★ / 35% 이상 2★`:'장비와 연계 스크롤을 준비하고 다시 도전하세요.'}</p>${gateText}<div class="result-stats"><div><b>${score.toLocaleString()}</b><span>보석 점수</span></div><div><b>${win?'◈ '+reward.coins:'◈ '+realmSave.coins}</b><span>${win?'이번 전투 보상':'보유 코인'}</span></div></div>${reward?.unlock>=6?`<p class="stars-caption">✦ ${TOTEMS[reward.unlock].name} 토템 획득!</p>`:''}<button id="realmNext" class="primary-button">${nextLabel}</button><button id="realmResultShop" class="text-button">장비 · 연계 마법 상점 ↗</button>`);
+  showModal(`<div class="modal-kicker">${win?'THE NINE REALMS · VICTORY':'THE NINE REALMS · RETRY'}</div><h2>${win?level===200?'아홉 토템의 수호자':d.name+' 격파':'마법사는 다시 일어납니다'}</h2><div class="result-stars">${win?starMarks(stars):'✦'}</div><p class="stars-caption">${win?`이번 전투 ${stars}★ · 최고 ${stageStars[level-1]}★ · 생명력 70% 이상 3★ / 35% 이상 2★`:'장비와 연계 스크롤을 준비하고 다시 도전하세요.'}</p>${gateText}<div class="result-stats"><div><b>${score.toLocaleString()}</b><span>보석 점수</span></div><div><b>${win?'◈ '+reward.coins:'◈ '+realmSave.coins}</b><span>${win?'이번 전투 보상':'보유 코인'}</span></div></div>${reward?.unlock>=6?`<p class="stars-caption">✦ ${TOTEMS[reward.unlock].name} 토템 해금 · ${colorNames[reward.unlock]} 보석은 다음 전투부터 등장!</p>`:''}<button id="realmNext" class="primary-button">${nextLabel}</button><button id="realmResultShop" class="text-button">장비 · 연계 마법 상점 ↗</button>`);
   $('#realmNext').onclick=()=>{if(win&&level===REALM_LAST){openRealmMap();return;}if(win&&canAdvance)level++;reset();showScenarioBriefing(level);};
   $('#realmResultShop').onclick=()=>openRealmShop();
 }
@@ -549,7 +556,7 @@ document.addEventListener('keydown',e=>{if($('#modal').open)return;if(e.key==='E
 $('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=()=>level>100?realmHelp():help();$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
 $$('[data-mode]').forEach(b=>b.onclick=()=>{if(started&&!ended)return;mode=b.dataset.mode;reset();toast(mode==='zen'?'시간 제한 없이, 편안하게 즐기세요.':'90초 동안 고대 사원을 깨우세요.');});
 $('#hintBtn').onclick=()=>{if(busy||paused||ended)return;hint=findMove(board,totemChain.color)||[];hintUntil=performance.now()+3500;if(hint.length)toast('빛나는 두 보석을 서로 바꿔보세요.');};
-$('#shuffleBtn').onclick=()=>{if(busy||paused||ended)return;if(!shuffleLeft){toast('섞기를 모두 사용했어요. 다음 스테이지에 충전됩니다.');return;}if(level<=100)shuffleLeft--;board=makeBoard(stage.colors||6);selected=-1;hint=[];syncPositions(true);ring(4,4,'#bde5b9',4);tone(450,.18);toast('보석에 새로운 기운이 깃들었어요.');update();};
+$('#shuffleBtn').onclick=()=>{if(busy||paused||ended)return;if(!shuffleLeft){toast('섞기를 모두 사용했어요. 다음 스테이지에 충전됩니다.');return;}if(level<=100)shuffleLeft--;board=makeCurrentBoard();selected=-1;hint=[];syncPositions(true);ring(4,4,'#bde5b9',4);tone(450,.18);toast('보석에 새로운 기운이 깃들었어요.');update();};
 $('#mapBtn').onclick=()=>openMap();
 $('#mobileMap').onclick=()=>$('#mapBtn').click();
 $('#realmBattleMap').onclick=()=>openRealmMap();
@@ -719,6 +726,10 @@ function tick(now){
   if(running&&!paused&&!ended){
     if(frozen>0){frozen=Math.max(0,frozen-elapsed);if(!frozen)frame.classList.remove('frozen-board');}
     else if(level<=100&&mode!=='zen'&&now>=impactUntil){time=Math.max(0,time-elapsed);}
+    if(level>100&&!busy&&!swapping&&realmBattle?.phase==='playing'){
+      realmCounterElapsed+=elapsed;
+      if(realmCounterElapsed>=REALM_COUNTER_TICK){realmCounterElapsed-=REALM_COUNTER_TICK;combatCounterEvent(realmCounter(stage,realmBattle,realmSave));}
+    }
     if(now>frenzyUntil&&frenzy>0&&now-lastAction>2500)frenzy=Math.max(0,frenzy-elapsed*1.8);
     if((busy||swapping)&&now-lastAction>2200&&activeCascades===0&&!finishing){busy=false;swapping=false;frame.setAttribute('aria-busy','false');checkEnd();}
     if(budgetEmpty()){
@@ -739,6 +750,7 @@ function tick(now){
   if(uiTick>.2){
     if(running&&!paused&&!ended){
       $('#timer').textContent=level>100||mode==='zen'?'∞':`${Math.floor(Math.ceil(Math.max(0,time))/60)}:${String(Math.ceil(Math.max(0,time))%60).padStart(2,'0')}`;
+      if(level>100)updateRealmCounterLabel();
       const isFrenzy=performance.now()<frenzyUntil;
       document.body.classList.toggle('is-frenzy',isFrenzy);
       $('#frenzyFill').style.width=`${isFrenzy?Math.max(0,(frenzyUntil-performance.now())/100):frenzy}%`;
@@ -1236,10 +1248,11 @@ $('#titleSoundBtn').onclick=showSoundSettings;
 $('#titleHelpBtn').onclick=()=>level>100?realmHelp():help();
 $('#titleMapBtn').onclick=()=>openMap();
 $('#titleUpgradeBtn').onclick=()=>openUpgrades();
-function realmHelp(){if(busy){toast('연쇄가 끝난 뒤 도움말을 열 수 있어요.');return;}if(running)pauseClock();showModal(`<div class="modal-kicker">THE NINE REALMS · GUIDE</div><h2>보석으로 싸우는 법</h2><div class="help-row"><span>01</span><div><b>원래 하던 방식으로 보석을 맞추세요</b><small>옆 보석과 교환해 3개 이상 연결합니다. 보석판과 특수돌은 사원에서 쓰던 그대로입니다.</small></div></div><div class="help-row"><span>02</span><div><b>연속 색상 마법</b><small>같은 색 두 번째 직접 매치부터 공격합니다. 토템 Lv.2 이상이면 3연속부터 위력 1.5배입니다.</small></div></div><div class="help-row"><span>03</span><div><b>특수돌 공명 공격</b><small>한 턴에서 특수돌이 실제로 터지고 기준 점수를 넘으면 추가 공격이 한 번 발동합니다. 토템을 연속으로 쓰지 않아도 가능합니다.</small></div></div><div class="help-row"><span>04</span><div><b>약점과 별 관문</b><small>약점 마법은 강하게 들어갑니다. 생명력 70% 이상으로 승리하면 3★, 35% 이상이면 2★. 몬스터가 바뀌는 길에는 2~3★가 필요합니다.</small></div></div><div class="help-row"><span>05</span><div><b>장비와 연계 마법</b><small>승리 코인으로 그림 장비 6부위를 구입·장착·강화하고 8종 연계 스크롤을 배웁니다. 이동 횟수와 전투 시간 제한은 없습니다.</small></div></div><button id="helpClose" class="primary-button">전투로 돌아가기 →</button>`);$('#helpClose').onclick=resume;}
+function realmHelp(){if(busy){toast('연쇄가 끝난 뒤 도움말을 열 수 있어요.');return;}if(running)pauseClock();showModal(`<div class="modal-kicker">THE NINE REALMS · GUIDE</div><h2>보석으로 싸우는 법</h2><div class="help-row"><span>01</span><div><b>원래 하던 방식으로 보석을 맞추세요</b><small>옆 보석과 교환해 3개 이상 연결합니다. 보석판과 특수돌은 사원에서 쓰던 그대로입니다.</small></div></div><div class="help-row"><span>02</span><div><b>연속 색상 마법</b><small>같은 색 두 번째 직접 매치부터 공격합니다. 토템 Lv.2 이상이면 3연속부터 위력 1.5배입니다.</small></div></div><div class="help-row"><span>03</span><div><b>특수돌 공명 공격</b><small>한 턴에서 특수돌이 실제로 터지고 기준 점수를 넘으면 추가 공격이 한 번 발동합니다. 토템을 연속으로 쓰지 않아도 가능합니다.</small></div></div><div class="help-row"><span>04</span><div><b>약점과 별 관문</b><small>약점 마법은 강하게 들어갑니다. 생명력 70% 이상으로 승리하면 3★, 35% 이상이면 2★. 몬스터가 바뀌는 길에는 2~3★가 필요합니다.</small></div></div><div class="help-row"><span>05</span><div><b>시간에 따른 반격</b><small>전투에 시간제한과 이동 횟수 제한은 없습니다. 몬스터는 시간이 지나면 반격하며, 보석 연쇄와 일시정지 중에는 반격 시간이 멈춥니다.</small></div></div><div class="help-row"><span>06</span><div><b>장비와 연계 마법</b><small>승리 코인으로 그림 장비 6부위를 구입·장착·강화하고 8종 연계 스크롤을 배웁니다.</small></div></div><button id="helpClose" class="primary-button">전투로 돌아가기 →</button>`);$('#helpClose').onclick=resume;}
 function showRealmBriefing(lvl=level){
  const d=realmStage(lvl),foe=d.enemy,required=realmGateStars(d),next=lvl<REALM_LAST?realmStage(lvl+1):null,best=stageStars[lvl-1];
- showModal(`<div class="scenario-brief"><div class="scenario-art-frame"><img src="${realmBackdrop(d)}" alt="${d.name}" class="scenario-art-img"><div class="scenario-art-badge">STAGE ${lvl} · ${REALM_ACTS[d.act].name}</div><div class="scenario-art-overlay"></div></div><div class="scenario-kicker">THE NINE REALMS · ${d.act+1}막</div><h2 class="scenario-title">${d.name}</h2><div class="scenario-story">${d.story}</div><div class="realm-brief-achievement"><b>이 전투 최고 ${starMarks(best)}</b><span>${next?`다음 상대 ${next.enemy.name} 해금 · ${required}★ 필요`:'최종 결전'}</span><small>남은 생명력 70%↑ 3★ · 35%↑ 2★ · 그 아래 1★</small></div><div class="scenario-goals"><b>전투 전략</b><p>약점 ${foe.weak.map(i=>TOTEMS[i].shortName).join(' · ')}. 같은 색 2번째부터 마법 공격. 한 턴에 특수돌 폭발 + ${realmResonanceThreshold(d).toLocaleString()}점이면 공명 추가 공격. 이동 횟수 제한 없음.</p></div><button id="realmBriefStart" class="primary-button">${best?'다시 도전 →':'전투 시작 →'}</button><button id="realmBriefShop" class="text-button">장비와 스크롤 확인 ↗</button></div>`);
+ d.colors=realmAvailableColors(realmSave);
+ showModal(`<div class="scenario-brief"><div class="scenario-art-frame"><img src="${realmBackdrop(d)}" alt="${d.name}" class="scenario-art-img"><div class="scenario-art-badge">STAGE ${lvl} · ${REALM_ACTS[d.act].name}</div><div class="scenario-art-overlay"></div></div><div class="scenario-kicker">THE NINE REALMS · ${d.act+1}막</div><h2 class="scenario-title">${d.name}</h2><div class="scenario-story">${d.story}</div><div class="realm-brief-achievement"><b>이 전투 최고 ${starMarks(best)}</b><span>${next?`다음 상대 ${next.enemy.name} 해금 · ${required}★ 필요`:'최종 결전'}</span><small>남은 생명력 70%↑ 3★ · 35%↑ 2★ · 그 아래 1★</small></div><div class="scenario-goals"><b>전투 전략</b><p>약점 ${foe.weak.map(i=>TOTEMS[i].shortName).join(' · ')}. 같은 색 2번째부터 마법 공격. 한 턴에 특수돌 폭발 + ${realmResonanceThreshold(d).toLocaleString()}점이면 공명 추가 공격. 이동·시간 제한 없음 · 몬스터는 약 ${d.cadence*7}초마다 반격.</p></div><button id="realmBriefStart" class="primary-button">${best?'다시 도전 →':'전투 시작 →'}</button><button id="realmBriefShop" class="text-button">장비와 스크롤 확인 ↗</button></div>`);
  $('#realmBriefStart').onclick=()=>{$('#modal').close();level=lvl;reset();start();};
  $('#realmBriefShop').onclick=()=>openRealmShop();
 }
