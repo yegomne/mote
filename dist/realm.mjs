@@ -31,29 +31,43 @@ const REALM_FOE_SCENES=[[21,26],[23,34],[35,43],[38,20],[55,59],[30,32],[52,60],
 export function realmBackdrop(stage,enemyId=stage.enemyId){const scenes=REALM_FOE_SCENES[enemyId]||[21],scene=scenes[stage.act%scenes.length];return `assets/stages/stage_${scene}.jpg`;}
 export function realmGateStars(stage){if(stage.level>=REALM_LAST)return 0;const next=realmStage(stage.level+1);return next.enemyId===stage.enemyId?1:next.boss||next.act!==stage.act?3:2;}
 export const REALM_SCROLLS=[
-  {id:'storm',name:'폭풍 전도',pair:[6,2],price:120,mult:2.2,delay:1,desc:'물 → 번개 · 젖은 적에게 큰 피해'},
-  {id:'ice',name:'빙결 회랑',pair:[8,6],price:150,mult:1.8,delay:2,desc:'바람 → 물 · 빙결 피해와 반격 지연'},
-  {id:'magma',name:'용암 결속',pair:[7,1],price:180,mult:2.1,burn:2,desc:'대지 → 불 · 용암 폭발과 화상'},
-  {id:'bloom',name:'생명의 광휘',pair:[0,3],price:140,mult:1.3,heal:25,desc:'비취 → 황금 · 회복과 빛의 방어'},
-  {id:'eclipse',name:'영원의 월식',pair:[4,5],price:210,mult:1.9,delay:1,desc:'달 → 시간 · 월식 피해와 반격 지연'}
+  {id:'storm',name:'폭풍 전도',pair:[6,2],price:480,mult:2.2,delay:1,art:0,desc:'물 → 번개 · 젖은 적에게 큰 피해'},
+  {id:'ice',name:'빙결 회랑',pair:[8,6],price:900,mult:1.8,delay:2,art:1,desc:'바람 → 물 · 빙결 피해와 반격 지연'},
+  {id:'magma',name:'용암 결속',pair:[7,1],price:720,mult:2.1,burn:2,art:2,desc:'대지 → 불 · 용암 폭발과 화상'},
+  {id:'bloom',name:'생명의 광휘',pair:[0,3],price:560,mult:1.3,heal:25,art:3,desc:'비취 → 황금 · 회복과 빛의 방어'},
+  {id:'eclipse',name:'영원의 월식',pair:[4,5],price:1400,mult:1.9,delay:1,art:4,desc:'달 → 시간 · 월식 피해와 반격 지연'},
+  {id:'inferno',name:'불새의 숨결',pair:[1,8],price:1050,mult:2.15,burn:3,art:5,desc:'불 → 바람 · 불새 폭풍과 강한 화상'},
+  {id:'marsh',name:'깊은 늪의 맹세',pair:[7,6],price:850,mult:1.65,delay:2,heal:12,art:6,desc:'대지 → 물 · 속박과 생명 회복'},
+  {id:'chronostorm',name:'찰나의 뇌광',pair:[5,2],price:1650,mult:2.35,delay:2,art:7,desc:'시간 → 번개 · 연속 낙뢰와 반격 지연'}
 ];
 export const REALM_GEAR={
-  staff:[{name:'사원의 지팡이',price:0,power:0},{name:'수정 지팡이',price:80,power:10},{name:'별무늬 지팡이',price:260,power:22},{name:'용언 지팡이',price:600,power:38},{name:'일식 지팡이',price:1300,power:58}],
-  robe:[{name:'여행 망토',price:0,hp:0,armor:0},{name:'수호 로브',price:90,hp:30,armor:3},{name:'달빛 로브',price:300,hp:65,armor:7},{name:'용린 로브',price:700,hp:105,armor:12},{name:'일식 로브',price:1500,hp:150,armor:18}],
-  ring:[{name:'낡은 반지',price:0,focus:0},{name:'공명 반지',price:110,focus:.08},{name:'별의 반지',price:330,focus:.18},{name:'태초의 반지',price:750,focus:.30},{name:'일식 반지',price:1550,focus:.45}]
+  staff:[{name:'사원의 지팡이',price:0,power:0},{name:'숲의 지팡이',price:250,power:10},{name:'서리 수정봉',price:600,power:22},{name:'화산의 권장',price:1350,power:38},{name:'일식 성좌봉',price:2700,power:58}],
+  robe:[{name:'여행 망토',price:0,hp:0,armor:0},{name:'숲의 로브',price:260,hp:30,armor:3},{name:'서리 수호복',price:640,hp:65,armor:7},{name:'화산 전투복',price:1450,hp:105,armor:12},{name:'일식 성의',price:2900,hp:150,armor:18}],
+  ring:[{name:'낡은 반지',price:0,focus:0},{name:'숲의 반지',price:200,focus:.08},{name:'서리 반지',price:550,focus:.18},{name:'화산 반지',price:1250,focus:.30},{name:'일식 반지',price:2600,focus:.45}],
+  amulet:[{name:'빈 목걸이',price:0,ward:0,hp:0},{name:'숲의 부적',price:220,ward:12,hp:0},{name:'서리 부적',price:580,ward:24,hp:8},{name:'화산 부적',price:1320,ward:42,hp:16},{name:'일식 부적',price:2750,ward:68,hp:28}],
+  boots:[{name:'여행 장화',price:0,armor:0},{name:'숲의 장화',price:180,armor:1},{name:'서리 장화',price:520,armor:3},{name:'화산 장화',price:1180,armor:5},{name:'일식 장화',price:2450,armor:8}],
+  grimoire:[{name:'빈 마도서',price:0,arcana:0},{name:'숲의 마도서',price:240,arcana:7},{name:'서리 마도서',price:620,arcana:15},{name:'화산 마도서',price:1380,arcana:25},{name:'일식 마도서',price:2800,arcana:38}]
 };
+export const REALM_GEAR_SLOTS=Object.keys(REALM_GEAR);
+export function realmGearOwned(save,slot,tier){if(!REALM_GEAR[slot]?.[tier])return false;if(tier===0)return true;return Array.isArray(save.ownedGear?.[slot])?save.ownedGear[slot].includes(tier):tier<=(save.gear?.[slot]||0);}
+export function realmGearRank(save,slot,tier){return Math.max(0,Math.min(5,Math.floor(save.enhance?.[`${slot}:${tier}`]||0)));}
+export function realmGearEnhanceCost(slot,tier,rank){const item=REALM_GEAR[slot]?.[tier];return !item||tier===0||rank>=5?Infinity:Math.round(item.price*(.35+.18*rank)/10)*10;}
+export function realmGearStats(save){const stats={power:0,hp:0,armor:0,focus:0,ward:0,arcana:0};for(const slot of REALM_GEAR_SLOTS){const tier=Math.max(0,Math.min(4,Math.floor(save.gear?.[slot]||0))),item=REALM_GEAR[slot][tier],mult=1+realmGearRank(save,slot,tier)*.08;for(const key of Object.keys(stats))stats[key]+=key==='focus'?(item[key]||0)*mult:Math.ceil((item[key]||0)*mult);}return stats;}
+export function realmBuyGear(save,slot,tier){const item=REALM_GEAR[slot]?.[tier];if(!item||tier===0||realmGearOwned(save,slot,tier)||save.coins<item.price)return false;save.coins-=item.price;save.ownedGear??={};save.ownedGear[slot]??=Array.from({length:save.gear?.[slot]||0},(_,i)=>i+1);save.ownedGear[slot].push(tier);return true;}
+export function realmEquipGear(save,slot,tier){if(!realmGearOwned(save,slot,tier))return false;save.gear??={};save.gear[slot]=tier;return true;}
+export function realmEnhanceGear(save,slot,tier){if(!realmGearOwned(save,slot,tier))return false;const rank=realmGearRank(save,slot,tier),cost=realmGearEnhanceCost(slot,tier,rank);if(save.coins<cost)return false;save.coins-=cost;save.enhance??={};save.enhance[`${slot}:${tier}`]=rank+1;return true;}
 export function realmStage(level){if(!Number.isInteger(level)||level<REALM_FIRST||level>REALM_LAST)throw new RangeError('이세계 단계는 101~200');const act=Math.floor((level-101)/10),step=(level-101)%10,chapter=REALM_ACTS[act],enemyId=chapter.foes[step],enemy=REALM_FOES[enemyId],boss=step===9,gate=step===4;
  const slime=enemyId===0,waves=slime?3+(step>=3)+(step>=7):level===200?3:boss&&level>=160?2:1;
  const hp=slime?Math.round(145+step*7):Math.round((172+act*73+step*23)*(boss?1.55:gate?1.2:1)*1.45);
  return {level,chapter:5+act,act,step,type:'realm',name:boss?`${chapter.name}의 결전`:gate?`${enemy.name} · 문지기`:slime?`${enemy.name} 무리 · ${waves}마리`:`${enemy.name} · ${['첫 조우','흔적','깊은 길','기척','수호','잔향','추적','협곡','문턱'][step]}`,tip:`${chapter.goal}. ${slime?`슬라임 ${waves}마리 · `:''}약점: ${enemy.weak.map(i=>['비취','불','번개','황금','달','시간','물','대지','바람'][i]).join('·')} · 같은 색 2번째 매치부터 마법 발동`,story:step===0?chapter.story:boss?`${chapter.name}의 끝에서 ${enemy.name}가 길을 막는다. ${chapter.goal} 아홉 토템의 힘을 이어야 한다.`:slime?`${chapter.name}에 ${enemy.name} ${waves}마리가 모여 길을 막는다. 한 마리씩 쓰러뜨리며 약점을 찾아라.`:`${chapter.name}에서 ${enemy.name}와 마주쳤다. ${chapter.goal} 적의 약점을 찾아 보석을 이어라.`,enemyId,enemy,hp,attack:slime?18+step:Math.round(12+act*4.7+step*.9+(boss?7:0)),cadence:slime||boss||step>=6?2:3,reward:Math.round(54+act*20+step*9+(boss?100:gate?40:0)+(slime?waves*10:0)),waves,boss,gate,colors:6+(level>=106)+(level>=116)+(level>=126),target:1,crystals:0,time:0,timeCap:0,seals:[],focusColor:null,colorTarget:0,comboTarget:0,specialTarget:0,totemTarget:0,overdriveTarget:0};
 }
-export function realmMaxHP(save){return 170+REALM_GEAR.robe[save.gear.robe].hp;}
-export function freshRealmSave(){return {coins:0,gear:{staff:0,robe:0,ring:0},scrolls:[],cleared:[],newLevels:[0,0,0]};}
-export function freshRealmBattle(stage,save){const max=realmMaxHP(save),enemyMax=stage.enemyId===0?stage.hp:stage.waves>1?Math.round(stage.hp*.65):stage.hp;return {enemyId:stage.enemyId,enemyHP:enemyMax,enemyMax,heroHP:max,heroMax:max,shield:0,charge:0,delay:0,wet:0,vulnerable:0,burn:0,previousSpell:-1,wave:1,turn:0,phase:'playing'};}
+export function realmMaxHP(save){return 170+realmGearStats(save).hp;}
+export function freshRealmSave(){return {coins:0,gear:{staff:0,robe:0,ring:0,amulet:0,boots:0,grimoire:0},ownedGear:{},enhance:{},scrolls:[],cleared:[],newLevels:[0,0,0]};}
+export function freshRealmBattle(stage,save){const max=realmMaxHP(save),enemyMax=stage.enemyId===0?stage.hp:stage.waves>1?Math.round(stage.hp*.65):stage.hp;return {enemyId:stage.enemyId,enemyHP:enemyMax,enemyMax,heroHP:max,heroMax:max,shield:realmGearStats(save).ward,charge:0,delay:0,wet:0,vulnerable:0,burn:0,previousSpell:-1,wave:1,turn:0,phase:'playing'};}
 export function realmEncounterHP(stage,battle){if(stage.enemyId!==0)return {current:battle.enemyHP,max:battle.enemyMax};return {current:battle.enemyHP+(stage.waves-battle.wave)*stage.hp,max:stage.waves*stage.hp};}
 export function realmAffinity(enemy,color){return enemy.weak.includes(color)?1.45:enemy.resist.includes(color)?.55:1;}
-export function realmCast(stage,battle,save,color,level,streak){if(battle.phase!=='playing'||level<1||streak<2)return null;const enemy=REALM_FOES[battle.enemyId],affinity=realmAffinity(enemy,color),boost=level>=2&&streak>=3?1.5:1,staff=REALM_GEAR.staff[save.gear.staff].power,focus=REALM_GEAR.ring[save.gear.ring].focus;
- let damage=Math.round((17+level*7+staff)*(1+focus)*affinity*boost*(battle.vulnerable?1.2:1)),heal=0,shield=0,delay=0,combo=null;
+export function realmCast(stage,battle,save,color,level,streak){if(battle.phase!=='playing'||level<1||streak<2)return null;const enemy=REALM_FOES[battle.enemyId],affinity=realmAffinity(enemy,color),boost=level>=2&&streak>=3?1.5:1,{power,arcana,focus}=realmGearStats(save);
+ let damage=Math.round((17+level*7+power+arcana)*(1+focus)*affinity*boost*(battle.vulnerable?1.2:1)),heal=0,shield=0,delay=0,combo=null;
  if(color===2&&battle.wet>0)damage=Math.round(damage*1.3);
  if(color===0){heal=11+level*3;shield=5;}
  if(color===1)battle.burn=Math.max(2,battle.burn);
@@ -66,20 +80,20 @@ export function realmCast(stage,battle,save,color,level,streak){if(battle.phase!
  const scroll=REALM_SCROLLS.find(s=>save.scrolls.includes(s.id)&&s.pair[0]===battle.previousSpell&&s.pair[1]===color);
  if(scroll){damage=Math.round(damage*scroll.mult);delay+=scroll.delay||0;heal+=scroll.heal||0;if(scroll.burn)battle.burn=Math.max(battle.burn,scroll.burn);combo=scroll.name;battle.previousSpell=-1;}else battle.previousSpell=color;
  battle.enemyHP=Math.max(0,battle.enemyHP-damage);battle.heroHP=Math.min(battle.heroMax,battle.heroHP+heal);battle.shield=Math.min(150,battle.shield+shield);battle.delay+=delay;
- return {damage,heal,shield,delay,combo,affinity,boost,enemyHP:battle.enemyHP};
+ return {damage,heal,shield,delay,combo,comboArt:scroll?.art??-1,affinity,boost,enemyHP:battle.enemyHP};
 }
 export function realmResonanceThreshold(stage){return 1000+Math.floor(stage.act/2)*150;}
 export function realmResonance(stage,battle,save,turnScore,specials){
  if(battle.phase!=='playing'||battle.enemyHP<=0||!specials?.length||turnScore<realmResonanceThreshold(stage))return null;
  const power=specials.reduce((sum,type)=>sum+({row:1,col:1,cross:2,bomb:2,nova:3}[type]||1),0);
- const staff=REALM_GEAR.staff[save.gear.staff].power,focus=REALM_GEAR.ring[save.gear.ring].focus;
- const damage=Math.min(160+stage.act*10,Math.round((18+stage.act*8+power*12+Math.min(50,(turnScore-realmResonanceThreshold(stage))/70)+staff*.35)*(1+focus*.5)));
+ const gear=realmGearStats(save);
+ const damage=Math.min(160+stage.act*10,Math.round((18+stage.act*8+power*12+Math.min(50,(turnScore-realmResonanceThreshold(stage))/70)+(gear.power+gear.arcana)*.35)*(1+gear.focus*.5)));
  battle.enemyHP=Math.max(0,battle.enemyHP-damage);
  return {damage,score:turnScore,specials:specials.length,power,threshold:realmResonanceThreshold(stage),enemyHP:battle.enemyHP};
 }
 export function realmCounter(stage,battle,save){if(battle.phase!=='playing'||battle.enemyHP<=0)return null;battle.turn++;if(battle.burn>0){battle.enemyHP=Math.max(0,battle.enemyHP-(8+Math.floor(stage.act/2)));battle.burn--;}if(battle.enemyHP<=0)return {burn:true,damage:0};
- if(battle.delay>0){battle.delay--;return {delayed:true,damage:0};}battle.charge++;if(battle.charge<stage.cadence)return null;battle.charge=0;const armor=REALM_GEAR.robe[save.gear.robe].armor,raw=Math.max(1,stage.attack-armor),blocked=Math.min(raw,battle.shield),damage=raw-blocked;battle.shield-=blocked;battle.heroHP=Math.max(0,battle.heroHP-damage);if(!battle.heroHP)battle.phase='lost';battle.wet=Math.max(0,battle.wet-1);battle.vulnerable=Math.max(0,battle.vulnerable-1);return {damage,blocked,attack:REALM_FOES[battle.enemyId].move,defeat:battle.phase==='lost'};
+ if(battle.delay>0){battle.delay--;return {delayed:true,damage:0};}battle.charge++;if(battle.charge<stage.cadence)return null;battle.charge=0;const armor=realmGearStats(save).armor,raw=Math.max(1,stage.attack-armor),blocked=Math.min(raw,battle.shield),damage=raw-blocked;battle.shield-=blocked;battle.heroHP=Math.max(0,battle.heroHP-damage);if(!battle.heroHP)battle.phase='lost';battle.wet=Math.max(0,battle.wet-1);battle.vulnerable=Math.max(0,battle.vulnerable-1);return {damage,blocked,attack:REALM_FOES[battle.enemyId].move,defeat:battle.phase==='lost'};
 }
 export function realmNextWave(stage,battle){if(battle.enemyHP>0||battle.wave>=stage.waves)return false;battle.wave++;if(stage.enemyId===0){battle.enemyId=0;battle.enemyMax=stage.hp;}else{battle.enemyId=battle.wave===stage.waves?stage.enemyId:REALM_ACTS[stage.act].foes[7];battle.enemyMax=Math.round(stage.hp*(battle.wave===stage.waves?1:.8));battle.heroHP=Math.min(battle.heroMax,battle.heroHP+Math.round(battle.heroMax*.12));battle.shield=Math.min(150,battle.shield+16);}battle.enemyHP=battle.enemyMax;battle.charge=0;battle.delay=0;battle.burn=0;return true;}
 export function realmReward(stage,battle,save){const bonus=Math.round(Math.max(0,battle.heroHP)/battle.heroMax*stage.reward*.35);const coins=stage.reward+bonus;save.coins+=coins;if(!save.cleared.includes(stage.level))save.cleared.push(stage.level);const unlock=stage.level===105?6:stage.level===115?7:stage.level===125?8:-1;if(unlock>=6)save.newLevels[unlock-6]=Math.max(1,save.newLevels[unlock-6]);battle.phase='won';return {coins,unlock};}
-export function realmBuy(save,kind,id){if(kind==='scroll'){const item=REALM_SCROLLS.find(s=>s.id===id);if(!item||save.scrolls.includes(id)||save.coins<item.price)return false;save.coins-=item.price;save.scrolls.push(id);return true;}if(kind==='gear'){const next=REALM_GEAR[id]?.[save.gear[id]+1];if(!next||save.coins<next.price)return false;save.coins-=next.price;save.gear[id]++;return true;}if(kind==='totem'){const i=Number(id)-6,l=save.newLevels[i];if(i<0||i>2||!l||l>=5)return false;const price=65+l*85;if(save.coins<price)return false;save.coins-=price;save.newLevels[i]++;return true;}return false;}
+export function realmBuy(save,kind,id){if(kind==='scroll'){const item=REALM_SCROLLS.find(s=>s.id===id);if(!item||save.scrolls.includes(id)||save.coins<item.price)return false;save.coins-=item.price;save.scrolls.push(id);return true;}if(kind==='gear'){const tier=(save.gear?.[id]||0)+1;if(!realmBuyGear(save,id,tier))return false;realmEquipGear(save,id,tier);return true;}if(kind==='totem'){const i=Number(id)-6,l=save.newLevels[i];if(i<0||i>2||!l||l>=5)return false;const price=65+l*85;if(save.coins<price)return false;save.coins-=price;save.newLevels[i]++;return true;}return false;}

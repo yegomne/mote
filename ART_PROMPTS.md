@@ -14,3 +14,21 @@
 ## 슬라임 프롬프트
 
 > Use case: stylized-concept. Asset type: a 4-frame transparent sprite atlas for a premium fantasy mobile puzzle battle game. Use the supplied monster atlas ONLY as quality, material and turquoise-slime character reference. Create exactly FOUR equal square cells in one horizontal row, each showing the SAME small turquoise translucent blue slime creature in full-body three-quarter SIDE PROFILE unmistakably facing LEFT, toward a wizard placed on the left side of the game screen. Frame 1 idle: leaning and looking LEFT with alert eyes. Frame 2 attack: lunging LEFT with gel splash and droplets projected LEFT. Frame 3 guard: facing LEFT behind a compact crystalline water shield. Frame 4 groggy: drooped body, dazed eyes, wobbling but still oriented LEFT. Preserve recognizable bright aqua luminous gel and friendly but hostile battle expression, glossy refractive highlights, crisp silhouette, game-ready painterly 3D concept art comparable to the reference. Consistent scale, identical camera, centered and separated in each cell, no environment, genuinely transparent background, no checkerboard pattern, no captions or labels, no extra creatures, no fifth frame.
+
+## 이세계 장비와 스크롤
+
+내장 image_gen으로 생성한 그림을 WebP로 압축했다. 투명 종이인형 장비 24장은 `scripts/generate-gear-overlays.mjs`에서 SVG로 만들었다.
+
+| 파일 | 용도 |
+|---|---|
+| `dist/assets/realm-gear-atlas.webp` | 6부위 × 4등급 상점 장비 그림 |
+| `dist/assets/realm-scroll-atlas.webp` | 8종 연계 스크롤과 전투 발동 그림 |
+| `dist/assets/gear/*.svg` | 장착한 장비를 마법사 위에 겹치는 투명 그림 |
+
+### 장비 그림 프롬프트
+
+> Use case: stylized-concept. Asset type: premium mobile fantasy game inventory sprite atlas, 6 columns by 4 rows, each cell one distinct equippable gear icon. Exact layout: columns are staffs, robes, rings, amulets, boots, grimoires; rows progress from forest/bronze tier to sapphire, volcanic gold, and celestial eclipse tier. Every item centered within its equal square cell, consistent size and camera, generous padding, clean separation, no overlap, no text, no numbers, no UI borders. Ornate painterly 3D game item art matching a high quality fantasy match-3 RPG: carved metal, embroidered fabric, faceted gems, dramatic rim lighting, rich material detail, legible at 56 px. Dark uniform deep teal background in every cell. Wide atlas aspect ratio 3:2. Important: exactly 6 columns and 4 rows, no humans, no monsters, no labels.
+
+### 연계 스크롤 그림 프롬프트
+
+> Use case: stylized-concept. Asset type: spell scroll illustration atlas for a premium fantasy mobile RPG match-3 game. Exactly 4 columns by 2 rows, 8 equal rectangular cells, each with one ornate unfurled scroll and a dominant glowing elemental painting bursting above its parchment; no lettering, no words, no numbers. Cell order left-to-right: 1 water braided with lightning, 2 wind freezing water into blue crystal ice, 3 earth and fire fused as lava, 4 jade vines and golden sunlight healing; second row: 5 moon and time eclipse, 6 fire fed by wind as a phoenix inferno, 7 earth and water as emerald marsh roots, 8 clockwork time and lightning as violet storm. Consistent illustration scale and illumination. Rich painterly 3D game art, intricate illuminated manuscript trim, gem inlay, excellent 64 px readability. Uniform dark deep teal background, crisp separation between cells, each scroll centered with padding. Wide 2:1 atlas, no humans, no interface elements.

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {STAGE_COUNT,TOTEMS,stageDesign,stageScenario,makeStageBoard,findMatches,findMove,collapse} from './dist/engine.mjs';
-import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,realmStage,realmBackdrop,realmGateStars,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmAffinity,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './dist/realm.mjs';
+import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmAffinity,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './dist/realm.mjs';
 
 assert.equal(STAGE_COUNT,200);
 assert.equal(REALM_ACTS.length,10);
@@ -56,6 +56,20 @@ stage=realmStage(115);battle=freshRealmBattle(stage,save);realmReward(stage,batt
 stage=realmStage(125);battle=freshRealmBattle(stage,save);realmReward(stage,battle,save);assert.equal(save.newLevels[2],1);
 save.coins=10000;assert.ok(realmBuy(save,'gear','staff'));assert.equal(save.gear.staff,1);assert.ok(realmBuy(save,'scroll','storm'));assert.ok(realmBuy(save,'totem','6'));assert.equal(save.newLevels[0],2);
 battle=freshRealmBattle(realmStage(130),save);battle.previousSpell=6;const combo=realmCast(realmStage(130),battle,save,2,5,2);assert.equal(combo.combo,REALM_SCROLLS[0].name);
+assert.equal(combo.comboArt,0);
+assert.equal(REALM_GEAR_SLOTS.length,6);
+assert.equal(REALM_SCROLLS.length,8);
+const gearSave=freshRealmSave();gearSave.coins=10000;
+assert.ok(realmBuyGear(gearSave,'robe',2));assert.equal(gearSave.gear.robe,0,'purchased gear waits for equip');
+assert.ok(realmEquipGear(gearSave,'robe',2));assert.equal(realmMaxHP(gearSave),235);
+const cost=realmGearEnhanceCost('robe',2,0),coins=gearSave.coins;
+assert.ok(realmEnhanceGear(gearSave,'robe',2));assert.equal(gearSave.coins,coins-cost);
+assert.equal(realmGearRank(gearSave,'robe',2),1);assert.ok(realmGearStats(gearSave).armor>7);
+assert.ok(realmBuyGear(gearSave,'amulet',1));assert.ok(realmEquipGear(gearSave,'amulet',1));
+assert.ok(freshRealmBattle(realmStage(101),gearSave).shield>0);
+const legacy=freshRealmSave();legacy.gear.staff=2;legacy.ownedGear=undefined;legacy.coins=10000;
+assert.ok(realmGearOwned(legacy,'staff',1)&&realmGearOwned(legacy,'staff',2));
+assert.ok(realmBuyGear(legacy,'staff',3));assert.ok([1,2,3].every(tier=>realmGearOwned(legacy,'staff',tier)),'old saves retain earlier bought tiers');
 stage=realmStage(200);battle=freshRealmBattle(stage,save);assert.equal(stage.waves,3);battle.enemyHP=0;assert.ok(realmNextWave(stage,battle));assert.equal(battle.wave,2);battle.enemyHP=0;assert.ok(realmNextWave(stage,battle));assert.equal(battle.wave,3);battle.enemyHP=0;assert.equal(realmNextWave(stage,battle),false);
 battle=freshRealmBattle(realmStage(101),save);stage=realmStage(101);let counter=null;for(let i=0;i<stage.cadence;i++)counter=realmCounter(stage,battle,save);assert.ok(counter.damage>=0);
 assert.equal(REALM_GEAR.staff.length,5);
