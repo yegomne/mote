@@ -1,11 +1,15 @@
-export const SIZE=8, COLORS=6, STAGE_COUNT=100;
+import {realmStage,REALM_ACTS} from './realm.mjs';
+export const SIZE=8, COLORS=6, STAGE_COUNT=200;
 export const TOTEMS=[
   {name:'비취의 수확',shortName:'비취',color:'비취',icon:'gem',roleTag:'💎 수정 수확',unlockCost:3,unlockStage:1,unlock:1,accent:'#6ee2ae',desc:'수정을 즉시 회수하고 새 수정을 생성'},
   {name:'불의 심판',shortName:'불',color:'루비',icon:'sun',roleTag:'🔥 집중 폭격',unlockCost:4,unlockStage:5,unlock:2,accent:'#ff8a89',desc:'화염 운석 집중 폭격으로 십자 반경의 보석과 봉인 분쇄'},
   {name:'천둥의 분노',shortName:'번개',color:'사파이어',icon:'bolt',roleTag:'⚡ 사방 번개',unlockCost:5,unlockStage:10,unlock:3,accent:'#80d7f1',desc:'움직인 보석 주변 사방으로 번개 레이저 감전'},
   {name:'황금의 축복',shortName:'황금',color:'황금',icon:'sun',roleTag:'👑 점수 증폭',unlockCost:6,unlockStage:15,unlock:5,accent:'#efcf7e',desc:'대량 보너스 점수 및 피버 3배 에너지 급속 충전'},
   {name:'달의 선물',shortName:'달',color:'자수정',icon:'moon',roleTag:'🌙 특수 생성',unlockCost:7,unlockStage:20,unlock:7,accent:'#c8a5ff',desc:'보석판에 폭탄, 번개 레이저, 노바 직접 부여'},
-  {name:'시간의 숨결',shortName:'시간',color:'호박',icon:'freeze',roleTag:'⏳ 시간 연장',unlockCost:8,unlockStage:25,unlock:10,accent:'#ffb781',desc:'제한 시간 소폭 연장 및 시간 정지 결계'}
+  {name:'시간의 숨결',shortName:'시간',color:'호박',icon:'freeze',roleTag:'⏳ 시간 연장',unlockCost:8,unlockStage:25,unlock:10,accent:'#ffb781',desc:'제한 시간 소폭 연장 및 시간 정지 결계'},
+  {name:'물의 흐름',shortName:'물',color:'아쿠아',icon:'gem',roleTag:'💧 흐름과 치유',unlockCost:0,unlockStage:105,unlock:106,accent:'#61dded',desc:'수평 물결로 보석을 씻고 마법사를 치유'},
+  {name:'대지의 맥박',shortName:'대지',color:'황토',icon:'gem',roleTag:'◆ 바위 충격',unlockCost:0,unlockStage:115,unlock:116,accent:'#c7a574',desc:'주변 대지를 깨우고 보호막을 쌓음'},
+  {name:'바람의 노래',shortName:'바람',color:'연옥',icon:'gem',roleTag:'➶ 바람 칼날',unlockCost:0,unlockStage:125,unlock:126,accent:'#a5eacb',desc:'대각선 보석을 관통하고 반격을 늦춤'}
 ];
 export function totemLevelSpecs(index, level){
   if(level===0) return {cur:'잠김 (사용 불가)', next:`★${TOTEMS[index].unlockCost}개로 해금 시 즉시 기본 발동`};
@@ -338,9 +342,9 @@ export const FORTUNE_CARDS = [
 ];
 
 export function stageReward(previous,stars){return Math.max(0,Math.min(3,stars)-Math.max(0,previous));}
-export function chapterIndex(stage){return Math.min(4,Math.floor((stage-1)/20));}
-export const colorNames=['비취','루비','사파이어','황금','자수정','호박'];
-export const chapters=[['태양의 문','THE GATE OF THE SUN'],['비취의 정원','THE JADE GARDEN'],['번개의 제단','THE THUNDER ALTAR'],['달의 성소','THE LUNAR SANCTUM'],['황금의 심장','THE GOLDEN HEART']];
+export function chapterIndex(stage){return stage<=100?Math.min(4,Math.floor((stage-1)/20)):5+Math.min(9,Math.floor((stage-101)/10));}
+export const colorNames=['비취','루비','사파이어','황금','자수정','호박','아쿠아','황토','연옥'];
+export const chapters=[['태양의 문','THE GATE OF THE SUN'],['비취의 정원','THE JADE GARDEN'],['번개의 제단','THE THUNDER ALTAR'],['달의 성소','THE LUNAR SANCTUM'],['황금의 심장','THE GOLDEN HEART'],...REALM_ACTS.map(a=>[a.name,a.sub])];
 let serial=0;
 export function gem(color,colors=COLORS,random=Math.random){return {id:++serial,color:color??Math.floor(random()*colors),special:null,crystal:random()<.10};}
 export function findMatches(board){const groups=[];for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;){const color=board[r*SIZE+c]?.color;let n=1;while(c+n<SIZE&&board[r*SIZE+c+n]?.color===color&&color!==undefined)n++;if(n>=3)groups.push({cells:Array.from({length:n},(_,i)=>r*SIZE+c+i),axis:'row',color});c+=n;}for(let c=0;c<SIZE;c++)for(let r=0;r<SIZE;){const color=board[r*SIZE+c]?.color;let n=1;while(r+n<SIZE&&board[(r+n)*SIZE+c]?.color===color&&color!==undefined)n++;if(n>=3)groups.push({cells:Array.from({length:n},(_,i)=>(r+i)*SIZE+c),axis:'col',color});r+=n;}return groups;}
@@ -348,7 +352,7 @@ export function adjacent(a,b){return Math.abs(Math.floor(a/SIZE)-Math.floor(b/SI
 export function damageSeals(state,cells){const hits=new Set(cells);for(const i of cells)for(const j of [i-8,i+8,i-1,i+1])if(j>=0&&j<64&&adjacent(i,j))hits.add(j);let broken=0;const damaged=[];for(const i of hits)if(state[i]>0){state[i]--;if(!state[i])broken++;damaged.push(i);}return {broken,damaged};}
 export function findMove(board,preferredColor=-1,strict=false){let fallback=null;for(let a=0;a<64;a++)for(const b of [a+1,a+8]){if(b>=64||!adjacent(a,b))continue;[board[a],board[b]]=[board[b],board[a]];const groups=findMatches(board),primary=groups.find(g=>g.cells.includes(b))??groups.find(g=>g.cells.includes(a))??groups[0];[board[a],board[b]]=[board[b],board[a]];if(primary){fallback??=[a,b];if(preferredColor<0||primary.color===preferredColor)return[a,b];}}return strict&&preferredColor>=0?null:fallback;}
 export function makeBoard(colors=COLORS,random=Math.random){let board;do{board=[];for(let i=0;i<64;i++){let g;do{g=gem(undefined,colors,random);}while((i%8>=2&&board[i-1].color===g.color&&board[i-2].color===g.color)||(i>=16&&board[i-8].color===g.color&&board[i-16].color===g.color));board.push(g);}}while(!findMove(board));return board;}
-export function makeStageBoard(level){if(![1,2].includes(level))return makeBoard();for(let attempt=0;attempt<250;attempt++){const b=makeBoard();if(level===2||level===9){for(const row of [0,4,7]){for(const col of [0,1,3])b[row*8+col].color=1;b[row*8+2].color=2;b[row*8+4].color=0;}}if(level===7){for(const i of [0,1,3,10])b[i].color=4;b[2].color=2;b[4].color=0;}if(findMatches(b).length)continue;const move=findMove(b,level===7?4:level===2||level===9?1:-1);if(!move)continue;[b[move[0]],b[move[1]]]=[b[move[1]],b[move[0]]];const groups=findMatches(b);groups[0].cells.slice(0,2).forEach(i=>b[i].crystal=true);[b[move[0]],b[move[1]]]=[b[move[1]],b[move[0]]];return b;}return makeBoard();}
+export function makeStageBoard(level){if(level>100)return makeBoard(realmStage(level).colors);if(![1,2].includes(level))return makeBoard();for(let attempt=0;attempt<250;attempt++){const b=makeBoard();if(level===2||level===9){for(const row of [0,4,7]){for(const col of [0,1,3])b[row*8+col].color=1;b[row*8+2].color=2;b[row*8+4].color=0;}}if(level===7){for(const i of [0,1,3,10])b[i].color=4;b[2].color=2;b[4].color=0;}if(findMatches(b).length)continue;const move=findMove(b,level===7?4:level===2||level===9?1:-1);if(!move)continue;[b[move[0]],b[move[1]]]=[b[move[1]],b[move[0]]];const groups=findMatches(b);groups[0].cells.slice(0,2).forEach(i=>b[i].crystal=true);[b[move[0]],b[move[1]]]=[b[move[1]],b[move[0]]];return b;}return makeBoard();}
 export function affected(board,initial){const set=new Set(initial),queue=[...set];const effects=[];for(let k=0;k<queue.length;k++){const i=queue[k],g=board[i];if(!g?.special)continue;const r=Math.floor(i/8),c=i%8;effects.push({index:i,type:g.special,color:g.color});const extra=[];if(g.special==='row'||g.special==='cross')for(let x=0;x<8;x++)extra.push(r*8+x);if(g.special==='col'||g.special==='cross')for(let y=0;y<8;y++)extra.push(y*8+c);if(g.special==='bomb')for(let y=Math.max(0,r-1);y<=Math.min(7,r+1);y++)for(let x=Math.max(0,c-1);x<=Math.min(7,c+1);x++)extra.push(y*8+x);if(g.special==='nova')board.forEach((v,n)=>{if(v?.color===g.color)extra.push(n);});for(const n of extra)if(!set.has(n)){set.add(n);queue.push(n);}}return {cells:[...set],effects};}
 export function specialCreations(groups,preferred=[]){const creations=new Map;const count=new Map;groups.forEach(g=>g.cells.forEach(i=>count.set(i,(count.get(i)||0)+1)));for(const [i,n]of count)if(n>1)creations.set(i,'bomb');for(const g of groups){if(g.cells.some(i=>creations.has(i)))continue;if(g.cells.length>=4){const i=preferred.find(i=>g.cells.includes(i))??g.cells[Math.floor(g.cells.length/2)];creations.set(i,g.cells.length>=5?'nova':g.axis);}}return creations;}
 export function collapse(board,colors=COLORS,random=Math.random){for(let c=0;c<8;c++){let dest=7;for(let r=7;r>=0;r--)if(board[r*8+c]){board[dest*8+c]=board[r*8+c];if(dest!==r)board[r*8+c]=null;dest--;}let born=0;while(dest>=0){const g=gem(undefined,colors,random);g.x=c;g.y=-1-born++;board[dest*8+c]=g;dest--;}}return board;}
@@ -357,7 +361,7 @@ const STAGE_TYPES=['awakening','totem','colors','seals','bonus','cascade','speci
 const STAGE_NAMES={awakening:'새벽의 보석',totem:'수호자의 응답',colors:'색상의 제례',seals:'잠든 봉인',bonus:'고요한 보물방',cascade:'연쇄의 계단',special:'별의 공방',ritual:'잃어버린 의식',overdrive:'세 번째 각성',guardian:'사원의 수호자'};
 const STAGE_TIPS={awakening:'4·5매치와 토템을 이어 제한 시간 안에 목표를 달성하세요.',totem:'같은 색을 이어가세요. 토템 Lv.2부터 3연속 위력 1.5배!',colors:'목표 색과 특수 보석을 함께 만드는 교환을 찾으세요.',seals:'흩어진 봉인을 공략하세요. 위·옆 매치와 토템이 한 겹씩 깹니다.',bonus:'60초 보물방! 특수 보석과 토템으로 보물을 빠르게 모으세요.',cascade:'제한 시간 안에 도전하세요. 보드 아래쪽에서 연쇄를 설계하세요.',special:'4개·5개·T자 매치로 특수 보석을 직접 만드세요.',ritual:'목표 색을 모으면서 봉인까지 깨는 수를 찾으세요.',overdrive:'토템을 여러 번 발동하세요. Lv.2의 3연속 1.5배가 공략을 돕습니다.',guardian:'제한 시간 안에 봉인, 수정, 토템 목표를 모두 달성하세요.'};
 function sealsFor(level,count,hp){const chosen=[],available=Array.from({length:64},(_,i)=>i),distance=(a,b)=>Math.abs(a%8-b%8)+Math.abs(Math.floor(a/8)-Math.floor(b/8));for(let k=0;k<count;k++){available.sort((a,b)=>{const rank=i=>chosen.length?Math.min(...chosen.map(j=>distance(i,j))):0;return rank(b)-rank(a)||((a*19+level*7)%67)-((b*19+level*7)%67);});chosen.push(available.shift());}return chosen.map(index=>({index,hp}));}
-export function stageDesign(level){const chapter=chapterIndex(level),local=(level-1)%20+1,beat=(level-1)%10,type=STAGE_TYPES[beat],second=local>10?1:0;
+export function stageDesign(level){if(level>100)return realmStage(level);const chapter=chapterIndex(level),local=(level-1)%20+1,beat=(level-1)%10,type=STAGE_TYPES[beat],second=local>10?1:0;
   let rawTarget = 3200 + chapter * 7500 + (local - 1) * 400;
   if(beat === 9) rawTarget = Math.round(rawTarget * 1.20);
   else if(beat === 4) rawTarget = Math.round(rawTarget * 0.85);
@@ -409,7 +413,7 @@ export function stageDesign(level){const chapter=chapterIndex(level),local=(leve
   return stage;
 }
 export function extendTime(stage,time,p){return Math.min(stage.timeCap,time+p.seconds);}
-export function stageGoals(stage,metrics){const goals=[{id:'score',label:'점수',value:metrics.score,target:stage.target},{id:'crystals',label:'수정',value:metrics.crystals,target:stage.crystals}];if(stage.colorTarget)goals.push({id:'color',label:colorNames[stage.focusColor],value:metrics.colorCollected?.[stage.focusColor]||0,target:stage.colorTarget,color:stage.focusColor});if(stage.seals.length)goals.push({id:'seals',label:'봉인',value:metrics.sealsBroken||0,target:stage.seals.length});if(stage.comboTarget)goals.push({id:'combo',label:'최대 연쇄',value:metrics.bestCascade||0,target:stage.comboTarget});if(stage.specialTarget)goals.push({id:'special',label:'특수 보석 생성',value:metrics.specialsMade||0,target:stage.specialTarget});if(stage.totemTarget)goals.push({id:'totem',label:'토템 발동',value:metrics.totemCasts||0,target:stage.totemTarget});if(stage.overdriveTarget)goals.push({id:'overdrive',label:'1.5배 각성',value:metrics.overdrives||0,target:stage.overdriveTarget});return goals.map(g=>({...g,done:g.value>=g.target}));}
+export function stageGoals(stage,metrics){if(stage.type==='realm')return [{id:'enemy',label:'몬스터 격파',value:Math.max(0,stage.hp-(metrics.enemyHP??stage.hp)),target:stage.hp,done:(metrics.enemyHP??stage.hp)<=0}];const goals=[{id:'score',label:'점수',value:metrics.score,target:stage.target},{id:'crystals',label:'수정',value:metrics.crystals,target:stage.crystals}];if(stage.colorTarget)goals.push({id:'color',label:colorNames[stage.focusColor],value:metrics.colorCollected?.[stage.focusColor]||0,target:stage.colorTarget,color:stage.focusColor});if(stage.seals.length)goals.push({id:'seals',label:'봉인',value:metrics.sealsBroken||0,target:stage.seals.length});if(stage.comboTarget)goals.push({id:'combo',label:'최대 연쇄',value:metrics.bestCascade||0,target:stage.comboTarget});if(stage.specialTarget)goals.push({id:'special',label:'특수 보석 생성',value:metrics.specialsMade||0,target:stage.specialTarget});if(stage.totemTarget)goals.push({id:'totem',label:'토템 발동',value:metrics.totemCasts||0,target:stage.totemTarget});if(stage.overdriveTarget)goals.push({id:'overdrive',label:'1.5배 각성',value:metrics.overdrives||0,target:stage.overdriveTarget});return goals.map(g=>({...g,done:g.value>=g.target}));}
 export function objectives(level){return stageDesign(level);}
 
 export const STAGE_SCENARIOS_100 = [
@@ -516,6 +520,7 @@ export const STAGE_SCENARIOS_100 = [
 ];
 
 export function stageScenario(level){
+  if(level>100){const d=realmStage(level),image=`assets/stages/stage_${(level-101)%100+1}.jpg`;return {chapterIndex:d.chapter,chapterTitle:chapters[d.chapter][0],chapterSub:chapters[d.chapter][1],localStage:d.step+1,title:`제${d.chapter+1}장 ${chapters[d.chapter][0]} · 제${d.step+1}전투`,story:d.story,image};}
   const ci = chapterIndex(level);
   const local = (level - 1) % 20 + 1;
   const chapterTitle = chapters[ci][0];

@@ -1,0 +1,32 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import assert from 'node:assert/strict';
+const {chromium}=await import(pathToFileURL('C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs').href);
+const root=path.resolve('dist');
+const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--no-sandbox','--disable-gpu']});
+try{
+ const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
+ const page=await context.newPage(),errors=[];
+ page.on('pageerror',e=>errors.push(String(e)));
+ await page.route('http://temple.test/**',async route=>{const url=new URL(route.request().url()),file=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!file.startsWith(root+path.sep)){await route.fulfill({status:403});return;}try{const body=await fs.readFile(file),type={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml','.wav':'audio/wav','.webmanifest':'application/manifest+json'}[path.extname(file)]||'application/octet-stream';await route.fulfill({status:200,contentType:type,body});}catch{await route.fulfill({status:404,body:'Not found'});}});
+ await page.addInitScript(()=>{localStorage.setItem('solar-relic-v1',JSON.stringify({level:100,unlocked:100,best:0,reduced:true,sound:false}));localStorage.setItem('solar-relic-growth-v2',JSON.stringify({levels:[5,5,5,5,5,5],stars:0,stageStars:[...Array(99).fill(0),3]}));});
+ await page.goto('http://temple.test/',{waitUntil:'domcontentloaded'});
+ assert.equal(await page.locator('[data-totem]').count(),6);
+ assert.equal(await page.locator('#realmArena').isHidden(),true);
+ await page.locator('#titleChestBtn').click();
+ assert.match(await page.locator('#modalContent').textContent(),/1~100단계로 돌아올 수 없습니다/);
+ await page.locator('#enterWorld').click();
+ assert.equal(new URL(page.url()).pathname,'/');
+ assert.match(await page.locator('#modalContent').textContent(),/STAGE 101/);
+ await page.locator('#realmBriefShop').click();
+ assert.match(await page.locator('#modalContent').textContent(),/이세계 상점/);
+ await page.locator('#realmShopClose').click();
+ assert.equal(await page.locator('#realmBriefStart').isVisible(),true);
+ await page.locator('#realmBriefStart').click();
+ assert.equal(await page.locator('[data-totem]').count(),9);
+ assert.equal(await page.locator('#realmArena').isVisible(),true);
+ assert.equal(errors.length,0,errors.join('\n'));
+ console.log('PASS: stage 100 chest enters stage 101 on the original page; six original totems become nine.');
+ await context.close();
+}finally{await browser.close();}

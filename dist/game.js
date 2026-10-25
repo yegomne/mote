@@ -1,24 +1,25 @@
 import {Soundscape} from './soundscape.mjs?v=6';
 import {ImpactFX} from './element-fx.mjs?v=8';
-import {initialState,newBattle} from './battle-engine.mjs?v=1';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=16';
+import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,realmStage,realmMaxHP,freshRealmSave,freshRealmBattle,realmCast,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=1';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=17';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
-const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612']];
-const shapes=[[[0,-.44],[.31,-.25],[.36,.23],[0,.43],[-.36,.23],[-.31,-.25]],[[0,-.46],[.39,0],[0,.46],[-.39,0]],[[-.27,-.36],[.27,-.36],[.4,-.13],[.36,.28],[0,.43],[-.36,.28],[-.4,-.13]],[[-.29,-.34],[.29,-.34],[.43,0],[0,.43],[-.43,0]],[[0,-.45],[.39,-.17],[.25,.35],[-.25,.35],[-.39,-.17]],[[-.24,-.39],[.24,-.39],[.4,-.13],[.35,.28],[.17,.4],[-.17,.4],[-.35,.28],[-.4,-.13]]];
+const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612'],['#d9ffff','#44d5ee','#128ab3','#074268'],['#fff1c6','#cda767','#806044','#38342c'],['#e4fff1','#95eacb','#48ab96','#156c77']];
+const shapes=[[[0,-.44],[.31,-.25],[.36,.23],[0,.43],[-.36,.23],[-.31,-.25]],[[0,-.46],[.39,0],[0,.46],[-.39,0]],[[-.27,-.36],[.27,-.36],[.4,-.13],[.36,.28],[0,.43],[-.36,.28],[-.4,-.13]],[[-.29,-.34],[.29,-.34],[.43,0],[0,.43],[-.43,0]],[[0,-.45],[.39,-.17],[.25,.35],[-.25,.35],[-.39,-.17]],[[-.24,-.39],[.24,-.39],[.4,-.13],[.35,.28],[.17,.4],[-.17,.4],[-.35,.28],[-.4,-.13]],[[-.31,-.31],[.31,-.31],[.42,.12],[0,.45],[-.42,.12]],[[0,-.46],[.35,-.31],[.43,.2],[0,.46],[-.43,.2],[-.35,-.31]],[[-.32,-.38],[.32,-.38],[.44,0],[.27,.38],[-.27,.38],[-.44,0]]];
 function readSave(){try{const s=JSON.parse(localStorage.getItem('solar-relic-v1')||'{}');return {level:Math.max(1,Math.min(STAGE_COUNT,+s.level||1)),unlocked:Math.max(1,Math.min(STAGE_COUNT,+s.unlocked||1)),best:Math.max(0,+s.best||0),reduced:!!s.reduced,sound:!!s.sound};}catch{return {level:1,unlocked:1,best:0,reduced:false,sound:false};}}
 const saved=readSave(),director=new Soundscape();
 document.addEventListener('pointerdown',()=>director.unlock(),{passive:true});document.addEventListener('keydown',()=>director.unlock(),{passive:true});
 document.addEventListener('touchmove',e=>{if(document.body.classList.contains('playing')&&!$('#modal')?.open){e.preventDefault();}},{passive:false});
 let growth;try{growth=JSON.parse(localStorage.getItem('solar-relic-growth-v2')||'{}');}catch{growth={};}
 growth??={};
-let totemLevels=Array.from({length:6},(_,i)=>{if(growth.levels&&growth.levels[i]!==undefined)return Math.max(0,Math.min(5,Math.floor(+growth.levels[i]||0)));return i===0?1:0;}),magicStars=Math.max(0,Math.floor(+growth.stars||0)),stageStars=Array.from({length:STAGE_COUNT},(_,i)=>Math.max(0,Math.min(3,Math.floor(+growth.stageStars?.[i]||0)))),totemChain={color:-1,count:0},totemFlash=-1,totemFlashUntil=0,totalTotemCasts=0;
+let realmSave={...freshRealmSave(),...growth.realm,gear:{...freshRealmSave().gear,...growth.realm?.gear},newLevels:[...freshRealmSave().newLevels.map((v,i)=>growth.realm?.newLevels?.[i]??v)]};
+let totemLevels=Array.from({length:9},(_,i)=>i<6?growth.levels?.[i]!==undefined?Math.max(0,Math.min(5,Math.floor(+growth.levels[i]||0))):i===0?1:0:realmSave.newLevels[i-6]),magicStars=Math.max(0,Math.floor(+growth.stars||0)),stageStars=Array.from({length:STAGE_COUNT},(_,i)=>Math.max(0,Math.min(3,Math.floor(+growth.stageStars?.[i]||0)))),totemChain={color:-1,count:0},totemFlash=-1,totemFlashUntil=0,totalTotemCasts=0;
 let pendingTotemCasts=[],cascadeChain=Promise.resolve();
 let fortuneBuffs=Object.assign({timePenaltyStages:0,timeBonusStages:0,hardSeals:false,extraSpecials:false,feverBonusStages:0},growth.fortuneBuffs||{});
-function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stringify({levels:totemLevels,stars:magicStars,stageStars,fortuneBuffs}));}catch{}}
+function saveGrowth(){try{localStorage.setItem('solar-relic-growth-v2',JSON.stringify({levels:totemLevels,stars:magicStars,stageStars,fortuneBuffs,realm:realmSave}));}catch{}}
 function applyDivineBlessing(silent=false){
-  const wasMax=totemLevels.every(l=>l===5);
-  totemLevels=[5,5,5,5,5,5];
+  const wasMax=totemLevels.slice(0,6).every(l=>l===5);
+  totemLevels.splice(0,6,5,5,5,5,5,5);
   saveGrowth();
   if(typeof renderTotems==='function')renderTotems();
   if(typeof updateTotemUI==='function')updateTotemUI();
@@ -28,22 +29,24 @@ function applyDivineBlessing(silent=false){
   }
 }
 function totemUnlocked(i){return totemLevels[i]>=1;}
-function totemEffectText(i,l=totemLevels[i]){if(l===0)return `마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초` ][i];}
-function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i);return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon totem-art" style="background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>openUpgrades(+b.dataset.totem));}
+function totemEffectText(i,l=totemLevels[i]){if(l===0)return i<6?`마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`:`${TOTEMS[i].unlockStage}단계 승리 후 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초`,`물결 ${3+l}칸 · 치유`,`대지 충격 · 보호막`,`대각선 칼바람 · 반격 지연` ][i];}
+function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.slice(0,level>100?9:6).map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i);return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon ${i<6?'totem-art':'realm-sigil'}" style="${i<6?`background-position:${(i%3)*50}% ${Math.floor(i/3)*100}%`:''}">${i<6?unlocked?'':'🔒':['≋','◆','➶'][i-6]}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>+b.dataset.totem>=6?openRealmShop():openUpgrades(+b.dataset.totem));}
 let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
-const is100Completed=stageStars[STAGE_COUNT-1]>=1;
+const is100Completed=stageStars[99]>=1||level>100;
 if(is100Completed){applyDivineBlessing(true);}
 let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
 let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,cell=boardSize/8,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
 let lastHeavyShake=0,cameraAnimation;
-let stage=stageDesign(level),sealState=Array(64).fill(0),metrics={colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
+let stage=stageDesign(level),realmBattle=level>100?freshRealmBattle(stage,realmSave):null,sealState=Array(64).fill(0),metrics={colorCollected:Array(9).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
 const fx=new ImpactFX(ctx,()=>cell,()=>reduced,(strength,element)=>{heavyShake(strength);if(element==='fire'||element==='thunder')director.impact(strength,element==='thunder'?2:1);});
 function initStage(){
   finishing=false;lastFireTargets=[];goalsMetAnnounced=false;
   for(const key of ['finale','finaleBonus','castColor','castMultiplier','fireTargets','shockAnchor','shockRadius','shockTargets'])delete frame.dataset[key];
   stage=stageDesign(level);
+  realmBattle=level>100?freshRealmBattle(stage,realmSave):null;
+  document.body.classList.toggle('realm',level>100);
   let stageTime=stage.time;
   if(fortuneBuffs.timeBonusStages>0){stageTime=Math.min(54,stageTime+8);fortuneBuffs.timeBonusStages--;}
   if(fortuneBuffs.timePenaltyStages>0){stageTime=Math.max(25,stageTime-8);fortuneBuffs.timePenaltyStages--;}
@@ -54,7 +57,7 @@ function initStage(){
   const sealHpAdd=fortuneBuffs.hardSeals?1:0;
   if(fortuneBuffs.hardSeals)fortuneBuffs.hardSeals=false;
   stage.seals.forEach(s=>sealState[s.index]=s.hp+sealHpAdd);
-  metrics={colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0};
+  metrics={colorCollected:Array(9).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0};
   impactUntil=0;heavyCast=false;fx.reset();$('#powerCinematic').classList.remove('show');document.body.classList.remove('overdrive');clearTimeout(cinematicTimer);
   if(fortuneBuffs.extraSpecials){
     fortuneBuffs.extraSpecials=false;
@@ -68,8 +71,8 @@ function initStage(){
     },200);
   }
 }
-function currentGoals(){return stageGoals(stage,{...metrics,score,crystals});}
-function budgetEmpty(){return mode!=='zen'&&time<=0;}
+function currentGoals(){return stageGoals(stage,{...metrics,score,crystals,enemyHP:realmBattle?.enemyHP});}
+function budgetEmpty(){return level<=100&&mode!=='zen'&&time<=0;}
 document.body.classList.toggle('reduced-motion',reduced);
 function persist(){try{localStorage.setItem('solar-relic-v1',JSON.stringify({level,unlocked,best,reduced,sound}));saveGrowth();}catch{}}
 function toast(text){$('#toast').textContent=text;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2400);}
@@ -83,7 +86,7 @@ function update(){document.body.classList.toggle('playing',started&&!ended);fram
 function accessBoard(){const input=$('#boardInput');if(!input.children.length)for(let i=0;i<64;i++){const b=document.createElement('button');b.dataset.cell=i;b.tabIndex=i===0?0:-1;input.append(b);}board.forEach((g,i)=>{const b=input.children[i];b.setAttribute('aria-label',`${Math.floor(i/8)+1}행 ${i%8+1}열 ${colorNames[g.color]}${g.special?' 특수 보석':''}${g.crystal?' 별빛 수정':''}${sealState[i]?' 봉인 '+sealState[i]+'겹':''}`);b.dataset.color=g.color;b.dataset.seal=sealState[i];});}
 function syncPositions(reset=false){board.forEach((g,i)=>{if(reset||g.x===undefined){g.x=i%8;g.y=Math.floor(i/8);}g.tx=i%8;g.ty=Math.floor(i/8);});accessBoard();}
 function start(){if(ended){reset();}if(started){if(paused){resumeClock();$('#modal').close();update();}else pause();return;}started=true;running=true;lastTick=performance.now();lastAction=lastTick;tone(523,.2);announce(stage.name,stage.tip,1700);update();}
-function reset(){initStage();pausedAt=0;frame.classList.remove('frozen-board');board=makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=2;totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];gemShards=[];currentCastColor=-1;ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);$('#modal').close();update();persist();}
+function reset(){initStage();pausedAt=0;frame.classList.remove('frozen-board');board=makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=level>100?Infinity:2;totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];gemShards=[];currentCastColor=-1;ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);renderTotems();$('#modal').close();update();persist();}
 function ensureStarted(){if(finishing)return false;if(!started)start();return running&&!paused&&!ended;}
 function pause(){if(!started||ended){toast('보석을 연결하면 탐험이 시작됩니다.');return;}if(busy){toast('연쇄가 끝나면 잠시 쉴 수 있어요.');return;}pauseClock();showModal(`<div class="modal-kicker">TAKE A BREATH</div><h2>사원이 기다리고 있어요</h2><p style="text-align:center">잠시 쉬어도 괜찮아요.<br>돌아오면 바로 이어갈 수 있어요.</p><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="resumeBtn" class="primary-button">탐험 계속하기 →</button><button id="restartBtn" class="text-button">이 스테이지 처음부터 <span>↻</span></button>`);$('#resumeBtn').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};$('#restartBtn').onclick=()=>{reset();start();};update();}
 function resume(){if(started&&!ended){resumeClock();}$('#modal').close();update();}
@@ -114,7 +117,7 @@ async function trySwap(a,b){
       await wait(reduced?15:90);
       tone(150,.08,'triangle');
       if(!findMove(board)){
-        board=makeBoard();syncPositions(true);
+        board=makeBoard(stage.colors||6);syncPositions(true);
         announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');
       }
       if(budgetEmpty()&&activeCascades===0){
@@ -164,6 +167,7 @@ function queueCascade(groups,preferred=[]){
     }finally{
       activeCascades=Math.max(0,activeCascades-1);
       if(activeCascades===0){
+        if(level>100&&realmBattle?.phase==='playing')await combatAfterTurn();
         busy=false;frame.setAttribute('aria-busy','false');checkEnd();update();
       }
     }
@@ -171,7 +175,7 @@ function queueCascade(groups,preferred=[]){
 }
 async function resolve(groups,preferred=[]){
   for(let depth=0;groups.length&&depth<24;depth++){
-    if(depth>0&&totemChain.color>=0){
+    if(depth>0&&totemChain.color>=0&&level<=100){
       const matchingColorGroup=groups.find(g=>g.color===totemChain.color);
       if(matchingColorGroup){
         totemChain=advanceTotem(totemChain,matchingColorGroup.color);
@@ -196,10 +200,10 @@ async function resolve(groups,preferred=[]){
     preferred=[];combo++;
   }
   if(!activeCascades&&findMatches(board).length===0&&!findMove(board)){
-    board=makeBoard();syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');
+    board=makeBoard(stage.colors||6);syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');
   }
 }
-async function settle(recurse=true){collapse(board);syncPositions();await wait(reduced?20:185);if(recurse){const groups=findMatches(board);if(groups.length){combo++;await resolve(groups);}}}
+async function settle(recurse=true){collapse(board,stage.colors||6);syncPositions();await wait(reduced?20:185);if(recurse){const groups=findMatches(board);if(groups.length){combo++;await resolve(groups);}}}
 async function clearCells(indices,creations=new Map(),chain=1){
   const result=affected(board,indices);
   const seals=damageSeals(sealState,result.cells);
@@ -282,8 +286,16 @@ async function clearCells(indices,creations=new Map(),chain=1){
   update();
   await wait(reduced?25:hasSpecials?420:175);
 }
+const realmPoseTimer={mage:0,monster:0};
+function realmPose(who,pose,duration=0){if(level<=100)return;const el=$(who==='mage'?'#realmMage':'#realmMonster');if(!el)return;el.dataset.pose=pose;if(duration){clearTimeout(realmPoseTimer[who]);realmPoseTimer[who]=setTimeout(()=>{if(level>100&&realmBattle?.phase==='playing')el.dataset.pose='idle';},duration);}}
+function updateRealmUI(){const arena=$('#realmArena');arena.hidden=level<=100;if(level<=100)return;const d=realmStage(level),b=realmBattle,foe=REALM_FOES[b.enemyId],sprite=foe.sprite;document.body.style.setProperty('--realm-art',`url('assets/stages/stage_${(level-101)%100+1}.jpg')`);$('#realmMonster').style.backgroundPosition=`${sprite%4*100/3}% ${Math.floor(sprite/4)*50}%`;$('#realmMonster').setAttribute('aria-label',foe.name);$('#realmEnemyName').textContent=d.waves>1?`${foe.name} · ${b.wave}/${d.waves}`:foe.name;$('#realmEnemyHP').textContent=`${b.enemyHP} / ${b.enemyMax}`;$('#realmHeroHP').textContent=`${b.heroHP} / ${b.heroMax}${b.shield?' · 방어 '+b.shield:''}`;$('#realmEnemyFill').style.width=`${Math.max(0,b.enemyHP/b.enemyMax*100)}%`;$('#realmHeroFill').style.width=`${Math.max(0,b.heroHP/b.heroMax*100)}%`;$('#realmAffinity').textContent=`약점 ${foe.weak.map(i=>TOTEMS[i].shortName).join('·')} / 저항 ${foe.resist.map(i=>TOTEMS[i].shortName).join('·')}`;$('#realmCharge').textContent=b.delay?'그로기 · 반격 지연':`반격까지 ${d.cadence-b.charge}매치`;$('#mobileGoal').textContent=`적 체력 ${b.enemyHP}/${b.enemyMax} · ◈ ${realmSave.coins}`;$('#targetScore').textContent=b.enemyMax;$('#crystalCount').textContent=`적 체력 ${b.enemyHP} / ${b.enemyMax}`;$('#goalProgress').style.width=`${Math.max(0,(1-b.enemyHP/b.enemyMax)*100)}%`;$('#timer').textContent='∞';$('#timerLabel').textContent='이동 제한 없음';$('#shuffleCount').textContent='∞';$('#goalChips').innerHTML=`<span class="goal-chip">${d.colors}색 · 8×8 원작 보석판</span><span class="goal-chip">◈ ${realmSave.coins} 코인</span>`;}
+function showRealmDamage(text,color='#ffe4a0'){const el=$('#realmDamage');el.textContent=text;el.style.color=color;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
+function combatCast(color,anchor){if(level<=100||!realmBattle||realmBattle.phase!=='playing')return;const result=realmCast(stage,realmBattle,realmSave,color,totemLevels[color],totemChain.count);if(!result)return;realmPose('mage','cast',900);realmPose('monster',result.affinity<1?'guard':'hurt',750);const orb=$('#realmSpell');orb.style.setProperty('--spell',TOTEMS[color].accent);orb.classList.remove('fly');void orb.offsetWidth;orb.classList.add('fly');showRealmDamage(`${result.combo?result.combo+' · ':''}−${result.damage}`,TOTEMS[color].accent);if(result.combo)toast(`${result.combo} 연계 마법! ${result.damage} 피해`);else if(result.affinity>1)toast(`약점 적중! ${result.damage} 피해`);director.impact(result.boost>1?1.5:1,color===2?2:color===1?1:0);updateRealmUI();}
+async function combatAfterTurn(){if(level<=100||!realmBattle||realmBattle.phase!=='playing'||realmBattle.enemyHP<=0)return;const event=realmCounter(stage,realmBattle,realmSave);if(event?.delayed){realmPose('monster','groggy',750);toast('몬스터 그로기 · 반격 지연');}else if(event?.damage||event?.blocked){realmPose('monster','attack',650);realmPose('mage',event.damage?'hurt':'guard',750);showRealmDamage(event.damage?`마법사 −${event.damage}`:'방어!',event.damage?'#ff8b78':'#a2ebd9');director.impact(1,1);vibrate(event.damage?45:20);await wait(reduced?25:420);}if(event?.defeat)realmPose('mage','groggy');updateRealmUI();}
+function showCombatWave(){realmPose('monster','groggy',700);announce(`${realmBattle.wave}/${stage.waves} 연전`,'새로운 적이 나타났습니다. 생명력 일부 회복!',1200);setTimeout(()=>{if(level>100)realmPose('monster','idle');},700);}
 function checkEnd(){
   if(ended||finishing)return;
+  if(level>100){if(realmBattle?.heroHP<=0){finish(false);return;}if(realmBattle?.enemyHP<=0){if(realmNextWave(stage,realmBattle)){showCombatWave();update();return;}finish(true);return;}if(!findMove(board)){board=makeBoard(stage.colors);syncPositions(true);}persist();return;}
   const obj=objectives(level);
   const allGoalsDone=currentGoals().every(g=>g.done);
   if(allGoalsDone&&!goalsMetAnnounced){
@@ -298,7 +310,7 @@ function checkEnd(){
     finish(standardWin||stars>=1);
     return;
   }
-  if(!findMove(board)){board=makeBoard();syncPositions(true);announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');}
+  if(!findMove(board)){board=makeBoard(stage.colors||6);syncPositions(true);announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');}
   persist();
 }
 async function finish(requestedWin){
@@ -318,7 +330,7 @@ async function finish(requestedWin){
           await wait(reduced?20:120);
           await clearCells([index],new Map(),1);
           await wait(reduced?25:200);
-          collapse(board);syncPositions();
+          collapse(board,stage.colors||6);syncPositions();
           await wait(reduced?25:220);
           let extraGroups=findMatches(board);
           while(extraGroups.length){
@@ -339,7 +351,19 @@ async function finish(requestedWin){
     completeStage(willWin);
   }
 }
+function completeRealmStage(win){
+  if(ended)return;
+  ended=true;running=false;paused=false;activePower=null;
+  const d=realmStage(level),b=realmBattle;let reward=null,stars=0;
+  if(win){reward=realmReward(d,b,realmSave);for(let i=6;i<9;i++)totemLevels[i]=realmSave.newLevels[i-6];stars=b.heroHP/b.heroMax>.7?3:b.heroHP/b.heroMax>.35?2:1;stageStars[level-1]=Math.max(stageStars[level-1],stars);unlocked=Math.max(unlocked,Math.min(REALM_LAST,level+1));best=Math.max(best,score);director.victory(true);chord(12);flash('#fff2b4');}
+  else director.victory(false);
+  persist();renderTotems();update();
+  showModal(`<div class="modal-kicker">${win?'THE NINE REALMS · VICTORY':'THE NINE REALMS · RETRY'}</div><h2>${win?level===200?'아홉 토템의 수호자':d.name+' 격파':'마법사는 다시 일어납니다'}</h2><div class="result-stars">${win?'★'.repeat(stars)+'☆'.repeat(3-stars):'✦'}</div><p class="stars-caption">${win?d.story:'장비와 연계 스크롤을 준비하고 다시 도전하세요.'}</p><div class="result-stats"><div><b>${score.toLocaleString()}</b><span>보석 점수</span></div><div><b>${win?'◈ '+reward.coins:'◈ '+realmSave.coins}</b><span>${win?'이번 전투 보상':'보유 코인'}</span></div></div>${reward?.unlock>=6?`<p class="stars-caption">✦ ${TOTEMS[reward.unlock].name} 토템 획득!</p>`:''}<button id="realmNext" class="primary-button">${win?level===200?'여정의 지도 보기':'다음 전투 →':'이 전투 재도전 →'}</button><button id="realmResultShop" class="text-button">장비 · 연계 마법 상점 ↗</button>`);
+  $('#realmNext').onclick=()=>{if(win&&level===200){openRealmMap();return;}if(win)level++;reset();showScenarioBriefing(level);};
+  $('#realmResultShop').onclick=()=>openRealmShop();
+}
 function completeStage(win){
+  if(level>100){completeRealmStage(win);return;}
   if(ended)return;
   director.victory(win);
   ended=true;running=false;paused=false;activePower=null;frenzyUntil=0;
@@ -353,7 +377,7 @@ function completeStage(win){
     unlocked=Math.max(unlocked,Math.min(STAGE_COUNT,level+1));
     chord(12);flash();
     for(let i=0;i<8;i++)burst(Math.floor(Math.random()*64),3,25);
-    if(level===STAGE_COUNT){
+    if(level===100){
       applyDivineBlessing(false);
     }
   }
@@ -363,7 +387,7 @@ function completeStage(win){
   const criteria=stageStarCriteria(stage);
   showModal(`
     <div class="modal-kicker">${win?'TEMPLE AWAKENED':'A NEW DAWN AWAITS'}</div>
-    <h2>${win?(level===STAGE_COUNT?'태양의 유산을 찾았습니다':`${sc.title} 돌파!`):'다시 깨어날 시간'}</h2>
+    <h2>${win?(level===100?'태양의 유산을 찾았습니다':`${sc.title} 돌파!`):'다시 깨어날 시간'}</h2>
     <div class="result-stars">${win?'★'.repeat(stars)+'☆'.repeat(3-stars):'✦'}</div>
     <div class="result-stats">
       <div><b>${score.toLocaleString()}</b><span>최종 점수 · 종료 보너스 포함</span></div>
@@ -371,7 +395,7 @@ function completeStage(win){
     </div>
     ${endingBonus?`<p class="stars-caption">종료 보너스 +${endingBonus.toLocaleString()}점 합산 완료</p>`:''}
     
-    ${win&&level===STAGE_COUNT?`
+    ${win&&level===100?`
       <div class="divine-blessing-box" style="background:linear-gradient(135deg,#2e1e05,#4a3206);border:2px solid #ffd54f;border-radius:12px;padding:12px 14px;margin:12px 0;text-align:center;box-shadow:0 0 25px rgba(255,213,79,0.5);">
         <div style="font-size:11px;color:#ffe57f;letter-spacing:1.5px;font-weight:bold;">☀️ DIVINE BLESSING · 신의 축복 강림 ☀️</div>
         <h3 style="color:#ffffff;font-size:16px;margin:5px 0 6px;text-shadow:0 0 10px #ffea79;">6대 수호 토템 궁극 레벨 (Lv.5 MAX) 완전 해금!</h3>
@@ -394,14 +418,14 @@ function completeStage(win){
     </div>
 
     <p class="stars-caption">
-      ${win?(level===STAGE_COUNT?'100개의 관문을 모두 돌파했습니다! 몬테주마의 전설이 완성되었습니다.':`마법별 +${newStars}개 (보유 ★${magicStars})<br>사원의 다음 문이 열렸습니다. 다음 관문으로 나아가세요!`):currentGoals().map(g=>(g.done?'✓ ':'· ')+g.label+' '+Math.min(g.value,g.target)+'/'+g.target).join('<br>')+'<br>휴식 모드에서 제한 없이 공략할 수도 있어요.'}
+      ${win?(level===100?'100개의 관문을 모두 돌파했습니다! 몬테주마의 전설이 완성되었습니다.':`마법별 +${newStars}개 (보유 ★${magicStars})<br>사원의 다음 문이 열렸습니다. 다음 관문으로 나아가세요!`):currentGoals().map(g=>(g.done?'✓ ':'· ')+g.label+' '+Math.min(g.value,g.target)+'/'+g.target).join('<br>')+'<br>휴식 모드에서 제한 없이 공략할 수도 있어요.'}
     </p>
-    <button id="nextBtn" class="primary-button">${win&&level===STAGE_COUNT?'🎁 보물상자를 여세요':win&&level<STAGE_COUNT?(level%5===0?'고대 운명의 카드 시험으로 →':'다음 관문으로 →'):'다시 도전하기 →'}</button>
+    <button id="nextBtn" class="primary-button">${win&&level===100?'🎁 보물상자를 여세요':win&&level<100?(level%5===0?'고대 운명의 카드 시험으로 →':'다음 관문으로 →'):'다시 도전하기 →'}</button>
     ${win?'<button id="resultUpgrade" class="text-button">토템 강화 <span>↗</span></button>':''}
     ${!win?'<button id="zenResult" class="text-button">시간 없는 휴식으로 <span>∞</span></button>':''}
   `);
   $('#nextBtn').onclick=()=>{
-    if(win&&level===STAGE_COUNT){openWorldChest();return;}
+    if(win&&level===100){openWorldChest();return;}
     if(win&&level<STAGE_COUNT){
       if(level%5===0){
         openFortuneCardModal(level,()=>{
@@ -482,10 +506,10 @@ wrap.addEventListener('pointercancel',e=>{
 });
 $('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;if(!Number.isFinite(i))return;const delta={ArrowRight:1,ArrowLeft:-1,ArrowUp:-8,ArrowDown:8}[e.key];if(delta){e.preventDefault();const j=i+delta;if(j>=0&&j<64&&adjacent(i,j)){e.target.tabIndex=-1;const b=$('#boardInput').children[j];b.tabIndex=0;b.focus();}}if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i);}});
 document.addEventListener('keydown',e=>{if($('#modal').open)return;if(e.key==='Escape'){if(started&&!ended)pause();}});
-$('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=help;$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
+$('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=()=>level>100?realmHelp():help();$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
 $$('[data-mode]').forEach(b=>b.onclick=()=>{if(started&&!ended)return;mode=b.dataset.mode;reset();toast(mode==='zen'?'시간 제한 없이, 편안하게 즐기세요.':'90초 동안 고대 사원을 깨우세요.');});
 $('#hintBtn').onclick=()=>{if(busy||paused||ended)return;hint=findMove(board,totemChain.color)||[];hintUntil=performance.now()+3500;if(hint.length)toast('빛나는 두 보석을 서로 바꿔보세요.');};
-$('#shuffleBtn').onclick=()=>{if(busy||paused||ended)return;if(!shuffleLeft){toast('섞기를 모두 사용했어요. 다음 스테이지에 충전됩니다.');return;}shuffleLeft--;board=makeBoard();selected=-1;hint=[];syncPositions(true);ring(4,4,'#bde5b9',4);tone(450,.18);toast('보석에 새로운 기운이 깃들었어요.');update();};
+$('#shuffleBtn').onclick=()=>{if(busy||paused||ended)return;if(!shuffleLeft){toast('섞기를 모두 사용했어요. 다음 스테이지에 충전됩니다.');return;}if(level<=100)shuffleLeft--;board=makeBoard(stage.colors||6);selected=-1;hint=[];syncPositions(true);ring(4,4,'#bde5b9',4);tone(450,.18);toast('보석에 새로운 기운이 깃들었어요.');update();};
 $('#mapBtn').onclick=()=>openMap();
 $('#mobileMap').onclick=()=>$('#mapBtn').click();
 document.addEventListener('visibilitychange',()=>{director.visibility(document.hidden);if(document.hidden&&running){pauseClock();}else if(!document.hidden&&paused&&!$('#modal').open){pause();}update();});
@@ -653,7 +677,7 @@ function tick(now){
   lastTick=now;lastRenderTime=now;const dt=elapsed||.016;
   if(running&&!paused&&!ended){
     if(frozen>0){frozen=Math.max(0,frozen-elapsed);if(!frozen)frame.classList.remove('frozen-board');}
-    else if(mode!=='zen'&&now>=impactUntil){time=Math.max(0,time-elapsed);}
+    else if(level<=100&&mode!=='zen'&&now>=impactUntil){time=Math.max(0,time-elapsed);}
     if(now>frenzyUntil&&frenzy>0&&now-lastAction>2500)frenzy=Math.max(0,frenzy-elapsed*1.8);
     if((busy||swapping)&&now-lastAction>2200&&activeCascades===0&&!finishing){busy=false;swapping=false;frame.setAttribute('aria-busy','false');checkEnd();}
     if(budgetEmpty()){
@@ -673,7 +697,7 @@ function tick(now){
   uiTick+=dt;
   if(uiTick>.2){
     if(running&&!paused&&!ended){
-      $('#timer').textContent=mode==='zen'?'∞':`${Math.floor(Math.ceil(Math.max(0,time))/60)}:${String(Math.ceil(Math.max(0,time))%60).padStart(2,'0')}`;
+      $('#timer').textContent=level>100||mode==='zen'?'∞':`${Math.floor(Math.ceil(Math.max(0,time))/60)}:${String(Math.ceil(Math.max(0,time))%60).padStart(2,'0')}`;
       const isFrenzy=performance.now()<frenzyUntil;
       document.body.classList.toggle('is-frenzy',isFrenzy);
       $('#frenzyFill').style.width=`${isFrenzy?Math.max(0,(frenzyUntil-performance.now())/100):frenzy}%`;
@@ -690,6 +714,7 @@ async function castTotem(color,index){
   frame.dataset.castMultiplier=p.multiplier;frame.dataset.castColor=color;
   impactUntil=performance.now()+(reduced?0:900);heavyCast=true;
   showCinematic(color,l,p.multiplier);announce(t.name+' · Lv.'+l,(boost?'위력 ×1.5 · ':'')+t.color+' '+totemChain.count+'연속',1450);director.power(color,p.multiplier);vibrate(boost?[55,35,100,30,75]:[40,35,80]);
+  if(level>100)combatCast(color,index);
   let cells=[];const r=Math.floor(index/8),c=index%8;
   if(color===1){
     const baseCount=Math.max(2,Math.min(4,Math.floor(1.5+l*0.55)));
@@ -752,7 +777,10 @@ async function castTotem(color,index){
   if(color===0){const harvest=harvestTargets(board,l,totemChain.count);cells=harvest.collect;for(const i of cells)fx.siphon(i,index,t.accent,p.multiplier);harvest.create.forEach(i=>{board[i].crystal=true;ring(i%8+.5,Math.floor(i/8)+.5,t.accent,1.1);});fx.field(c+.5,r+.5,t.accent,p.multiplier,'jade');}
   if(color===3){const bonus=p.bonus*(performance.now()<frenzyUntil?3:1);score+=bonus;frenzy=Math.min(100,frenzy+p.energy);if(frenzy>=100){frenzy=0;frenzyUntil=performance.now()+(6000+l*500+(activeFeverBonus?3000:0));announce('SOLAR AWAKENING','황금 토템 · 점수 3배',1400);}floats.push({x:4,y:3,text:'+'+bonus,life:1.4,color:'#ffda82'});fx.field(c+.5,r+.5,t.accent,p.multiplier,'solar');}
   if(color===4){const gifts=lunarTargets(board,l,totemChain.count);metrics.specialsMade+=gifts.length;gifts.forEach(({index:i,special},k)=>{board[i].special=special;fx.meteor(index,i,t.accent,.75,k*.06,'gift');});fx.field(c+.5,r+.5,t.accent,p.multiplier,'lunar');}
-  if(color===5){let text='시간의 축복';if(mode!=='zen'){const next=extendTime(stage,time,p),gained=next-time;time=next;text='+'+gained.toFixed(1).replace('.0','')+'초';}if(p.stasis){frozen=Math.max(frozen,p.stasis);frame.classList.add('frozen-board');}floats.push({x:4,y:3,text,life:1.4,color:'#ffd7a1'});fx.field(4,4,t.accent,p.multiplier,'clock');}
+  if(color===5){let text=level>100?'적의 반격 지연':'시간의 축복';if(level<=100&&mode!=='zen'){const next=extendTime(stage,time,p),gained=next-time;time=next;text='+'+gained.toFixed(1).replace('.0','')+'초';}if(p.stasis&&level<=100){frozen=Math.max(frozen,p.stasis);frame.classList.add('frozen-board');}floats.push({x:4,y:3,text,life:1.4,color:'#ffd7a1'});fx.field(4,4,t.accent,p.multiplier,'clock');}
+  if(color===6){const reach=l>=4?3:2;for(let x=Math.max(0,c-reach);x<=Math.min(7,c+reach);x++)cells.push(r*8+x);if(boost)for(const y of [r-1,r+1])if(y>=0&&y<8)cells.push(y*8+c);fx.shockRange(index,reach+.5,t.accent);ring(c+.5,r+.5,t.accent,3);}
+  if(color===7){for(let y=Math.max(0,r-1);y<=Math.min(7,r+1);y++)for(let x=Math.max(0,c-1);x<=Math.min(7,c+1);x++)if(Math.abs(y-r)+Math.abs(x-c)<=1+(l>=4?1:0))cells.push(y*8+x);if(boost)cells=amplifyCells(cells,1.5,index);fx.blast(c+.5,r+.5,t.accent,p.multiplier);}
+  if(color===8){const reach=l>=4?3:2;for(let k=-reach;k<=reach;k++)for(const x of [c+k,c-k]){const y=r+k;if(y>=0&&y<8&&x>=0&&x<8)cells.push(y*8+x);}if(boost)cells=amplifyCells(cells,1.5,index);fx.field(c+.5,r+.5,t.accent,p.multiplier,'solar');for(const hit of cells)beam(index,hit,t.accent);}
   if(cells.length){
     update();
     await wait(reduced?20:300);
@@ -767,16 +795,17 @@ async function castTotem(color,index){
 }
 
 function openUpgrades(focus=-1){
+  if(level>100){openRealmShop();return;}
   if(busy){toast('연쇄가 끝난 뒤 기술 성소를 열 수 있어요.');return;}
   if(running)pauseClock();
-  const nextTarget=TOTEMS.map((t,i)=>({t,i,l:totemLevels[i]})).find(x=>x.l===0);
+  const nextTarget=TOTEMS.slice(0,6).map((t,i)=>({t,i,l:totemLevels[i]})).find(x=>x.l===0);
   const nextNeed=nextTarget?Math.max(0,nextTarget.t.unlockCost-magicStars):0;
   
   showModal(`
     <div class="modal-kicker">ANCIENT TECH RESEARCH SANCTUARY</div>
     <h2>사원의 기술 성소 · 토템 강화 & 각성</h2>
     <div class="wallet-title">★ ${magicStars} <small>보유 마법별 · 관문을 3성으로 클리어해 획득</small></div>
-    ${totemLevels.every(l=>l>=5)?`
+    ${totemLevels.slice(0,6).every(l=>l>=5)?`
       <div style="text-align:center;margin:-2px 0 12px;">
         <span style="font-size:11px;color:#ffe57f;background:linear-gradient(135deg,#362406,#4a3206);border:1.5px solid #ffd54f;padding:7px 16px;border-radius:20px;display:inline-block;box-shadow:0 0 15px rgba(255,213,79,0.35);">
           ☀️ <b>[신의 축복]</b> 100관문 정복 완료 · 6대 수호 토템 모두 <b>궁극 레벨 (Lv.5 MAX)</b> 달성!
@@ -784,7 +813,7 @@ function openUpgrades(focus=-1){
       </div>
     `:(nextTarget?`<div style="text-align:center;margin:-2px 0 12px;"><span style="font-size:11px;color:#f0dcab;background:#103438cc;border:1px solid #d4b56844;padding:6px 14px;border-radius:20px;display:inline-block;">🎯 다음 미해금 기술: <b>[${nextTarget.t.name}]</b> 해금까지 <b>★ ${nextNeed}개</b> 필요</span></div>`:'')}
     <div class="upgrade-list">
-      ${TOTEMS.map((t,i)=>{
+      ${TOTEMS.slice(0,6).map((t,i)=>{
         const l=totemLevels[i],isLocked=l===0,status=canUpgradeTotem(i,l,level,totemLevels,magicStars),prereq=upgradePrerequisite(i,l+1),spec=totemLevelSpecs(i,l);
         let btnText='',btnDisabled=false,btnStyle='';
         if(status.isMax){
@@ -863,6 +892,7 @@ function openUpgrades(focus=-1){
   };
 }
 function openMap(chapter=chapterIndex(level)){
+  if(level>100){openRealmMap();return;}
   if(busy){toast('연쇄가 끝난 뒤 지도를 열 수 있어요.');return;}
   if(running)pauseClock();
   const totalStars=stageStars.reduce((a,b)=>a+b,0);
@@ -876,10 +906,10 @@ function openMap(chapter=chapterIndex(level)){
           <span>해금 관문 <b>${unlocked} / 100</b></span>
           <span>총 획득 별 <b>★ ${totalStars}</b></span>
           <span>보유 마법별 <b>★ ${magicStars}</b></span>
-          ${(unlocked>=STAGE_COUNT||stageStars[STAGE_COUNT-1]>=1)?`<span style="color:#ffe082;background:#382708;padding:2px 8px;border-radius:10px;border:1px solid #ffd54f;">☀️ 신의 축복 활성</span>`:''}
+          ${(unlocked>=100||stageStars[99]>=1)?`<span style="color:#ffe082;background:#382708;padding:2px 8px;border-radius:10px;border:1px solid #ffd54f;">☀️ 신의 축복 활성</span>`:''}
         </div>
         <div class="map-tabs">
-          ${chapters.map((c,i)=>`<button data-chapter="${i}" class="${i===chapter?'active':''}">${String(i*20+1).padStart(2,'0')}–${((i+1)*20)}</button>`).join('')}
+          ${chapters.slice(0,5).map((c,i)=>`<button data-chapter="${i}" class="${i===chapter?'active':''}">${String(i*20+1).padStart(2,'0')}–${((i+1)*20)}</button>`).join('')}
         </div>
       </div>
       <div class="map-path-container">
@@ -932,6 +962,7 @@ function updateStageUI(){
   $('#boardFrame').classList.toggle('guardian-board',stage.type==='guardian');
   if(mode==='zen'){$('#timer').textContent='∞';$('#timerLabel').textContent='휴식 모드';}
   if(totemChain.count>=3&&totemLevels[totemChain.color]>=2&&totemUnlocked(totemChain.color))$('#boardHint').textContent=colorNames[totemChain.color]+' '+totemChain.count+'연속 · 위력 ×1.5';
+  updateRealmUI();
 }
 function heavyShake(strength=1){if(reduced||performance.now()-lastHeavyShake<80)return;lastHeavyShake=performance.now();cameraAnimation?.cancel();const a=Math.min(14,5+strength*4);cameraAnimation=frame.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${-a}px,${a*.4}px) scale(1.025)`},{transform:`translate(${a*.8}px,${-a*.5}px) scale(1.018)`},{transform:`translate(${-a*.5}px,${a*.2}px) scale(1.01)`},{transform:'translate(0,0) scale(1)'}],{duration:560,easing:'cubic-bezier(.15,.7,.25,1)'});}
 function impactSound(strength=1){director.impact(strength,totemChain.color>=0?totemChain.color:1);}
@@ -946,6 +977,8 @@ function updateTitleUI(){
   $('#titleStageName').textContent=`STAGE ${String(level).padStart(2,'0')} · ${chapters[ci][0]}`;
   $('#titleStars').textContent=`★ ${totalStars}개 (보유 ★${magicStars})`;
   $('#titleContinueBtn').querySelector('span').textContent=`이어하기 (STAGE ${level})`;
+  $('#titleNewGameBtn').hidden=level>100;
+  $('#titleChestBtn').hidden=level>100||stageStars[99]<1;
 }
 
 function showTitleScreen(){
@@ -959,6 +992,7 @@ function hideTitleScreen(){
 }
 
 function showScenarioBriefing(lvl=level){
+  if(lvl>100){showRealmBriefing(lvl);return;}
   const sc=stageScenario(lvl);
   const st=stageDesign(lvl);
   const goals=stageGoals(st,{score:0,crystals:0,colorCollected:Array(6).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0});
@@ -1158,16 +1192,24 @@ $('#titleNewGameBtn').onclick=()=>{
 };
 
 $('#titleSoundBtn').onclick=showSoundSettings;
-$('#titleHelpBtn').onclick=help;
+$('#titleHelpBtn').onclick=()=>level>100?realmHelp():help();
 $('#titleMapBtn').onclick=()=>openMap();
 $('#titleUpgradeBtn').onclick=()=>openUpgrades();
+function realmHelp(){if(busy){toast('연쇄가 끝난 뒤 도움말을 열 수 있어요.');return;}if(running)pauseClock();showModal(`<div class="modal-kicker">THE NINE REALMS · GUIDE</div><h2>보석으로 싸우는 법</h2><div class="help-row"><span>01</span><div><b>원래 하던 방식으로 보석을 맞추세요</b><small>옆 보석과 교환해 3개 이상 연결합니다. 보석판과 특수돌은 사원에서 쓰던 그대로입니다.</small></div></div><div class="help-row"><span>02</span><div><b>같은 색 두 번째부터 마법 공격</b><small>예: 빨강 → 빨강 = 불 마법. 토템 Lv.2 이상이면 3연속부터 위력 1.5배입니다.</small></div></div><div class="help-row"><span>03</span><div><b>약점과 반격을 보세요</b><small>몬스터의 약점 마법은 더 아프게, 저항 마법은 약하게 들어갑니다. 몇 번의 교환마다 몬스터가 반격합니다. 이동 횟수 제한은 없습니다.</small></div></div><div class="help-row"><span>04</span><div><b>승리 코인으로 성장하세요</b><small>장비를 사서 공격·체력·방어를 높이고, 스크롤을 사면 물→번개와 바람→물 같은 연계 마법이 발동합니다.</small></div></div><button id="helpClose" class="primary-button">전투로 돌아가기 →</button>`);$('#helpClose').onclick=resume;}
+function showRealmBriefing(lvl=level){const d=realmStage(lvl),foe=d.enemy;showModal(`<div class="scenario-brief"><div class="scenario-art-frame"><img src="assets/stages/stage_${(lvl-101)%100+1}.jpg" alt="${d.name}" class="scenario-art-img"><div class="scenario-art-badge">STAGE ${lvl} · ${REALM_ACTS[d.act].name}</div><div class="scenario-art-overlay"></div></div><div class="scenario-kicker">THE NINE REALMS · ${d.act+1}막</div><h2 class="scenario-title">${d.name}</h2><div class="scenario-story">${d.story}</div><div class="scenario-goals"><b>몬스터 약점</b><p>${foe.weak.map(i=>TOTEMS[i].shortName).join(' · ')} 마법에 약합니다. ${d.colors}색 보석 · 원작 8×8 보석판 · 이동 횟수 제한 없음.</p></div><button id="realmBriefStart" class="primary-button">전투 시작 →</button><button id="realmBriefShop" class="text-button">장비와 스크롤 확인 ↗</button></div>`);$('#realmBriefStart').onclick=()=>{$('#modal').close();level=lvl;reset();start();};$('#realmBriefShop').onclick=()=>openRealmShop();}
+function openRealmMap(act=Math.floor((level-101)/10)){if(level<=100)return;act=Math.max(0,Math.min(9,act));const from=101+act*10;showModal(`<div class="modal-kicker">THE NINE REALMS · 101–200</div><h2>${REALM_ACTS[act].name}</h2><p class="stars-caption">${REALM_ACTS[act].story}</p><div class="map-tabs">${REALM_ACTS.map((a,i)=>`<button data-realm-act="${i}" class="${i===act?'active':''}">${i+1}막</button>`).join('')}</div><div class="map-grid">${Array.from({length:10},(_,i)=>{const n=from+i,d=realmStage(n);return `<button data-realm-level="${n}" ${n>unlocked?'disabled':''} class="${n===level?'current':stageStars[n-1]?'done':''}">${n}<small>${d.enemy.name}</small></button>`;}).join('')}</div><button id="realmMapClose" class="primary-button">지도를 닫고 돌아가기</button>`);$$('[data-realm-act]').forEach(el=>el.onclick=()=>openRealmMap(+el.dataset.realmAct));$$('[data-realm-level]').forEach(el=>el.onclick=()=>{level=+el.dataset.realmLevel;reset();showRealmBriefing(level);});$('#realmMapClose').onclick=()=>{$('#modal').close();if(started&&!ended)resumeClock();};}
+function openRealmShop(tab='gear'){if(level<=100)return;if(running)pauseClock();const tabs=`<div class="map-tabs"><button data-shop-tab="gear" class="${tab==='gear'?'active':''}">장비</button><button data-shop-tab="scroll" class="${tab==='scroll'?'active':''}">연계 스크롤</button><button data-shop-tab="totem" class="${tab==='totem'?'active':''}">새 토템 강화</button></div>`;let items='';
+ if(tab==='gear')items=Object.entries(REALM_GEAR).map(([slot,list])=>{const next=list[realmSave.gear[slot]+1],title={staff:'지팡이',robe:'로브',ring:'반지'}[slot];return `<div class="upgrade-row"><div><b>${title} · ${next?.name||'최고 등급'}</b><small>${next?slot==='staff'?`공격력 +${next.power}`:slot==='robe'?`체력 +${next.hp} · 방어 +${next.armor}`:`마법 집중 +${Math.round(next.focus*100)}%`:'완성'}</small></div><button data-realm-buy="gear:${slot}" ${!next||realmSave.coins<next.price?'disabled':''}>${next?`◈ ${next.price}`:'MAX'}</button></div>`;}).join('');
+ if(tab==='scroll')items=REALM_SCROLLS.map(s=>`<div class="upgrade-row"><div><b>${s.name}</b><small>${s.desc}</small></div><button data-realm-buy="scroll:${s.id}" ${realmSave.scrolls.includes(s.id)||realmSave.coins<s.price?'disabled':''}>${realmSave.scrolls.includes(s.id)?'보유':`◈ ${s.price}`}</button></div>`).join('');
+ if(tab==='totem')items=TOTEMS.slice(6).map((t,j)=>{const i=j+6,l=totemLevels[i],price=65+l*85;return `<div class="upgrade-row"><div><b>${t.name} · Lv.${l}</b><small>${l?'3연속부터 Lv.2 이상 위력 ×1.5':'문지기 승리 후 해금'}</small></div><button data-realm-buy="totem:${i}" ${!l||l>=5||realmSave.coins<price?'disabled':''}>${!l?'잠김':l>=5?'MAX':`◈ ${price}`}</button></div>`;}).join('');
+ showModal(`<div class="modal-kicker">TRAVELER'S MARKET · ◈ ${realmSave.coins}</div><h2>이세계 상점</h2><p class="stars-caption">전투 보상으로 장비·연계 마법을 준비하세요.</p>${tabs}<div class="upgrade-list">${items}</div><button id="realmShopClose" class="primary-button">${ended?realmBattle?.phase==='won'?'다음 전투로 →':'재도전 →':'전투로 돌아가기 →'}</button>`);$$('[data-shop-tab]').forEach(el=>el.onclick=()=>openRealmShop(el.dataset.shopTab));$$('[data-realm-buy]').forEach(el=>el.onclick=()=>{const [kind,id]=el.dataset.realmBuy.split(':');const oldMax=realmBattle?.heroMax??0;if(realmBuy(realmSave,kind,id)){if(kind==='totem')for(let i=6;i<9;i++)totemLevels[i]=realmSave.newLevels[i-6];if(kind==='gear'&&id==='robe'&&realmBattle){realmBattle.heroMax=realmMaxHP(realmSave);realmBattle.heroHP=Math.min(realmBattle.heroMax,realmBattle.heroHP+realmBattle.heroMax-oldMax);}director.ui(660,.2);persist();renderTotems();update();openRealmShop(tab);}});$('#realmShopClose').onclick=()=>{if(ended){if(realmBattle?.phase==='won'&&level===REALM_LAST){openRealmMap();return;}if(realmBattle?.phase==='won')level++;reset();showRealmBriefing(level);}else if(!started)showRealmBriefing(level);else{$('#modal').close();resumeClock();}};}
 function openWorldChest(){
-  if(stageStars[STAGE_COUNT-1]<1){toast('100단계를 먼저 클리어해야 합니다.');return;}
+  if(stageStars[99]<1){toast('100단계를 먼저 클리어해야 합니다.');return;}
   showModal(`<div class="modal-kicker">THE NINE REALMS</div><h2>태양의 보물상자</h2><p style="text-align:center;line-height:1.8;">상자 안에서 이세계의 문이 열립니다.<br><b>입장하면 이곳의 1~100단계로 돌아올 수 없습니다.</b><br>6대 토템의 힘을 가지고 101단계 전투를 시작합니다.</p><button id="enterWorld" class="primary-button">상자를 열고 이세계로 간다 →</button><button id="stayTemple" class="text-button" style="justify-content:center">아직 사원에 머무르기</button>`);
-  $('#enterWorld').onclick=()=>{const next=initialState(totemLevels);next.battle=newBattle(next);try{localStorage.setItem('solar-relic-otherworld-v1',JSON.stringify(next));location.replace('otherworld.html');}catch{toast('저장 공간을 사용할 수 없어 이동하지 못했습니다.');}};
+  $('#enterWorld').onclick=()=>{level=101;unlocked=Math.max(unlocked,101);hideTitleScreen();reset();persist();showScenarioBriefing(101);};
   $('#stayTemple').onclick=()=>$('#modal').close();
 }
-$('#titleChestBtn').hidden=stageStars[STAGE_COUNT-1]<1;
+$('#titleChestBtn').hidden=level>100||stageStars[99]<1;
 $('#titleChestBtn').onclick=openWorldChest;
 $('#homeBtn').onclick=showTitleScreen;
 $('#brandLink').onclick=e=>{e.preventDefault();showTitleScreen();};
