@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {STAGE_COUNT,TOTEMS,stageDesign,stageScenario,makeStageBoard,findMatches,findMove,collapse} from './dist/engine.mjs';
-import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,realmStage,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmAffinity,realmCast,realmCounter,realmNextWave,realmReward,realmBuy} from './dist/realm.mjs';
+import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,realmStage,realmBackdrop,realmGateStars,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmAffinity,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './dist/realm.mjs';
 
 assert.equal(STAGE_COUNT,200);
 assert.equal(REALM_ACTS.length,10);
@@ -18,7 +18,14 @@ for(let n=101;n<=200;n++){
   assert.equal(d.chapter,5+Math.floor((n-101)/10));
   assert.ok(d.hp>0&&d.attack>0&&d.reward>0);
   assert.ok(sc.story.length>25&&sc.image.includes('assets/stages/'));
+  assert.equal(sc.image,realmBackdrop(d));
 }
+assert.notEqual(realmBackdrop(realmStage(101)),realmBackdrop(realmStage(103)),'new monster types change the scene');
+assert.equal(realmGateStars(realmStage(101)),1,'same monster continues after one star');
+assert.equal(realmGateStars(realmStage(102)),2,'a different monster requires two stars');
+assert.equal(realmGateStars(realmStage(109)),3,'a boss entrance requires three stars');
+assert.equal(realmGateStars(realmStage(110)),3,'a new act requires three stars');
+assert.equal(realmGateStars(realmStage(200)),0);
 for(const n of [101,106,116,126,150,200]){
   const d=realmStage(n),b=makeStageBoard(n);b[0]=null;collapse(b,d.colors);assert.ok(b.every(Boolean));assert.ok(b.every(g=>g.color<d.colors));
 }
@@ -37,6 +44,12 @@ assert.equal(boosted.boost,1.5);
 assert.ok(boosted.damage>weak.damage);
 assert.ok(realmAffinity(stage.enemy,1)>1);
 assert.ok(realmAffinity(stage.enemy,6)<1);
+const resonanceBattle=freshRealmBattle(stage,save),resonanceThreshold=realmResonanceThreshold(stage);
+assert.equal(realmResonance(stage,resonanceBattle,save,resonanceThreshold-1,['row']),null,'low score does not trigger a bonus attack');
+assert.equal(realmResonance(stage,resonanceBattle,save,resonanceThreshold+600,[]),null,'score alone does not trigger without a special gem');
+const resonance=realmResonance(stage,resonanceBattle,save,resonanceThreshold+600,['row']);
+assert.ok(resonance.damage>0&&resonanceBattle.enemyHP<stage.hp,'a detonated special and high turn score deal bonus damage');
+assert.ok(realmResonance(stage,freshRealmBattle(stage,save),save,resonanceThreshold+600,['bomb']).damage>resonance.damage,'bomb impact exceeds a row gem');
 const hpBeforeWave=battle.heroHP;battle.enemyHP=0;assert.ok(realmNextWave(stage,battle));assert.equal(battle.wave,2);assert.equal(battle.heroHP,hpBeforeWave,'defeating a weak slime does not restore hero HP');assert.equal(realmEncounterHP(stage,battle).current,stage.hp*2);
 stage=realmStage(105);battle=freshRealmBattle(stage,save);const reward=realmReward(stage,battle,save);assert.ok(reward.coins>=stage.reward);assert.equal(save.newLevels[0],1);
 stage=realmStage(115);battle=freshRealmBattle(stage,save);realmReward(stage,battle,save);assert.equal(save.newLevels[1],1);

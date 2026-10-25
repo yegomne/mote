@@ -27,6 +27,9 @@ export const REALM_FOES=[
   {name:'화산 와이번',weak:[6,7],resist:[1],move:'용암 폭격',sprite:10},
   {name:'태초의 용 아즈라엘',weak:[6,4],resist:[1,7],move:'일식의 숨결',sprite:11}
 ];
+const REALM_FOE_SCENES=[[21,26],[23,34],[35,43],[38,20],[55,59],[30,32],[52,60],[71,73],[56],[64,79],[18,87],[18,100]];
+export function realmBackdrop(stage,enemyId=stage.enemyId){const scenes=REALM_FOE_SCENES[enemyId]||[21],scene=scenes[stage.act%scenes.length];return `assets/stages/stage_${scene}.jpg`;}
+export function realmGateStars(stage){if(stage.level>=REALM_LAST)return 0;const next=realmStage(stage.level+1);return next.enemyId===stage.enemyId?1:next.boss||next.act!==stage.act?3:2;}
 export const REALM_SCROLLS=[
   {id:'storm',name:'폭풍 전도',pair:[6,2],price:120,mult:2.2,delay:1,desc:'물 → 번개 · 젖은 적에게 큰 피해'},
   {id:'ice',name:'빙결 회랑',pair:[8,6],price:150,mult:1.8,delay:2,desc:'바람 → 물 · 빙결 피해와 반격 지연'},
@@ -64,6 +67,15 @@ export function realmCast(stage,battle,save,color,level,streak){if(battle.phase!
  if(scroll){damage=Math.round(damage*scroll.mult);delay+=scroll.delay||0;heal+=scroll.heal||0;if(scroll.burn)battle.burn=Math.max(battle.burn,scroll.burn);combo=scroll.name;battle.previousSpell=-1;}else battle.previousSpell=color;
  battle.enemyHP=Math.max(0,battle.enemyHP-damage);battle.heroHP=Math.min(battle.heroMax,battle.heroHP+heal);battle.shield=Math.min(150,battle.shield+shield);battle.delay+=delay;
  return {damage,heal,shield,delay,combo,affinity,boost,enemyHP:battle.enemyHP};
+}
+export function realmResonanceThreshold(stage){return 1000+Math.floor(stage.act/2)*150;}
+export function realmResonance(stage,battle,save,turnScore,specials){
+ if(battle.phase!=='playing'||battle.enemyHP<=0||!specials?.length||turnScore<realmResonanceThreshold(stage))return null;
+ const power=specials.reduce((sum,type)=>sum+({row:1,col:1,cross:2,bomb:2,nova:3}[type]||1),0);
+ const staff=REALM_GEAR.staff[save.gear.staff].power,focus=REALM_GEAR.ring[save.gear.ring].focus;
+ const damage=Math.min(160+stage.act*10,Math.round((18+stage.act*8+power*12+Math.min(50,(turnScore-realmResonanceThreshold(stage))/70)+staff*.35)*(1+focus*.5)));
+ battle.enemyHP=Math.max(0,battle.enemyHP-damage);
+ return {damage,score:turnScore,specials:specials.length,power,threshold:realmResonanceThreshold(stage),enemyHP:battle.enemyHP};
 }
 export function realmCounter(stage,battle,save){if(battle.phase!=='playing'||battle.enemyHP<=0)return null;battle.turn++;if(battle.burn>0){battle.enemyHP=Math.max(0,battle.enemyHP-(8+Math.floor(stage.act/2)));battle.burn--;}if(battle.enemyHP<=0)return {burn:true,damage:0};
  if(battle.delay>0){battle.delay--;return {delayed:true,damage:0};}battle.charge++;if(battle.charge<stage.cadence)return null;battle.charge=0;const armor=REALM_GEAR.robe[save.gear.robe].armor,raw=Math.max(1,stage.attack-armor),blocked=Math.min(raw,battle.shield),damage=raw-blocked;battle.shield-=blocked;battle.heroHP=Math.max(0,battle.heroHP-damage);if(!battle.heroHP)battle.phase='lost';battle.wet=Math.max(0,battle.wet-1);battle.vulnerable=Math.max(0,battle.vulnerable-1);return {damage,blocked,attack:REALM_FOES[battle.enemyId].move,defeat:battle.phase==='lost'};

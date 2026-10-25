@@ -56,9 +56,12 @@ try{
     move=await findFire();await tap(move[0]);await tap(move[1]);await page.waitForTimeout(1100);
    }
    assert.equal(await page.locator('#realmNext').isVisible(),true,'the first battle should be winnable through real board taps');
-   assert.match(await page.locator('#modalContent').textContent(),/VICTORY/);
+   const resultText=await page.locator('#modalContent').textContent();
+   assert.match(resultText,/VICTORY/);
+   const gate=resultText.match(/해금 조건 (\d)★ · 최고 성취 (\d)★/);
+   assert.ok(gate,'the victory result must explain the next monster star gate');
    await page.locator('#realmNext').click();
-   assert.match(await page.locator('#modalContent').textContent(),/STAGE 102/);
+   assert.match(await page.locator('#modalContent').textContent(),new RegExp(`STAGE ${testStage+(Number(gate[2])>=Number(gate[1])?1:0)}`));
   }
  }
  assert.equal(errors.length,0,errors.join('\n'));

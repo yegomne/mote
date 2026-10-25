@@ -1,4 +1,4 @@
-import {realmStage,REALM_ACTS} from './realm.mjs?v=2';
+import {realmStage,realmBackdrop,REALM_ACTS} from './realm.mjs?v=3';
 export const SIZE=8, COLORS=6, STAGE_COUNT=200;
 export const TOTEMS=[
   {name:'비취의 수확',shortName:'비취',color:'비취',icon:'gem',roleTag:'💎 수정 수확',unlockCost:3,unlockStage:1,unlock:1,accent:'#6ee2ae',desc:'수정을 즉시 회수하고 새 수정을 생성'},
@@ -520,7 +520,7 @@ export const STAGE_SCENARIOS_100 = [
 ];
 
 export function stageScenario(level){
-  if(level>100){const d=realmStage(level),image=`assets/stages/stage_${(level-101)%100+1}.jpg`;return {chapterIndex:d.chapter,chapterTitle:chapters[d.chapter][0],chapterSub:chapters[d.chapter][1],localStage:d.step+1,title:`제${d.chapter+1}장 ${chapters[d.chapter][0]} · 제${d.step+1}전투`,story:d.story,image};}
+  if(level>100){const d=realmStage(level),image=realmBackdrop(d);return {chapterIndex:d.chapter,chapterTitle:chapters[d.chapter][0],chapterSub:chapters[d.chapter][1],localStage:d.step+1,title:`제${d.chapter+1}장 ${chapters[d.chapter][0]} · 제${d.step+1}전투`,story:d.story,image};}
   const ci = chapterIndex(level);
   const local = (level - 1) % 20 + 1;
   const chapterTitle = chapters[ci][0];

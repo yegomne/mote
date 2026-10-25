@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,realmStage} from '../dist/realm.mjs';
+import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,realmStage,realmGateStars} from '../dist/realm.mjs';
 const names=['비취','불','번개','황금','달','시간','물','대지','바람'];
 const lines=[
  '# 태양의 유산 · 101~200단계 설계','',
@@ -12,7 +12,10 @@ const lines=[
  '','## 전투 규칙','',
  '- 첫 직접 매치는 색의 힘을 충전한다. 같은 색의 두 번째 직접 매치부터 원작의 토템이 발동하고 마법이 몬스터를 공격한다. Lv.2 이상에서 세 번째 연속 매치부터 1.5배가 된다.',
  '- 특수돌과 자동 낙하 연쇄는 원작대로 작동한다. 직접 매치 횟수로만 전투 마법을 충전한다.',
+ '- 한 턴에서 특수 보석이 실제 폭발하고 기준 점수(101단계 1,000점, 이후 지역에 따라 상승)를 넘으면 특수돌 공명 공격이 한 번 발동한다. 같은 색 연속 매치는 필요 없다.',
  '- 몬스터는 2~3번의 유효 매치 뒤 반격한다. 약점 피해는 1.45배, 저항 피해는 0.55배다. 회복·보호막·그로기·화상·젖음으로 대응한다.',
+ '- 같은 몬스터를 이어갈 때는 1★, 다른 몬스터로 넘어갈 때는 2★, 보스 또는 새 지역에 들어갈 때는 3★가 필요하다. 승리 시 남은 생명력 70% 이상이면 3★, 35% 이상이면 2★, 그 아래는 1★다. 필요한 별을 얻지 못하면 현재 전투를 재도전한다.',
+ '- 이세계 지도는 지역·몬스터별 그림 배경과 별 성취도를 가진 연결된 여정 카드로 표시한다. 전투·브리핑 배경도 등장 몬스터에 맞춰 변경한다.',
  '- 101~108단계의 슬라임은 개별 체력이 낮지만 한 번에 3~5마리 등장한다. 에너지바는 무리 전체의 남은 체력을 표시하고, 한 마리씩 격파한다. 슬라임을 쓰러뜨려도 자동 회복하지 않는다.',
  '- 105/115/125단계 문지기를 이기면 물/대지/바람 토템이 열린다. 승리 코인으로 지팡이·로브·반지·새 토템 강화·연계 스크롤을 산다.',
  '- 전투가 끝나면 보석판에 남은 특수돌이 원작 피날레 방식으로 자연 발동하여 점수에 합산된다.',
@@ -20,9 +23,9 @@ const lines=[
  '| 연계 | 효과 | 가격 |','|---|---|---:|',
  ...REALM_SCROLLS.map(s=>`| ${names[s.pair[0]]} → ${names[s.pair[1]]} | ${s.desc} | ◈ ${s.price} |`),
  '','## 101~200단계','',
- '| 단계 | 지역 | 상대 | 약점 / 저항 | 색 | HP | 반격 | 보상 |',
- '|---:|---|---|---|---:|---:|---|---:|',
- ...Array.from({length:100},(_,i)=>{const d=realmStage(i+101);return `| ${d.level} | ${REALM_ACTS[d.act].name} | ${d.enemy.name}${d.enemyId===0?` ×${d.waves}`:d.boss?' · 보스':d.gate?' · 문지기':''} | ${d.enemy.weak.map(x=>names[x]).join('·')} / ${d.enemy.resist.map(x=>names[x]).join('·')} | ${d.colors} | ${d.enemyId===0?`${d.hp}×${d.waves}=${d.hp*d.waves}`:d.hp} | ${d.cadence}매치 · ${d.attack} | ◈ ${d.reward} |`;}),
+ '| 단계 | 지역 | 상대 | 약점 / 저항 | 색 | HP | 다음 길 | 반격 | 보상 |',
+ '|---:|---|---|---|---:|---:|---:|---|---:|',
+ ...Array.from({length:100},(_,i)=>{const d=realmStage(i+101);return `| ${d.level} | ${REALM_ACTS[d.act].name} | ${d.enemy.name}${d.enemyId===0?` ×${d.waves}`:d.boss?' · 보스':d.gate?' · 문지기':''} | ${d.enemy.weak.map(x=>names[x]).join('·')} / ${d.enemy.resist.map(x=>names[x]).join('·')} | ${d.colors} | ${d.enemyId===0?`${d.hp}×${d.waves}=${d.hp*d.waves}`:d.hp} | ${realmGateStars(d)?realmGateStars(d)+'★':'끝'} | ${d.cadence}매치 · ${d.attack} | ◈ ${d.reward} |`;}),
  '','## 휴대폰 표시','',
  '전투 장면과 원작 보석판과 섞기 버튼이 세로 화면 안에 들어오게 한다. 8×8 캔버스는 1~100단계의 보석 렌더러를 재사용한다. 전투 캐릭터는 대기·공격·방어·그로기 자세를 표시한다.',''
 ];

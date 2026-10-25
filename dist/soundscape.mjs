@@ -68,6 +68,12 @@ export class Soundscape {
     this.voice(52,1.8,.28*s,'triangle',t+.12,0,'fx',26,.03,.5);
     this.musicDuck.gain.cancelScheduledValues(t);this.musicDuck.gain.setTargetAtTime(.15,t,.01);this.musicDuck.gain.setTargetAtTime(1,t+1.1,.35);
   }
+  resonance(strength=1){if(!this.ready())return;const t=this.ctx.currentTime,s=Math.min(1.6,1+Math.max(0,strength-1)*.08);
+    this.voice(105,.7,.48*s,'sine',t,0,'fx',42,.003,.28);
+    [0,4,7,12].forEach((semitone,i)=>{const f=329.63*Math.pow(2,semitone/12);this.voice(f,.72,.24*s,'triangle',t+i*.045,(i-1.5)*.28,'fx',f*1.25,.002,.4);});
+    this.hiss(.27,.3*s,4400,'bandpass',t+.04,0);
+    this.musicDuck.gain.cancelScheduledValues(t);this.musicDuck.gain.setTargetAtTime(.25,t,.01);this.musicDuck.gain.setTargetAtTime(1,t+.62,.25);
+  }
   power(color,multiplier=1){if(!this.ready())return;const t=this.ctx.currentTime,root=[196,146.83,164.81,220,174.61,196,246.94,110,293.66][color]||196;
     this.musicDuck.gain.cancelScheduledValues(t);this.musicDuck.gain.setTargetAtTime(.15,t,.01);this.musicDuck.gain.setTargetAtTime(1,t+(multiplier>1?1.1:.75),.3);
     if(color===1){
