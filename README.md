@@ -6,7 +6,7 @@
 
 100단계의 보물상자를 열면 **같은 게임 화면**에서 101단계가 시작된다. 원작의 8×8 캔버스 보석판·교환 조작·낙하 연쇄·특수돌·6토템·이펙트·효과음을 그대로 사용하고 화면 위에 전투를 더했다. 별도 전투 페이지와 중복 퍼즐 엔진은 제거했다.
 
-10개 지역과 100개 전투 단계에서 슬라임부터 드래곤까지 진행한다. 물·대지·바람 토템을 순서대로 찾아 9토템을 완성한다. 몬스터는 마법마다 약점과 저항이 있고, 승리 코인으로 장비·연계 스크롤·새 토템 강화를 산다. 160단계부터 보스 2연전, 200단계는 3연전이다. 이동 횟수와 전투 시간 제한은 없다. [101~200단계 설계](REALM_DESIGN.md)
+10개 지역과 100개 전투 단계에서 슬라임부터 드래곤까지 진행한다. 초반 슬라임은 3~5마리 무리로 나오며 에너지바에 무리 전체 체력이 표시된다. 다른 몬스터도 이전보다 체력을 높였다. 물·대지·바람 토템을 순서대로 찾아 9토템을 완성한다. 몬스터는 마법마다 약점과 저항이 있고, 승리 코인으로 장비·연계 스크롤·새 토템 강화를 산다. 160단계부터 보스 2연전, 200단계는 3연전이다. 이동 횟수와 전투 시간 제한은 없다. [101~200단계 설계](REALM_DESIGN.md)
 
 검증: `node test-engine.mjs`, `node test-realm.mjs`, `node scripts/qa-realm.mjs`. 390×844, 390×667, 360×640 휴대폰 화면에서 전투·보석판·조작 버튼이 함께 보이는지 검사했다. 저장은 기존 1~100단계 기록에 이어진다.
 
@@ -49,6 +49,7 @@
 
 - 배경: `D:/51. 몬테주마/solar-relic/dist/assets/temple.png`
 - 토템 아틀라스: `D:/51. 몬테주마/solar-relic/dist/assets/totems.png`
+- 이세계 토템·방향별 슬라임: [추가 이미지 프롬프트](ART_PROMPTS.md)
 
 배경 프롬프트: “Widescreen premium mobile puzzle game environment, cinematic 3D ancient Mesoamerican sun temple at blue hour, huge carved golden sun disk above stepped pyramid, turquoise waterfalls, teal mist, jungle silhouettes, basalt jaguar statues with gold inlays, golden embers, realistic materials, volumetric light, quiet dark lower center for game UI, no text or interface.”
 

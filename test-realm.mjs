@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {STAGE_COUNT,TOTEMS,stageDesign,stageScenario,makeStageBoard,findMatches,findMove,collapse} from './dist/engine.mjs';
-import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,realmStage,realmMaxHP,freshRealmSave,freshRealmBattle,realmAffinity,realmCast,realmCounter,realmNextWave,realmReward,realmBuy} from './dist/realm.mjs';
+import {REALM_ACTS,REALM_SCROLLS,REALM_GEAR,realmStage,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmAffinity,realmCast,realmCounter,realmNextWave,realmReward,realmBuy} from './dist/realm.mjs';
 
 assert.equal(STAGE_COUNT,200);
 assert.equal(REALM_ACTS.length,10);
@@ -24,6 +24,10 @@ for(const n of [101,106,116,126,150,200]){
 }
 let save=freshRealmSave(),stage=realmStage(101),battle=freshRealmBattle(stage,save);
 assert.equal(realmMaxHP(save),170);
+assert.equal(stage.waves,3);
+assert.equal(realmEncounterHP(stage,battle).max,stage.hp*3);
+assert.equal(realmStage(108).waves,5);
+assert.ok(realmStage(103).hp>300,'non-slime monsters have a larger health pool');
 assert.equal(realmCast(stage,battle,save,1,5,1),null,'첫 직접 매치는 충전만 한다');
 const weak=realmCast(stage,battle,save,1,5,2);
 assert.ok(weak.damage>0);
@@ -33,6 +37,7 @@ assert.equal(boosted.boost,1.5);
 assert.ok(boosted.damage>weak.damage);
 assert.ok(realmAffinity(stage.enemy,1)>1);
 assert.ok(realmAffinity(stage.enemy,6)<1);
+const hpBeforeWave=battle.heroHP;battle.enemyHP=0;assert.ok(realmNextWave(stage,battle));assert.equal(battle.wave,2);assert.equal(battle.heroHP,hpBeforeWave,'defeating a weak slime does not restore hero HP');assert.equal(realmEncounterHP(stage,battle).current,stage.hp*2);
 stage=realmStage(105);battle=freshRealmBattle(stage,save);const reward=realmReward(stage,battle,save);assert.ok(reward.coins>=stage.reward);assert.equal(save.newLevels[0],1);
 stage=realmStage(115);battle=freshRealmBattle(stage,save);realmReward(stage,battle,save);assert.equal(save.newLevels[1],1);
 stage=realmStage(125);battle=freshRealmBattle(stage,save);realmReward(stage,battle,save);assert.equal(save.newLevels[2],1);

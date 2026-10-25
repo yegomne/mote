@@ -1,4 +1,4 @@
-import {realmStage,REALM_ACTS} from './realm.mjs';
+import {realmStage,REALM_ACTS} from './realm.mjs?v=2';
 export const SIZE=8, COLORS=6, STAGE_COUNT=200;
 export const TOTEMS=[
   {name:'비취의 수확',shortName:'비취',color:'비취',icon:'gem',roleTag:'💎 수정 수확',unlockCost:3,unlockStage:1,unlock:1,accent:'#6ee2ae',desc:'수정을 즉시 회수하고 새 수정을 생성'},

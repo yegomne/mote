@@ -1,6 +1,6 @@
 import {ImpactFX as ParticleFX} from './impact-fx.mjs';
 const TAU=Math.PI*2;
-export const POWER_THEMES=['harvest','fire','thunder','sun','moon','time'];
+export const POWER_THEMES=['harvest','fire','thunder','sun','moon','time','water','earth','wind'];
 
 // Deterministic constants for Motion Graphics to guarantee zero runtime allocation & cool mobile thermals
 const CRACK_ANGLES=[0.24, 1.48, 2.76, 4.08, 5.38];
@@ -105,6 +105,7 @@ export class ImpactFX extends ParticleFX {
     if(this.reduced())return;
     this.elements.push({x,y,color,strength,kind,age:0,duration:kind==='clock'?1.75:1.45});
     if(kind==='solar')this.elementHit?.(strength,'sun');
+    if(kind==='earth')this.elementHit?.(strength,'earth');
   }
 
   draw(now,dt){
@@ -414,6 +415,61 @@ export class ImpactFX extends ParticleFX {
         ctx.beginPath();
         ctx.arc(0,0,f.radius*u*(.8+.2*Math.min(1,t*4)),0,TAU);
         ctx.stroke();
+      }
+      if(f.kind==='water'){
+        ctx.globalCompositeOperation='lighter';
+        const spread=(.65+t*3.3)*r,crest=(.38-t*.15)*r;
+        ctx.fillStyle='#168daf77';
+        ctx.beginPath();ctx.moveTo(-3.9*u,crest);
+        ctx.bezierCurveTo(-2*u,-crest*1.8,0,crest*1.2,2*u,-crest*.8);
+        ctx.lineTo(3.9*u,crest*.75);
+        ctx.bezierCurveTo(1.8*u,crest*2,-.5*u,crest*.45,-3.9*u,crest*1.8);
+        ctx.closePath();ctx.fill();
+        ctx.strokeStyle='#d9ffff';ctx.lineWidth=.11*u*fade;
+        ctx.beginPath();ctx.moveTo(-3.9*u,crest);
+        ctx.bezierCurveTo(-2*u,-crest*1.8,0,crest*1.2,2*u,-crest*.8);
+        ctx.lineTo(3.9*u,crest*.75);ctx.stroke();
+        for(let wave=0;wave<3;wave++){
+          const radius=spread*(.4+wave*.27);
+          ctx.strokeStyle=wave===0?'#e1ffff':'#6ae5f4';
+          ctx.lineWidth=(.11-wave*.017)*u*fade;
+          ctx.beginPath();ctx.ellipse(0,0,radius,radius*.4,0,.1,Math.PI*1.9);ctx.stroke();
+        }
+        for(let drop=0;drop<14;drop++){
+          const angle=drop*TAU/14+t*.45,dist=spread*(.65+drop%3*.13);
+          const x=Math.cos(angle)*dist,y=Math.sin(angle)*dist*.47;
+          ctx.fillStyle=drop%2?'#69dcef':'#e6ffff';
+          ctx.beginPath();ctx.ellipse(x,y,(.08+drop%3*.025)*u*fade,.16*u*fade,angle,0,TAU);ctx.fill();
+        }
+      }
+      if(f.kind==='earth'){
+        const spread=(.6+t*3.3)*r;
+        ctx.fillStyle='#a6794050';ctx.beginPath();ctx.ellipse(0,0,spread,spread*.45,0,0,TAU);ctx.fill();
+        ctx.strokeStyle='#f0d99e';ctx.lineWidth=.12*u*fade;
+        ctx.beginPath();ctx.ellipse(0,0,spread,spread*.45,0,0,TAU);ctx.stroke();
+        for(let crack=0;crack<CRACK_ANGLES.length;crack++){
+          const angle=CRACK_ANGLES[crack],inner=spread*.12,outer=spread*(.8+crack%2*.15);
+          ctx.strokeStyle=crack%2?'#f5d593':'#be8d52';ctx.lineWidth=(.09+crack%2*.035)*u*fade;
+          ctx.beginPath();ctx.moveTo(Math.cos(angle)*inner,Math.sin(angle)*inner*.55);
+          ctx.lineTo(Math.cos(angle+.24)*spread*.58,Math.sin(angle+.24)*spread*.49);
+          ctx.lineTo(Math.cos(angle)*outer,Math.sin(angle)*outer*.58);ctx.stroke();
+          ctx.save();ctx.translate(Math.cos(angle)*outer,Math.sin(angle)*outer*.58);ctx.rotate(angle+t*.7);
+          ctx.fillStyle=crack%2?'#b4935d':'#f0d8a1';ctx.beginPath();ctx.moveTo(0,-.39*r*fade);ctx.lineTo(.25*r*fade,-.09*r*fade);ctx.lineTo(.14*r*fade,.23*r*fade);ctx.lineTo(-.26*r*fade,.12*r*fade);ctx.closePath();ctx.fill();ctx.restore();
+        }
+      }
+      if(f.kind==='wind'){
+        ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+        for(let gust=0;gust<4;gust++){
+          const offset=(t*6-3+gust*.27)*r,alt=(gust-1.5)*.57*r;
+          ctx.strokeStyle=gust%2?'#a6ffe1':'#f1fff8';ctx.lineWidth=(.17-gust*.02)*u*fade;
+          ctx.beginPath();ctx.moveTo(offset-2.7*r,alt+.46*r);
+          ctx.quadraticCurveTo(offset,alt-1.1*r,offset+2.7*r,alt-.32*r);ctx.stroke();
+          ctx.strokeStyle='#45d9b9';ctx.lineWidth=.06*u*fade;
+          ctx.beginPath();ctx.moveTo(offset-1.6*r,alt+.63*r);
+          ctx.quadraticCurveTo(offset+.2*r,alt+.92*r,offset+2.3*r,alt+.13*r);ctx.stroke();
+          ctx.fillStyle=gust%2?'#b9ffeb':'#fff';
+          ctx.beginPath();ctx.moveTo(offset+2.2*r,alt-.43*r);ctx.lineTo(offset+2.8*r,alt-.32*r);ctx.lineTo(offset+2.15*r,alt-.04*r);ctx.closePath();ctx.fill();
+        }
       }
       if(f.kind==='jade'){
         ctx.globalCompositeOperation='lighter';
