@@ -7,9 +7,9 @@ export const TOTEMS=[
   {name:'황금의 축복',shortName:'황금',color:'황금',icon:'sun',roleTag:'👑 점수 증폭',unlockCost:6,unlockStage:15,unlock:5,accent:'#efcf7e',desc:'대량 보너스 점수 및 피버 3배 에너지 급속 충전'},
   {name:'달의 선물',shortName:'달',color:'자수정',icon:'moon',roleTag:'🌙 특수 생성',unlockCost:7,unlockStage:20,unlock:7,accent:'#c8a5ff',desc:'보석판에 폭탄, 번개 레이저, 노바 직접 부여'},
   {name:'시간의 숨결',shortName:'시간',color:'호박',icon:'freeze',roleTag:'⏳ 시간 연장',unlockCost:8,unlockStage:25,unlock:10,accent:'#ffb781',desc:'제한 시간 소폭 연장 및 시간 정지 결계'},
-  {name:'물의 흐름',shortName:'물',color:'아쿠아',icon:'gem',roleTag:'💧 흐름과 치유',unlockCost:0,unlockStage:105,unlock:106,accent:'#61dded',desc:'수평 물결로 보석을 씻고 마법사를 치유'},
-  {name:'대지의 맥박',shortName:'대지',color:'황토',icon:'gem',roleTag:'◆ 바위 충격',unlockCost:0,unlockStage:115,unlock:116,accent:'#c7a574',desc:'주변 대지를 깨우고 보호막을 쌓음'},
-  {name:'바람의 노래',shortName:'바람',color:'연옥',icon:'gem',roleTag:'➶ 바람 칼날',unlockCost:0,unlockStage:125,unlock:126,accent:'#a5eacb',desc:'대각선 보석을 관통하고 반격을 늦춤'}
+  {name:'물의 흐름',shortName:'물',color:'물방울',icon:'gem',roleTag:'💧 흐름과 치유',unlockCost:0,unlockStage:105,unlock:106,accent:'#61dded',desc:'수평 물결로 보석을 씻고 마법사를 치유'},
+  {name:'대지의 맥박',shortName:'대지',color:'돌',icon:'gem',roleTag:'◆ 바위 충격',unlockCost:0,unlockStage:115,unlock:116,accent:'#c7a574',desc:'주변 대지를 깨우고 보호막을 쌓음'},
+  {name:'바람의 노래',shortName:'바람',color:'나뭇잎',icon:'gem',roleTag:'➶ 바람 칼날',unlockCost:0,unlockStage:125,unlock:126,accent:'#a5eacb',desc:'대각선 보석을 관통하고 반격을 늦춤'}
 ];
 export function totemLevelSpecs(index, level){
   if(level===0) return {cur:'잠김 (사용 불가)', next:`★${TOTEMS[index].unlockCost}개로 해금 시 즉시 기본 발동`};
@@ -343,7 +343,7 @@ export const FORTUNE_CARDS = [
 
 export function stageReward(previous,stars){return Math.max(0,Math.min(3,stars)-Math.max(0,previous));}
 export function chapterIndex(stage){return stage<=100?Math.min(4,Math.floor((stage-1)/20)):5+Math.min(9,Math.floor((stage-101)/10));}
-export const colorNames=['비취','루비','사파이어','황금','자수정','호박','아쿠아','황토','연옥'];
+export const colorNames=['비취','루비','사파이어','황금','자수정','호박','물방울','돌','나뭇잎'];
 export const chapters=[['태양의 문','THE GATE OF THE SUN'],['비취의 정원','THE JADE GARDEN'],['번개의 제단','THE THUNDER ALTAR'],['달의 성소','THE LUNAR SANCTUM'],['황금의 심장','THE GOLDEN HEART'],...REALM_ACTS.map(a=>[a.name,a.sub])];
 let serial=0;
 export function gem(color,colors=COLORS,random=Math.random){return {id:++serial,color:color??Math.floor(random()*colors),special:null,crystal:random()<.10};}

@@ -29,6 +29,10 @@ try{
   const colors=await page.locator('#boardInput button').evaluateAll(nodes=>nodes.map(node=>Number(node.dataset.color)));
   assert.equal(new Set(colors).size,test.colors);
   for(let color=6;color<test.colors;color++)assert.ok(colors.filter(value=>value===color).length>=5,`stage ${test.level} missing new color ${color}`);
+  for(const [color,shape] of [[6,'물방울'],[7,'돌'],[8,'나뭇잎']])if(color<test.colors){
+   const label=await page.locator(`#boardInput button[data-color="${color}"]`).first().getAttribute('aria-label');
+   assert.match(label,new RegExp(shape),`stage ${test.level} needs a clear accessible gem name`);
+  }
   for(const name of test.names)assert.match(await page.locator('#goalChips').textContent(),new RegExp(name));
   assert.equal(await page.locator('#boardMessage').evaluate(el=>el.classList.contains('show')),false);
   assert.equal(await page.locator('#realmCombatNotice').evaluate(el=>el.classList.contains('show')),true);
