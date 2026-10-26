@@ -40,7 +40,7 @@ const REALM_COUNTER_TICK=4.8;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
 let boardCols=saved.level>100?9:8,boardRows=saved.level>100?10:8,boardCells=boardCols*boardRows;
-let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardWidth=450,boardHeight=450,cell=boardWidth/boardCols,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
+let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,boardWidth=450,boardHeight=450,cell=boardWidth/boardCols,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
 let lastHeavyShake=0,cameraAnimation;
 let stage=stageDesign(level),realmBattle=level>100?freshRealmBattle(stage,realmSave):null,sealState=Array(boardCells).fill(0),metrics={colorCollected:Array(9).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
 function makeCurrentBoard(){return level>100?makeRealmBoard(stage.colors):makeBoard(stage.colors||6);}
