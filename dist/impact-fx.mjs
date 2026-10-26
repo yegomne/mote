@@ -1,14 +1,14 @@
 // A bounded particle system: visual weight comes from layered motion and timing.
 export class ImpactFX {
-  constructor(ctx,unit,reduced,hit){
-    this.ctx=ctx;this.unit=unit;this.reduced=reduced;this.hit=hit;
+  constructor(ctx,unit,reduced,hit,getCols=()=>8){
+    this.ctx=ctx;this.unit=unit;this.reduced=reduced;this.hit=hit;this.getCols=getCols;
     this.isMobile=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window)||navigator.maxTouchPoints>0);
     this.reset();
   }
   reset(){this.clouds=[];this.rocks=[];this.bolts=[];this.orbs=[];this.fields=[];}
   blast(x,y,color,strength=1){if(this.reduced())return;this.clouds.push({x,y,color,strength,age:0,duration:1.15});const count=Math.round((this.isMobile?10:20)*strength);for(let i=0;i<count&&this.rocks.length<(this.isMobile?80:180);i++){const a=Math.random()*Math.PI*2,v=1.5+Math.random()*5;this.rocks.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1.5,age:0,duration:.8+Math.random()*.55,size:.04+Math.random()*.09,spin:Math.random()*8,angle:Math.random()*6,color});}this.hit?.(strength);}
-  meteor(from,to,color,strength=1,delay=0){if(this.reduced())return;this.orbs.push({from:[from%8+.5,Math.floor(from/8)+.5],to:[to%8+.5,Math.floor(to/8)+.5],color,strength,age:-delay,duration:.3,trail:[]});}
-  lightning(a,b,color,strength=1){if(this.reduced())return;const points=[];for(let n=0;n<=20;n++){const t=n/20;points.push([a%8+.5+(b%8-a%8)*t+(n&&n<20?(Math.random()-.5)*.4:0),Math.floor(a/8)+.5+(Math.floor(b/8)-Math.floor(a/8))*t+(n&&n<20?(Math.random()-.5)*.4:0)]);}this.bolts.push({points,color,strength,age:0,duration:.85});this.blast(b%8+.5,Math.floor(b/8)+.5,color,strength*.6);}
+  meteor(from,to,color,strength=1,delay=0){if(this.reduced())return;const c=this.getCols();this.orbs.push({from:[from%c+.5,Math.floor(from/c)+.5],to:[to%c+.5,Math.floor(to/c)+.5],color,strength,age:-delay,duration:.3,trail:[]});}
+  lightning(a,b,color,strength=1){if(this.reduced())return;const c=this.getCols();const points=[];for(let n=0;n<=20;n++){const t=n/20;points.push([a%c+.5+(b%c-a%c)*t+(n&&n<20?(Math.random()-.5)*.4:0),Math.floor(a/c)+.5+(Math.floor(b/c)-Math.floor(a/c))*t+(n&&n<20?(Math.random()-.5)*.4:0)]);}this.bolts.push({points,color,strength,age:0,duration:.85});this.blast(b%c+.5,Math.floor(b/c)+.5,color,strength*.6);}
   field(x,y,color,strength=1,kind='solar'){if(this.reduced())return;this.fields.push({x,y,color,strength,kind,age:0,duration:1.25});this.blast(x,y,color,strength);}
   draw(now,dt){const u=this.unit(),ctx=this.ctx;if(this.reduced()){this.reset();return;}ctx.save();
     for(const o of this.orbs){o.age+=dt;if(o.age<0)continue;const t=Math.min(1,o.age/o.duration),x=o.from[0]+(o.to[0]-o.from[0])*t,y=o.from[1]+(o.to[1]-o.from[1])*t-Math.sin(t*Math.PI)*1.7;o.trail.unshift([x,y]);o.trail.length=Math.min(o.trail.length,this.isMobile?6:12);ctx.save();ctx.globalCompositeOperation='lighter';for(let i=o.trail.length-1;i>=0;i--){const [tx,ty]=o.trail[i],r=(.17*o.strength)*(1-i/13);ctx.fillStyle=o.color;ctx.globalAlpha=(1-i/13)*.6;if(!this.isMobile){ctx.shadowColor=o.color;ctx.shadowBlur=18;}ctx.beginPath();ctx.arc(tx*u,ty*u,r*u,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;ctx.fillStyle='#fff6d5';ctx.beginPath();ctx.arc(x*u,y*u,.12*o.strength*u,0,Math.PI*2);ctx.fill();ctx.restore();if(t===1){this.blast(o.to[0],o.to[1],o.color,o.strength);o.done=true;}}

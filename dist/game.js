@@ -1,7 +1,7 @@
 import {Soundscape} from './soundscape.mjs?v=7';
 import {ImpactFX} from './element-fx.mjs?v=10';
-import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmAvailableColors,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=6';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,makeRealmBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=23';
+import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmAvailableColors,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=7';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,makeRealmBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS,boardCols as getBoardCols,boardRows as getBoardRows} from './engine.mjs?v=24';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612'],['#d9ffff','#44d5ee','#128ab3','#074268'],['#fff1c6','#cda767','#806044','#38342c'],['#e4fff1','#95eacb','#48ab96','#156c77']];
@@ -30,35 +30,40 @@ function applyDivineBlessing(silent=false){
   }
 }
 function totemUnlocked(i){return totemLevels[i]>=1;}
-function totemEffectText(i,l=totemLevels[i]){if(l===0)return i<6?`마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`:`${TOTEMS[i].unlockStage}단계 승리 후 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초`,`물결 ${3+l}칸 · 치유`,`대지 충격 · 보호막`,`대각선 칼바람 · 반격 지연` ][i];}
+function totemEffectText(i,l=totemLevels[i]){if(l===0)return i<6?`마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`:`${TOTEMS[i].unlockStage}단계 승리 후 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초`,`전체 폭우 · 치유`,`대지 충격 · 보호막`,`대각선 칼바람 · 반격 지연` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.slice(0,level>100?9:6).map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i),art=i<6?'totem-art':'realm-totem-art',position=i<6?`${(i%3)*50}% ${Math.floor(i/3)*100}%`:`${(i-6)*50}% 50%`;return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon ${art}" style="background-position:${position}">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>+b.dataset.totem>=6?openRealmShop():openUpgrades(+b.dataset.totem));}
 let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=saved.level>100?makeRealmBoard(realmAvailableColors(realmSave)):makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
 const is100Completed=stageStars[99]>=1||level>100;
 if(is100Completed){applyDivineBlessing(true);}
 let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false,realmCounterElapsed=0;
-const REALM_COUNTER_TICK=7;
+const REALM_COUNTER_TICK=4.8;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
-let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,cell=boardSize/8,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
+let boardCols=saved.level>100?9:8,boardRows=saved.level>100?10:8,boardCells=boardCols*boardRows;
+let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardWidth=450,boardHeight=450,cell=boardWidth/boardCols,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
 let lastHeavyShake=0,cameraAnimation;
-let stage=stageDesign(level),realmBattle=level>100?freshRealmBattle(stage,realmSave):null,sealState=Array(64).fill(0),metrics={colorCollected:Array(9).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
+let stage=stageDesign(level),realmBattle=level>100?freshRealmBattle(stage,realmSave):null,sealState=Array(boardCells).fill(0),metrics={colorCollected:Array(9).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
 function makeCurrentBoard(){return level>100?makeRealmBoard(stage.colors):makeBoard(stage.colors||6);}
-const fx=new ImpactFX(ctx,()=>cell,()=>reduced,(strength,element)=>{heavyShake(strength);if(element==='fire'||element==='thunder'||element==='earth')director.impact(strength,element==='thunder'?2:element==='earth'?0:1);});
+const fx=new ImpactFX(ctx,()=>cell,()=>reduced,(strength,element)=>{heavyShake(strength);if(element==='fire'||element==='thunder'||element==='earth')director.impact(strength,element==='thunder'?2:element==='earth'?0:1);},()=>boardCols);
 function initStage(){
   finishing=false;lastFireTargets=[];goalsMetAnnounced=false;
   for(const key of ['finale','finaleBonus','castColor','castMultiplier','fireTargets','shockAnchor','shockRadius','shockTargets'])delete frame.dataset[key];
   stage=stageDesign(level);
   if(level>100)stage.colors=realmAvailableColors(realmSave);
+  boardCols=level>100?9:8;
+  boardRows=level>100?10:8;
+  boardCells=boardCols*boardRows;
+  sealState=Array(boardCells).fill(0);
+  document.body.classList.toggle('realm',level>100);
+  resize();
   realmBattle=level>100?freshRealmBattle(stage,realmSave):null;
   if(level>100){$('#realmMage').dataset.pose='idle';$('#realmMonster').dataset.pose='idle';realmPack.dataset.pose='idle';realmPack.classList.remove('spawn');}
-  document.body.classList.toggle('realm',level>100);
   let stageTime=stage.time;
   if(fortuneBuffs.timeBonusStages>0){stageTime=Math.min(54,stageTime+8);fortuneBuffs.timeBonusStages--;}
   if(fortuneBuffs.timePenaltyStages>0){stageTime=Math.max(25,stageTime-8);fortuneBuffs.timePenaltyStages--;}
   activeFeverBonus=fortuneBuffs.feverBonusStages>0;
   if(fortuneBuffs.feverBonusStages>0)fortuneBuffs.feverBonusStages--;
   stage.time=stageTime;
-  sealState=Array(64).fill(0);
   const sealHpAdd=fortuneBuffs.hardSeals?1:0;
   if(fortuneBuffs.hardSeals)fortuneBuffs.hardSeals=false;
   stage.seals.forEach(s=>sealState[s.index]=s.hp+sealHpAdd);
@@ -67,7 +72,7 @@ function initStage(){
   if(fortuneBuffs.extraSpecials){
     fortuneBuffs.extraSpecials=false;
     setTimeout(()=>{
-      if(board&&board.length===64){
+      if(board&&board.length===boardCells){
         const randCells=[18,27,45],spTypes=['bomb','row','nova'];
         randCells.forEach((c,idx)=>{if(board[c])board[c].special=spTypes[idx];});
         syncPositions(true);
@@ -88,8 +93,8 @@ function vibrate(n=20){if(!reduced&&navigator.vibrate)navigator.vibrate(n);}
 function flash(color='#ffd58b'){if(reduced)return;const el=$('#screenFlash');el.style.background=color;el.animate([{opacity:.16},{opacity:0}],{duration:420});}
 function shake(){if(reduced)return;frame.classList.remove('shake');void frame.offsetWidth;frame.classList.add('shake');}
 function update(){document.body.classList.toggle('playing',started&&!ended);frame.setAttribute('aria-busy',String(busy));const obj=objectives(level);$('#mobileStage').textContent=`STAGE ${String(level).padStart(2,'0')} · ${chapters[chapterIndex(level)][0]}`;$('#mobileGoal').textContent=`목표 ${obj.target.toLocaleString()}점 · 수정 ${crystals}/${obj.crystals}`;$('#score').textContent=score.toLocaleString();$('#bestScore').textContent=best.toLocaleString();$('#targetScore').textContent=obj.target.toLocaleString();$('#crystalCount').textContent=`${crystals} / ${obj.crystals}`;$('#goalProgress').style.width=`${Math.min(100,score/obj.target*100)}%`;$('#levelLabel').textContent=`STAGE ${String(level).padStart(2,'0')}`;const ci=chapterIndex(level);$('#chapterNumber').textContent=String(ci+1).padStart(2,'0');$('#chapterName').textContent=chapters[ci][0];$('#chapterSub').textContent=chapters[ci][1];$('#chapterPath').innerHTML=Array.from({length:5},(_,i)=>`<span class="${i===ci?'current':i<ci?'done':''}"></span>`).join('');$('#timer').textContent=mode==='zen'?'∞':`${Math.floor(Math.ceil(Math.max(0,time))/60)}:${String(Math.ceil(Math.max(0,time))%60).padStart(2,'0')}`;$('.timer-wrap').classList.toggle('frozen',frozen>0);$('.timer-wrap').classList.toggle('urgent',time<=15&&mode!=='zen'&&running&&!paused&&frozen<=0);$('#timerLabel').textContent=frozen>0?`시간 정지 ${Math.ceil(frozen)}초`:mode==='zen'?'휴식 모드':'남은 시간';const isFrenzy=performance.now()<frenzyUntil;document.body.classList.toggle('is-frenzy',isFrenzy);$('#frenzyFill').style.width=`${isFrenzy?Math.max(0,(frenzyUntil-performance.now())/100):frenzy}%`;$('#multiplier').textContent=isFrenzy?'×3':'×1';$('#frenzyLabel').textContent=isFrenzy?'태양의 각성 · FEVER':'태양의 각성';$('#frenzyText').textContent=isFrenzy?'모든 점수 3배! 계속 연결하세요':`${Math.round(frenzy)}% · 연속 매치로 피버 충전`;$('#shuffleCount').textContent=shuffleLeft;$('#startBtn').innerHTML=(ended?'다시 도전':!started?'탐험 시작':paused?'탐험 계속':'탐험 중 · 잠시 쉬기')+' <svg><use href="#arrow"/></svg>';$$('[data-mode]').forEach(e=>{e.classList.toggle('active',e.dataset.mode===mode);e.disabled=started&&!ended;});updateTotemUI();updateStageUI();director.mood(stage.chapter,running&&!paused,performance.now()<frenzyUntil);$('#soundBtn').setAttribute('aria-label',sound?'소리 끄기':'소리 켜기');$('#soundBtn').title=sound?'소리 끄기':'소리 켜기';$('.mute-dot').style.display=sound?'none':'block';}
-function accessBoard(){const input=$('#boardInput');if(!input.children.length)for(let i=0;i<64;i++){const b=document.createElement('button');b.dataset.cell=i;b.tabIndex=i===0?0:-1;input.append(b);}board.forEach((g,i)=>{const b=input.children[i];b.setAttribute('aria-label',`${Math.floor(i/8)+1}행 ${i%8+1}열 ${colorNames[g.color]}${g.special?' 특수 보석':''}${g.crystal?' 별빛 수정':''}${sealState[i]?' 봉인 '+sealState[i]+'겹':''}`);b.dataset.color=g.color;b.dataset.seal=sealState[i];});}
-function syncPositions(reset=false){board.forEach((g,i)=>{if(reset||g.x===undefined){g.x=i%8;g.y=Math.floor(i/8);}g.tx=i%8;g.ty=Math.floor(i/8);});accessBoard();}
+function accessBoard(){const input=$('#boardInput');if(input.children.length!==boardCells){input.innerHTML='';for(let i=0;i<boardCells;i++){const b=document.createElement('button');b.dataset.cell=i;b.tabIndex=i===0?0:-1;input.append(b);}}board.forEach((g,i)=>{const b=input.children[i];if(!b)return;b.setAttribute('aria-label',`${Math.floor(i/boardCols)+1}행 ${i%boardCols+1}열 ${colorNames[g.color]}${g.special?' 특수 보석':''}${g.crystal?' 별빛 수정':''}${sealState[i]?' 봉인 '+sealState[i]+'겹':''}`);b.dataset.color=g.color;b.dataset.seal=sealState[i];});}
+function syncPositions(reset=false){board.forEach((g,i)=>{const c=i%boardCols,r=Math.floor(i/boardCols);if(reset||g.x===undefined){g.x=c;g.y=r;}g.tx=c;g.ty=r;});accessBoard();}
 function start(){if(ended){reset();}if(started){if(paused){resumeClock();$('#modal').close();update();}else pause();return;}started=true;running=true;lastTick=performance.now();lastAction=lastTick;tone(523,.2);announce(stage.name,stage.tip,1700);update();}
 function reset(){initStage();pausedAt=0;realmCounterElapsed=0;frame.classList.remove('frozen-board');board=level>100?makeCurrentBoard():makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=level>100?Infinity:2;totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];gemShards=[];currentCastColor=-1;ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);renderTotems();$('#modal').close();update();persist();}
 function ensureStarted(){if(finishing)return false;if(!started)start();return running&&!paused&&!ended;}
@@ -222,18 +227,18 @@ async function clearCells(indices,creations=new Map(),chain=1){
   const seals=damageSeals(sealState,result.cells);
   metrics.sealsBroken+=seals.broken;
   const hasSpecials=result.effects.length>0;
-  for(const i of seals.damaged){burst(i,3,heavyCast?28:16);ring(i%8+.5,Math.floor(i/8)+.5,'#e8c779',.85);}
+  for(const i of seals.damaged){burst(i,3,heavyCast?28:16);ring(i%boardCols+.5,Math.floor(i/boardCols)+.5,'#e8c779',.85);}
   for(const {index,type,color}of result.effects){
-    const r=Math.floor(index/8),c=index%8;
+    const r=Math.floor(index/boardCols),c=index%boardCols;
     if(type==='row'||type==='cross'){
-      beam(r*8,r*8+7,'#7de0ff');
+      beam(r*boardCols,r*boardCols+boardCols-1,'#7de0ff');
       flash('#7de0ff');
       director.laserDetonate();
       burst(index,2,48);
       heavyShake(1.6);
     }
     if(type==='col'||type==='cross'){
-      beam(c,56+c,'#7de0ff');
+      beam(c,(boardRows-1)*boardCols+c,'#7de0ff');
       flash('#7de0ff');
       director.laserDetonate();
       burst(index,2,48);
@@ -268,7 +273,7 @@ async function clearCells(indices,creations=new Map(),chain=1){
     if(board[i]){
       board[i].special=special;
       board[i].crystal=false;
-      ring(i%8+.5,Math.floor(i/8)+.5,'#ffd54f',2.2);
+      ring(i%boardCols+.5,Math.floor(i/boardCols)+.5,'#ffd54f',2.2);
       burst(i,3,24);
       flash('#ffe894');
       director.specialCreate(special);
@@ -285,8 +290,8 @@ async function clearCells(indices,creations=new Map(),chain=1){
     chord(7);flash();shake();
   }
   if(gained){
-    const middle=result.cells[Math.floor(result.cells.length/2)]??27;
-    floats.push({x:middle%8+.5,y:Math.floor(middle/8)+.5,text:`+${gained.toLocaleString()}`,life:1.2,color:chain>1?'#ffe2a1':'#d2f3dd'});
+    const middle=result.cells[Math.floor(result.cells.length/2)]??Math.floor(boardCells/2);
+    floats.push({x:middle%boardCols+.5,y:Math.floor(middle/boardCols)+.5,text:`+${gained.toLocaleString()}`,life:1.2,color:chain>1?'#ffe2a1':'#d2f3dd'});
   }
   if(chain>1){
     $('#boardHint').textContent=`${chain}연쇄 · 보석이 깨어납니다!`;
@@ -318,13 +323,49 @@ function updateRealmUI(){
  $('#realmEnemyName').textContent=pack?`${foe.name} ×${remaining}`:d.waves>1?`${foe.name} · ${b.wave}/${d.waves}`:foe.name;
  $('#realmEnemyHP').textContent=`${encounter.current} / ${encounter.max}`;$('#realmHeroHP').textContent=`${b.heroHP} / ${b.heroMax}${b.shield?' · 방어 '+b.shield:''}`;
  $('#realmEnemyFill').style.width=`${Math.max(0,encounter.current/encounter.max*100)}%`;$('#realmHeroFill').style.width=`${Math.max(0,b.heroHP/b.heroMax*100)}%`;
- $('#realmAffinity').textContent=`약점 ${foe.weak.map(i=>TOTEMS[i].shortName).join('·')} / 저항 ${foe.resist.map(i=>TOTEMS[i].shortName).join('·')}`;updateRealmCounterLabel();
+  const weakBadges=(foe.weak||[]).map(i=>`<span class="affinity-tag weak">🎯 ${TOTEMS[i]?.shortName||i}</span>`).join(' ')||'<span class="affinity-tag none">없음</span>';
+  const resistBadges=(foe.resist||[]).map(i=>`<span class="affinity-tag resist">🛡️ ${TOTEMS[i]?.shortName||i}</span>`).join(' ')||'<span class="affinity-tag none">없음</span>';
+  const absorbBadges=(foe.absorb||[]).map(i=>`<span class="affinity-tag absorb">⚠️ ${TOTEMS[i]?.shortName||i} 흡수</span>`).join(' ');
+  $('#realmAffinity').innerHTML=`<div class="affinity-row"><span class="affinity-label">적 약점:</span> ${weakBadges}</div><div class="affinity-row"><span class="affinity-label">적 내성:</span> ${resistBadges}</div>${absorbBadges?`<div class="affinity-row"><span class="affinity-label">적 흡수:</span> ${absorbBadges}</div>`:''}`;
+  updateRealmCounterLabel();
  $('#mobileGoal').textContent=`적 체력 ${encounter.current}/${encounter.max} · ◈ ${realmSave.coins}`;$('#targetScore').textContent=encounter.max;$('#crystalCount').textContent=`적 체력 ${encounter.current} / ${encounter.max}`;$('#goalProgress').style.width=`${Math.max(0,(1-encounter.current/encounter.max)*100)}%`;
  const newGems=['물','대지','바람'].slice(0,d.colors-6).join('·');
  $('#timer').textContent='∞';$('#timerLabel').textContent='이동 제한 없음';$('#shuffleCount').textContent='∞';$('#goalChips').innerHTML=`<span class="goal-chip" style="--chip-color:${newGems?'#91e4e8':'#dec486'}">${d.colors}색 · ${newGems?'새 보석 '+newGems:'특수돌+'+realmResonanceThreshold(d).toLocaleString()+'점 공명'}</span><span class="goal-chip">◈ ${realmSave.coins} 코인</span>`;
 }
 function showRealmDamage(text,color='#ffe4a0'){const el=$('#realmDamage');el.textContent=text;el.style.color=color;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
-function combatCast(color,anchor){if(level<=100||!realmBattle||realmBattle.phase!=='playing')return;const result=realmCast(stage,realmBattle,realmSave,color,totemLevels[color],totemChain.count);if(!result)return;realmPose('mage','cast',900);realmPose('monster',result.affinity<1?'guard':'hurt',750);const orb=$('#realmSpell');orb.dataset.element=['jade','fire','thunder','solar','moon','time','water','earth','wind'][color];orb.style.setProperty('--spell',TOTEMS[color].accent);orb.classList.remove('fly');void orb.offsetWidth;orb.classList.add('fly');showRealmDamage(`${result.combo?result.combo+' · ':''}−${result.damage}`,TOTEMS[color].accent);if(result.combo){realmScrollBurst.style.backgroundPosition=`${result.comboArt%4*100/3}% ${Math.floor(result.comboArt/4)*100}%`;realmScrollBurst.classList.remove('burst');void realmScrollBurst.offsetWidth;realmScrollBurst.classList.add('burst');toast(`${result.combo} 연계 마법! ${result.damage} 피해`);director.resonance(2);}else if(result.affinity>1)toast(`약점 적중! ${result.damage} 피해`);director.impact(result.boost>1?1.5:1,color===2?2:color===1?1:0);updateRealmUI();}
+function combatCast(color,anchor){
+  if(level<=100||!realmBattle||realmBattle.phase!=='playing')return;
+  const result=realmCast(stage,realmBattle,realmSave,color,totemLevels[color],totemChain.count);
+  if(!result)return;
+  if(result.absorbed){
+    realmPose('mage','hurt',800);
+    realmPose('monster','cast',900);
+    showRealmDamage(`+${result.absorbed} HP 흡수!`, '#4ade80');
+    toast(`⚠️ ${REALM_FOES[realmBattle.enemyId].name}이(가) 불꽃을 흡수해 체력 +${result.absorbed} 회복!`);
+    tone(220,.22,'sawtooth',.08);
+    updateRealmUI();
+    return;
+  }
+  realmPose('mage','cast',900);
+  realmPose('monster',result.affinity<1?'guard':'hurt',750);
+  const orb=$('#realmSpell');
+  orb.dataset.element=['jade','fire','thunder','solar','moon','time','water','earth','wind'][color];
+  orb.style.setProperty('--spell',TOTEMS[color].accent);
+  orb.classList.remove('fly');
+  void orb.offsetWidth;
+  orb.classList.add('fly');
+  showRealmDamage(`${result.combo?result.combo+' · ':''}−${result.damage}`,TOTEMS[color].accent);
+  if(result.combo){
+    realmScrollBurst.style.backgroundPosition=`${result.comboArt%4*100/3}% ${Math.floor(result.comboArt/4)*100}%`;
+    realmScrollBurst.classList.remove('burst');
+    void realmScrollBurst.offsetWidth;
+    realmScrollBurst.classList.add('burst');
+    toast(`${result.combo} 연계 마법! ${result.damage} 피해`);
+    director.resonance(2);
+  }else if(result.affinity>1)toast(`약점 적중! ${result.damage} 피해`);
+  director.impact(result.boost>1?1.5:1,color===2?2:color===1?1:0);
+  updateRealmUI();
+}
 function combatResonance(hit){realmPose('mage','cast',850);realmPose('monster','hurt',850);const orb=$('#realmSpell');orb.dataset.element='resonance';orb.style.setProperty('--spell','#fff2ad');orb.classList.remove('fly');void orb.offsetWidth;orb.classList.add('fly');showRealmDamage(`공명 −${hit.damage}`,'#fff2ad');announce('특수돌 공명!',`${hit.score.toLocaleString()}점 · 특수돌 ${hit.specials}개 폭발 → 추가 공격`,1000);director.resonance(hit.power);vibrate([30,30,65]);updateRealmUI();}
 function updateRealmCounterLabel(){if(level<=100||!realmBattle)return;const seconds=Math.max(1,Math.ceil((stage.cadence-realmBattle.charge+realmBattle.delay)*REALM_COUNTER_TICK-realmCounterElapsed));$('#realmCharge').textContent=realmBattle.delay?`그로기 · 반격 약 ${seconds}초`:`반격까지 약 ${seconds}초`;}
 function combatCounterEvent(event){if(!event)return;if(event.delayed){realmPose('monster','groggy',750);toast('몬스터 그로기 · 반격 지연');}else if(event.damage||event.blocked){realmPose('monster','attack',650);realmPose('mage',event.damage?'hurt':'guard',750);showRealmDamage(event.damage?`마법사 −${event.damage}`:'방어!',event.damage?'#ff8b78':'#a2ebd9');director.impact(1,1);vibrate(event.damage?45:20);}if(event.defeat)realmPose('mage','groggy');updateRealmUI();if(event.burn||event.defeat)checkEnd();}
@@ -423,7 +464,7 @@ function completeStage(win){
     magicStars+=newStars;
     unlocked=Math.max(unlocked,Math.min(STAGE_COUNT,level+1));
     chord(12);flash();
-    for(let i=0;i<8;i++)burst(Math.floor(Math.random()*64),3,25);
+    for(let i=0;i<8;i++)burst(Math.floor(Math.random()*boardCells),3,25);
     if(level===100){
       applyDivineBlessing(false);
     }
@@ -495,7 +536,7 @@ function completeStage(win){
 }
 function select(i){
   if(paused||ended||$('#modal').open)return;
-  if(i<0||i>=64||!board[i])return;
+  if(i<0||i>=boardCells||!board[i])return;
   if(selected===i){selected=-1;return;}
   if(selected>=0&&adjacent(selected,i)){
     const prev=selected;
@@ -511,9 +552,9 @@ let pointer=null;
 wrap.addEventListener('pointerdown',e=>{
   if(e.button!==0||paused||ended||$('#modal').open)return;
   const rect=wrap.getBoundingClientRect();
-  const col=Math.max(0,Math.min(7,Math.floor((e.clientX-rect.left)/(rect.width/8))));
-  const row=Math.max(0,Math.min(7,Math.floor((e.clientY-rect.top)/(rect.height/8))));
-  const i=row*8+col;
+  const col=Math.max(0,Math.min(boardCols-1,Math.floor((e.clientX-rect.left)/(rect.width/boardCols))));
+  const row=Math.max(0,Math.min(boardRows-1,Math.floor((e.clientY-rect.top)/(rect.height/boardRows))));
+  const i=row*boardCols+col;
   pointer={id:e.pointerId,startX:e.clientX,startY:e.clientY,i,width:rect.width,swapped:false};
   try{wrap.setPointerCapture(e.pointerId);}catch{}
   select(i);
@@ -521,18 +562,18 @@ wrap.addEventListener('pointerdown',e=>{
 wrap.addEventListener('pointermove',e=>{
   if(!pointer||pointer.id!==e.pointerId||pointer.swapped)return;
   const dx=e.clientX-pointer.startX,dy=e.clientY-pointer.startY;
-  const threshold=Math.max(12,pointer.width/8*.24);
+  const threshold=Math.max(12,(pointer.width/boardCols)*.24);
   if(Math.hypot(dx,dy)>=threshold){
     pointer.swapped=true;
     const from=pointer.i;
-    let targetCol=from%8,targetRow=Math.floor(from/8);
+    let targetCol=from%boardCols,targetRow=Math.floor(from/boardCols);
     if(Math.abs(dx)>Math.abs(dy)){
       targetCol+=dx>0?1:-1;
     }else{
       targetRow+=dy>0?1:-1;
     }
-    if(targetCol>=0&&targetCol<8&&targetRow>=0&&targetRow<8){
-      const to=targetRow*8+targetCol;
+    if(targetCol>=0&&targetCol<boardCols&&targetRow>=0&&targetRow<boardRows){
+      const to=targetRow*boardCols+targetCol;
       if(adjacent(from,to)){
         selected=-1;
         trySwap(from,to);
@@ -551,7 +592,7 @@ wrap.addEventListener('pointercancel',e=>{
     pointer=null;
   }
 });
-$('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;if(!Number.isFinite(i))return;const delta={ArrowRight:1,ArrowLeft:-1,ArrowUp:-8,ArrowDown:8}[e.key];if(delta){e.preventDefault();const j=i+delta;if(j>=0&&j<64&&adjacent(i,j)){e.target.tabIndex=-1;const b=$('#boardInput').children[j];b.tabIndex=0;b.focus();}}if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i);}});
+$('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;if(!Number.isFinite(i))return;const delta={ArrowRight:1,ArrowLeft:-1,ArrowUp:-boardCols,ArrowDown:boardCols}[e.key];if(delta){e.preventDefault();const j=i+delta;if(j>=0&&j<boardCells&&adjacent(i,j)){e.target.tabIndex=-1;const b=$('#boardInput').children[j];if(b){b.tabIndex=0;b.focus();}}}if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i);}});
 document.addEventListener('keydown',e=>{if($('#modal').open)return;if(e.key==='Escape'){if(started&&!ended)pause();}});
 $('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=()=>level>100?realmHelp():help();$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
 $$('[data-mode]').forEach(b=>b.onclick=()=>{if(started&&!ended)return;mode=b.dataset.mode;reset();toast(mode==='zen'?'시간 제한 없이, 편안하게 즐기세요.':'90초 동안 고대 사원을 깨우세요.');});
@@ -562,7 +603,7 @@ $('#mobileMap').onclick=()=>$('#mapBtn').click();
 $('#realmBattleMap').onclick=()=>openRealmMap();
 document.addEventListener('visibilitychange',()=>{director.visibility(document.hidden);if(document.hidden&&running){pauseClock();}else if(!document.hidden&&paused&&!$('#modal').open){pause();}update();});
 // Canvas rendering stays independent of puzzle logic so cascades never block input accounting.
-function resize(){const dpr=Math.min(devicePixelRatio||1,2);boardSize=wrap.clientWidth;cell=boardSize/8;canvas.width=Math.round(boardSize*dpr);canvas.height=Math.round(boardSize*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);}
+function resize(){const dpr=Math.min(devicePixelRatio||1,2);boardWidth=wrap.clientWidth||450;cell=boardWidth/boardCols;boardHeight=cell*boardRows;boardSize=boardWidth;canvas.width=Math.round(boardWidth*dpr);canvas.height=Math.round(boardHeight*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);}
 new ResizeObserver(resize).observe(wrap);resize();
 function polygon(points,scale=1){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x*scale,y*scale):ctx.moveTo(x*scale,y*scale));ctx.closePath();}
 function drawRealmGem(g,x,y,scale=1,alpha=1,now=0){
@@ -628,12 +669,12 @@ if(g.special){
   if(g.special==='nova'){for(let a=0;a<10;a++){const r=a%2?.11:.25;ctx.lineTo(Math.cos(a*Math.PI/5-Math.PI/2)*r,Math.sin(a*Math.PI/5-Math.PI/2)*r);}ctx.closePath();}
   ctx.stroke();
 }ctx.restore();}
-function burst(i,color,count=10){const isMob=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window));if(reduced||isMob)count=Math.min(count,4);const x=i%8+.5,y=Math.floor(i/8)+.5;const maxParts=isMob?120:450;for(let k=0;k<count&&particles.length<maxParts;k++){const a=Math.random()*Math.PI*2,v=.6+Math.random()*2.4;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:.4+Math.random()*.4,max:1,size:.025+Math.random()*.04,color:PALETTE[color][k%2],rot:Math.random()*6});}}
+function burst(i,color,count=10){const isMob=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window));if(reduced||isMob)count=Math.min(count,4);const x=(i%boardCols)+.5,y=Math.floor(i/boardCols)+.5;const maxParts=isMob?120:450;for(let k=0;k<count&&particles.length<maxParts;k++){const a=Math.random()*Math.PI*2,v=.6+Math.random()*2.4;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:.4+Math.random()*.4,max:1,size:.025+Math.random()*.04,color:PALETTE[color][k%2],rot:Math.random()*6});}}
 function shatterGem(i,color,centerIndex=-1,kind=''){
   const isMob=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window));
-  const gx=(i%8)+.5,gy=Math.floor(i/8)+.5;
-  const cx=centerIndex>=0?(centerIndex%8)+.5:gx;
-  const cy=centerIndex>=0?Math.floor(centerIndex/8)+.5:gy;
+  const gx=(i%boardCols)+.5,gy=Math.floor(i/boardCols)+.5;
+  const cx=centerIndex>=0?(centerIndex%boardCols)+.5:gx;
+  const cy=centerIndex>=0?Math.floor(centerIndex/boardCols)+.5:gy;
   let dx=gx-cx,dy=gy-cy;
   const dist=Math.hypot(dx,dy);
   if(dist<0.01){dx=(Math.random()-.5)*.5;dy=-1;}else{dx/=dist;dy/=dist;}
@@ -686,15 +727,15 @@ function shatterGem(i,color,centerIndex=-1,kind=''){
 }
 function ring(x,y,color,max=2){rings.push({x,y,color,max,r:.1,life:1.2,maxLife:1.2});}
 function beam(a,b,color){
-  const points=[],x1=a%8+.5,y1=Math.floor(a/8)+.5,x2=b%8+.5,y2=Math.floor(b/8)+.5;
+  const points=[],x1=a%boardCols+.5,y1=Math.floor(a/boardCols)+.5,x2=b%boardCols+.5,y2=Math.floor(b/boardCols)+.5;
   for(let n=0;n<=16;n++){
     const t=n/16;
     points.push([x1+(x2-x1)*t+(n&&n<16?(Math.random()-.5)*.35:0),y1+(y2-y1)*t+(n&&n<16?(Math.random()-.5)*.35:0)]);
   }
   beams.push({points,color,life:1.2,maxLife:1.2});
 }
-function draw(now,dt){ctx.clearRect(0,0,boardSize,boardSize);const bg=ctx.createLinearGradient(0,0,boardSize,boardSize);bg.addColorStop(0,'#0c292e');bg.addColorStop(1,'#05191f');ctx.fillStyle=bg;ctx.fillRect(0,0,boardSize,boardSize);for(let i=0;i<64;i++){const x=i%8*cell,y=Math.floor(i/8)*cell;ctx.fillStyle=(Math.floor(i/8)+i%8)%2?'#183c3e44':'#03161c60';ctx.fillRect(x+1,y+1,cell-2,cell-2);ctx.strokeStyle='#a2bfa512';ctx.lineWidth=.5;ctx.strokeRect(x+.5,y+.5,cell-1,cell-1);if(sealState[i]>0){ctx.fillStyle=sealState[i]>1?'#80612b8a':'#b690353e';ctx.fillRect(x+2,y+2,cell-4,cell-4);ctx.strokeStyle='#e6c46ca8';ctx.lineWidth=sealState[i]>1?2:1;ctx.strokeRect(x+4,y+4,cell-8,cell-8);for(let n=0;n<sealState[i];n++){ctx.fillStyle='#f8d17b';ctx.fillRect(x+cell/2+(n-(sealState[i]-1)/2)*7-2,y+cell-6,4,3);}}}
-const hintOn=hintUntil>now||(now-lastAction>18000&&started&&!busy&&!activePower);if(hintOn&&!hint.length)hint=findMove(board,totemChain.color)||[];for(const i of (selected>=0?[selected]:hintOn?hint:[])){const x=i%8*cell,y=Math.floor(i/8)*cell;ctx.save();ctx.strokeStyle=selected===i?'#ffdf91':`rgba(208,243,193,${.45+.35*Math.sin(now/200)})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.roundRect(x+3,y+3,cell-6,cell-6,8);ctx.stroke();ctx.restore();}
+function draw(now,dt){ctx.clearRect(0,0,boardWidth,boardHeight);const bg=ctx.createLinearGradient(0,0,boardWidth,boardHeight);bg.addColorStop(0,'#0c292e');bg.addColorStop(1,'#05191f');ctx.fillStyle=bg;ctx.fillRect(0,0,boardWidth,boardHeight);for(let i=0;i<boardCells;i++){const col=i%boardCols,row=Math.floor(i/boardCols),x=col*cell,y=row*cell;ctx.fillStyle=(row+col)%2?'#183c3e44':'#03161c60';ctx.fillRect(x+1,y+1,cell-2,cell-2);ctx.strokeStyle='#a2bfa512';ctx.lineWidth=.5;ctx.strokeRect(x+.5,y+.5,cell-1,cell-1);if(sealState[i]>0){ctx.fillStyle=sealState[i]>1?'#80612b8a':'#b690353e';ctx.fillRect(x+2,y+2,cell-4,cell-4);ctx.strokeStyle='#e6c46ca8';ctx.lineWidth=sealState[i]>1?2:1;ctx.strokeRect(x+4,y+4,cell-8,cell-8);for(let n=0;n<sealState[i];n++){ctx.fillStyle='#f8d17b';ctx.fillRect(x+cell/2+(n-(sealState[i]-1)/2)*7-2,y+cell-6,4,3);}}}
+const hintOn=hintUntil>now||(now-lastAction>18000&&started&&!busy&&!activePower);if(hintOn&&!hint.length)hint=findMove(board,totemChain.color)||[];for(const i of (selected>=0?[selected]:hintOn?hint:[])){const x=(i%boardCols)*cell,y=Math.floor(i/boardCols)*cell;ctx.save();ctx.strokeStyle=selected===i?'#ffdf91':`rgba(208,243,193,${.45+.35*Math.sin(now/200)})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.roundRect(x+3,y+3,cell-6,cell-6,8);ctx.stroke();ctx.restore();}
 board.forEach((g,i)=>{if(!g)return;const speed=Math.min(1,dt*19);g.x+=(g.tx-g.x)*speed;g.y+=(g.ty-g.y)*speed;const hovered=selected===i;drawGem(g,(g.x+.5)*cell,(g.y+.5)*cell,hovered?1.07:1,1,now);});
 for(const g of ghosts){
   if(g.fireBurst){
@@ -851,7 +892,7 @@ for(const s of gemShards){
 }
 gemShards=gemShards.filter(s=>s.life>0);
 for(const p of particles){p.life-=dt*.85;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=3.0*dt;p.rot+=dt*5;ctx.save();ctx.translate(p.x*cell,p.y*cell);ctx.rotate(p.rot);ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(-p.size*cell/2,-p.size*cell/2,p.size*cell,p.size*cell);ctx.restore();}particles=particles.filter(p=>p.life>0);ctx.restore();for(const f of floats){f.life-=dt;f.y-=dt*.65;ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,f.life*2));ctx.textAlign='center';ctx.font=`600 ${cell*.34}px Georgia`;ctx.fillStyle=f.color;ctx.shadowColor='#02161b';ctx.shadowBlur=5;ctx.fillText(f.text,f.x*cell,f.y*cell);ctx.restore();}floats=floats.filter(f=>f.life>0);
-fx.draw(now,dt);if(paused){ctx.fillStyle='#031c2477';ctx.fillRect(0,0,boardSize,boardSize);}}
+fx.draw(now,dt);if(paused){ctx.fillStyle='#031c2477';ctx.fillRect(0,0,boardWidth,boardHeight);}}
 const isMobileDevice=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window)||navigator.maxTouchPoints>0);
 const atm=$('#atmosphere'),ac=atm.getContext('2d');let aw=0,ah=0,ambient=Array.from({length:isMobileDevice?12:22},()=>({x:Math.random(),y:Math.random(),s:.4+Math.random()*1.6,speed:.01+Math.random()*.02,phase:Math.random()*6}));
 function atmosphere(now,dt){
@@ -925,13 +966,13 @@ async function castTotem(color,index){
   impactUntil=performance.now()+(reduced?0:900);heavyCast=true;
   showCinematic(color,l,p.multiplier);announce(t.name+' · Lv.'+l,(boost?'위력 ×1.5 · ':'')+t.color+' '+totemChain.count+'연속',1450);director.power(color,p.multiplier);vibrate(boost?[55,35,100,30,75]:[40,35,80]);
   if(level>100)combatCast(color,index);
-  let cells=[];const r=Math.floor(index/8),c=index%8;
+  let cells=[];const r=Math.floor(index/boardCols),c=index%boardCols;
   if(color===1){
     const baseCount=Math.max(2,Math.min(4,Math.floor(1.5+l*0.55)));
     const totalMeteors=boost?Math.min(5,baseCount+1):baseCount;
     const centers=fireTargets(l,lastFireTargets);
     while(centers.length<totalMeteors){
-      const pool=Array.from({length:64},(_,i)=>i).filter(i=>!centers.includes(i));
+      const pool=Array.from({length:boardCells},(_,i)=>i).filter(i=>!centers.includes(i));
       centers.push(pool[Math.floor(Math.random()*pool.length)]);
     }
     lastFireTargets=centers;
@@ -942,11 +983,11 @@ async function castTotem(color,index){
     const allDetonated=new Set();
     currentCastColor=1;
     for(const [k,center] of centers.slice(0,totalMeteors).entries()){
-      const rr=Math.floor(center/8), cc=center%8;
+      const rr=Math.floor(center/boardCols), cc=center%boardCols;
       const cluster=[];
-      for(let y=Math.max(0,rr-1);y<=Math.min(7,rr+1);y++)
-        for(let x=Math.max(0,cc-1);x<=Math.min(7,cc+1);x++){
-          const idx=y*8+x;
+      for(let y=Math.max(0,rr-1);y<=Math.min(boardRows-1,rr+1);y++)
+        for(let x=Math.max(0,cc-1);x<=Math.min(boardCols-1,cc+1);x++){
+          const idx=y*boardCols+x;
           if(!allDetonated.has(idx)&&allDetonated.size<maxAllowed){
             allDetonated.add(idx);
             cluster.push(idx);
@@ -984,44 +1025,49 @@ async function castTotem(color,index){
     return;
   }
   if(color===2){const shock=thunderTargets(l,totemChain.count,index);cells=shock.cells;frame.dataset.shockAnchor=index;frame.dataset.shockRadius=shock.radius;frame.dataset.shockTargets=cells.join(',');fx.storm(index,p.multiplier);fx.shockRange(index,shock.radius,t.accent);for(const hit of cells)if(hit!==index)fx.lightning(index,hit,t.accent,p.multiplier*.85);}
-  if(color===0){const harvest=harvestTargets(board,l,totemChain.count);cells=harvest.collect;for(const i of cells)fx.siphon(i,index,t.accent,p.multiplier);harvest.create.forEach(i=>{board[i].crystal=true;ring(i%8+.5,Math.floor(i/8)+.5,t.accent,1.1);});fx.field(c+.5,r+.5,t.accent,p.multiplier,'jade');}
+  if(color===0){const harvest=harvestTargets(board,l,totemChain.count);cells=harvest.collect;for(const i of cells)fx.siphon(i,index,t.accent,p.multiplier);harvest.create.forEach(i=>{board[i].crystal=true;ring(i%boardCols+.5,Math.floor(i/boardCols)+.5,t.accent,1.1);});fx.field(c+.5,r+.5,t.accent,p.multiplier,'jade');}
   if(color===3){const bonus=p.bonus*(performance.now()<frenzyUntil?3:1);score+=bonus;frenzy=Math.min(100,frenzy+p.energy);if(frenzy>=100){frenzy=0;frenzyUntil=performance.now()+(6000+l*500+(activeFeverBonus?3000:0));announce('SOLAR AWAKENING','황금 토템 · 점수 3배',1400);}floats.push({x:4,y:3,text:'+'+bonus,life:1.4,color:'#ffda82'});fx.field(c+.5,r+.5,t.accent,p.multiplier,'solar');}
   if(color===4){const gifts=lunarTargets(board,l,totemChain.count);metrics.specialsMade+=gifts.length;gifts.forEach(({index:i,special},k)=>{board[i].special=special;fx.meteor(index,i,t.accent,.75,k*.06,'gift');});fx.field(c+.5,r+.5,t.accent,p.multiplier,'lunar');}
   if(color===5){let text=level>100?'적의 반격 지연':'시간의 축복';if(level<=100&&mode!=='zen'){const next=extendTime(stage,time,p),gained=next-time;time=next;text='+'+gained.toFixed(1).replace('.0','')+'초';}if(p.stasis&&level<=100){frozen=Math.max(frozen,p.stasis);frame.classList.add('frozen-board');}floats.push({x:4,y:3,text,life:1.4,color:'#ffd7a1'});fx.field(4,4,t.accent,p.multiplier,'clock');}
   if(color===6){
-    const reach=l>=4?3:2;
     currentCastColor=6;
     fx.field(c+.5,r+.5,t.accent,p.multiplier,'water');
     ring(c+.5,r+.5,t.accent,3.5);
     director.power(6,p.multiplier);
-    heavyShake(1.3);
+    heavyShake(1.4);
     flash('#38bdf8');
-    const stages=[];
-    const centerBatch=[r*8+c];
-    if(boost){
-      for(const y of [r-1,r+1])if(y>=0&&y<8)centerBatch.push(y*8+c);
+
+    // 🌊 Torrential rainstorm effect across entire board!
+    const baseDrops=Math.round((10+l*3.5)*(boost?1.35:1));
+    const maxDrops=Math.min(Math.round(boardCells*0.42),baseDrops);
+    const available=[];
+    for(let i=0;i<boardCells;i++){
+      if(board[i])available.push(i);
     }
-    stages.push(centerBatch);
-    for(let step=1;step<=reach;step++){
-      const stepBatch=[];
-      for(const dx of [-step,step]){
-        const x=c+dx;
-        if(x>=0&&x<8)stepBatch.push(r*8+x);
-      }
-      if(stepBatch.length)stages.push(stepBatch);
+    for(let i=available.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [available[i],available[j]]=[available[j],available[i]];
     }
-    for(const batch of stages){
-      const valid=batch.filter(i=>board[i]);
-      if(valid.length){
-        for(const idx of valid){
-          shatterGem(idx,board[idx].color,index,'water');
-          const bx=idx%8+.5,by=Math.floor(idx/8)+.5;
+    const chosen=available.slice(0,maxDrops);
+    if(board[index]&&!chosen.includes(index))chosen[0]=index;
+
+    // 3 cascading downpour waves
+    const waves=[[],[],[]];
+    chosen.forEach((idx,k)=>{waves[k%3].push(idx);});
+
+    for(let w=0;w<waves.length;w++){
+      const wave=waves[w].filter(i=>board[i]);
+      if(wave.length){
+        for(const idx of wave){
+          const bx=(idx%boardCols)+.5,by=Math.floor(idx/boardCols)+.5;
+          fx.meteor(idx%boardCols,idx,'#38bdf8',.9,0,'water');
           ring(bx,by,'#38bdf8',1.8);
-          beam(index,idx,'#00e5ff');
+          shatterGem(idx,board[idx].color,idx,'water');
         }
-        await clearCells(valid,new Map(),1);
+        await clearCells(wave,new Map(),1);
+        director.impact(1.1,0);
         update();
-        await wait(reduced?15:55);
+        await wait(reduced?15:75);
       }
     }
     currentCastColor=-1;
@@ -1037,12 +1083,12 @@ async function castTotem(color,index){
     flash('#d97706');
     const maxReach=1+(l>=4?1:0);
     const tiers=new Map();
-    for(let y=Math.max(0,r-maxReach);y<=Math.min(7,r+maxReach);y++){
-      for(let x=Math.max(0,c-maxReach);x<=Math.min(7,c+maxReach);x++){
+    for(let y=Math.max(0,r-maxReach);y<=Math.min(boardRows-1,r+maxReach);y++){
+      for(let x=Math.max(0,c-maxReach);x<=Math.min(boardCols-1,c+maxReach);x++){
         const dist=Math.abs(y-r)+Math.abs(x-c);
         if(dist<=maxReach){
           const list=tiers.get(dist)||[];
-          list.push(y*8+x);
+          list.push(y*boardCols+x);
           tiers.set(dist,list);
         }
       }
@@ -1060,7 +1106,7 @@ async function castTotem(color,index){
       if(valid.length){
         for(const idx of valid){
           shatterGem(idx,board[idx].color,index,'earth');
-          const bx=idx%8+.5,by=Math.floor(idx/8)+.5;
+          const bx=idx%boardCols+.5,by=Math.floor(idx/boardCols)+.5;
           ring(bx,by,'#f59e0b',2.2);
         }
         await clearCells(valid,new Map(),1);
@@ -1087,8 +1133,8 @@ async function castTotem(color,index){
       for(const dx of [-k,k]){
         for(const dy of [-k,k]){
           const x=c+dx, y=r+dy;
-          if(x>=0&&x<8&&y>=0&&y<8){
-            const idx=y*8+x;
+          if(x>=0&&x<boardCols&&y>=0&&y<boardRows){
+            const idx=y*boardCols+x;
             if(!kBatch.includes(idx))kBatch.push(idx);
           }
         }
@@ -1108,7 +1154,7 @@ async function castTotem(color,index){
       if(valid.length){
         for(const idx of valid){
           shatterGem(idx,board[idx].color,index,'wind');
-          const bx=idx%8+.5,by=Math.floor(idx/8)+.5;
+          const bx=idx%boardCols+.5,by=Math.floor(idx/boardCols)+.5;
           ring(bx,by,'#6ee7b7',1.9);
           beam(index,idx,'#34d399');
         }
@@ -1470,7 +1516,7 @@ function openFortuneCardModal(clearedStage, onFinished){
         chord(12);
         flash('#ffe28a');
         director.impact(2,2);
-        for(let k=0;k<12;k++)burst(Math.floor(Math.random()*64),3,20);
+        for(let k=0;k<12;k++)burst(Math.floor(Math.random()*boardCells),3,20);
       }else{
         chord(2);
         flash('#ff5555');

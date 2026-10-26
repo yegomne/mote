@@ -24,8 +24,8 @@ export const REALM_FOES=[
   {name:'망령 기사',weak:[1,3],resist:[4],move:'어둠의 검',sprite:7},
   {name:'서리 뱀',weak:[1,3],resist:[6],move:'서리 숨결',sprite:8},
   {name:'타락한 마법사',weak:[4,5],resist:[1],move:'차원의 저주',sprite:9},
-  {name:'화산 와이번',weak:[6,7],resist:[1],move:'용암 폭격',sprite:10},
-  {name:'태초의 용 아즈라엘',weak:[6,4],resist:[1,7],move:'일식의 숨결',sprite:11}
+  {name:'화산 와이번',weak:[6,7],resist:[1],absorb:[1],move:'용암 폭격',sprite:10},
+  {name:'태초의 용 아즈라엘',weak:[6,4],resist:[1,7],absorb:[1],move:'일식의 숨결',sprite:11}
 ];
 const REALM_FOE_SCENES=[[21,26],[23,34],[35,43],[38,20],[55,59],[30,32],[52,60],[71,73],[56],[64,79],[18,87],[18,100]];
 export function realmBackdrop(stage,enemyId=stage.enemyId){const scenes=REALM_FOE_SCENES[enemyId]||[21],scene=scenes[stage.act%scenes.length];return `assets/stages/stage_${scene}.jpg`;}
@@ -58,8 +58,8 @@ export function realmEquipGear(save,slot,tier){if(!realmGearOwned(save,slot,tier
 export function realmEnhanceGear(save,slot,tier){if(!realmGearOwned(save,slot,tier))return false;const rank=realmGearRank(save,slot,tier),cost=realmGearEnhanceCost(slot,tier,rank);if(save.coins<cost)return false;save.coins-=cost;save.enhance??={};save.enhance[`${slot}:${tier}`]=rank+1;return true;}
 export function realmStage(level){if(!Number.isInteger(level)||level<REALM_FIRST||level>REALM_LAST)throw new RangeError('이세계 단계는 101~200');const act=Math.floor((level-101)/10),step=(level-101)%10,chapter=REALM_ACTS[act],enemyId=chapter.foes[step],enemy=REALM_FOES[enemyId],boss=step===9,gate=step===4;
  const slime=enemyId===0,waves=slime?3+(step>=3)+(step>=7):level===200?3:boss&&level>=160?2:1;
- const hp=slime?Math.round(145+step*7):Math.round((172+act*73+step*23)*(boss?1.55:gate?1.2:1)*1.45);
- return {level,chapter:5+act,act,step,type:'realm',name:boss?`${chapter.name}의 결전`:gate?`${enemy.name} · 문지기`:slime?`${enemy.name} 무리 · ${waves}마리`:`${enemy.name} · ${['첫 조우','흔적','깊은 길','기척','수호','잔향','추적','협곡','문턱'][step]}`,tip:`${chapter.goal}. ${slime?`슬라임 ${waves}마리 · `:''}약점: ${enemy.weak.map(i=>['비취','불','번개','황금','달','시간','물','대지','바람'][i]).join('·')} · 같은 색 2번째 매치부터 마법 발동`,story:step===0?chapter.story:boss?`${chapter.name}의 끝에서 ${enemy.name}가 길을 막는다. ${chapter.goal} 아홉 토템의 힘을 이어야 한다.`:slime?`${chapter.name}에 ${enemy.name} ${waves}마리가 모여 길을 막는다. 한 마리씩 쓰러뜨리며 약점을 찾아라.`:`${chapter.name}에서 ${enemy.name}와 마주쳤다. ${chapter.goal} 적의 약점을 찾아 보석을 이어라.`,enemyId,enemy,hp,attack:slime?18+step:Math.round(12+act*4.7+step*.9+(boss?7:0)),cadence:slime||boss||step>=6?2:3,reward:Math.round(54+act*20+step*9+(boss?100:gate?40:0)+(slime?waves*10:0)),waves,boss,gate,colors:6+(level>=106)+(level>=116)+(level>=126),target:1,crystals:0,time:0,timeCap:0,seals:[],focusColor:null,colorTarget:0,comboTarget:0,specialTarget:0,totemTarget:0,overdriveTarget:0};
+ const hp=slime?Math.round((180+step*10)*1.35):Math.round((210+act*85+step*28)*(boss?1.65:gate?1.25:1)*1.55);
+ return {level,chapter:5+act,act,step,type:'realm',name:boss?`${chapter.name}의 결전`:gate?`${enemy.name} · 문지기`:slime?`${enemy.name} 무리 · ${waves}마리`:`${enemy.name} · ${['첫 조우','흔적','깊은 길','기척','수호','잔향','추적','협곡','문턱'][step]}`,tip:`${chapter.goal}. ${slime?`슬라임 ${waves}마리 · `:''}약점: ${enemy.weak.map(i=>['비취','불','번개','황금','달','시간','물','대지','바람'][i]).join('·')} · 같은 색 2번째 매치부터 마법 발동`,story:step===0?chapter.story:boss?`${chapter.name}의 끝에서 ${enemy.name}가 길을 막는다. ${chapter.goal} 아홉 토템의 힘을 이어야 한다.`:slime?`${chapter.name}에 ${enemy.name} ${waves}마리가 모여 길을 막는다. 한 마리씩 쓰러뜨리며 약점을 찾아라.`:`${chapter.name}에서 ${enemy.name}와 마주쳤다. ${chapter.goal} 적의 약점을 찾아 보석을 이어라.`,enemyId,enemy,hp,attack:slime?20+step*1.2:Math.round(14+act*5.2+step*1.1+(boss?8:0)),cadence:boss?1:(slime||step>=5?2:2),reward:Math.round(54+act*20+step*9+(boss?100:gate?40:0)+(slime?waves*10:0)),waves,boss,gate,colors:6+(level>=106)+(level>=116)+(level>=126),target:1,crystals:0,time:0,timeCap:0,seals:[],focusColor:null,colorTarget:0,comboTarget:0,specialTarget:0,totemTarget:0,overdriveTarget:0};
 }
 export function realmMaxHP(save){return 170+realmGearStats(save).hp;}
 export function freshRealmSave(){return {coins:0,gear:{staff:0,robe:0,ring:0,amulet:0,boots:0,grimoire:0},ownedGear:{},enhance:{},scrolls:[],cleared:[],newLevels:[0,0,0]};}
@@ -68,10 +68,17 @@ export function freshRealmBattle(stage,save){const max=realmMaxHP(save),enemyMax
 export function realmEncounterHP(stage,battle){if(stage.enemyId!==0)return {current:battle.enemyHP,max:battle.enemyMax};return {current:battle.enemyHP+(stage.waves-battle.wave)*stage.hp,max:stage.waves*stage.hp};}
 export function realmAffinity(enemy,color){return enemy.weak.includes(color)?1.45:enemy.resist.includes(color)?.55:1;}
 export function realmCast(stage,battle,save,color,level,streak){if(battle.phase!=='playing'||level<1||streak<2)return null;const enemy=REALM_FOES[battle.enemyId],affinity=realmAffinity(enemy,color),boost=level>=2&&streak>=3?1.5:1,{power,arcana,focus}=realmGearStats(save);
- let damage=Math.round((17+level*7+power+arcana)*(1+focus)*affinity*boost*(battle.vulnerable?1.2:1)),heal=0,shield=0,delay=0,combo=null;
- if(color===2&&battle.wet>0)damage=Math.round(damage*1.3);
+ let damage=Math.round((17+level*7+power+arcana)*(1+focus)*affinity*boost*(battle.vulnerable?1.2:1)),heal=0,shield=0,delay=0,combo=null,absorbed=0;
+ if(enemy.absorb?.includes(color)){
+   damage=0;
+   absorbed=Math.min(battle.enemyMax-battle.enemyHP,Math.max(10,Math.round(battle.enemyMax*0.05+level*2)));
+   battle.enemyHP+=absorbed;
+   battle.burn=0;
+ }else{
+   if(color===2&&battle.wet>0)damage=Math.round(damage*1.3);
+   if(color===1)battle.burn=Math.max(2,battle.burn);
+ }
  if(color===0){heal=11+level*3;shield=5;}
- if(color===1)battle.burn=Math.max(2,battle.burn);
  if(color===3)shield=14+level*3;
  if(color===4)battle.vulnerable=3;
  if(color===5)delay=1;
@@ -79,9 +86,9 @@ export function realmCast(stage,battle,save,color,level,streak){if(battle.phase!
  if(color===7)shield=13+level*4;
  if(color===8)delay=battle.wet>0?1:0;
  const scroll=REALM_SCROLLS.find(s=>save.scrolls.includes(s.id)&&s.pair[0]===battle.previousSpell&&s.pair[1]===color);
- if(scroll){damage=Math.round(damage*scroll.mult);delay+=scroll.delay||0;heal+=scroll.heal||0;if(scroll.burn)battle.burn=Math.max(battle.burn,scroll.burn);combo=scroll.name;battle.previousSpell=-1;}else battle.previousSpell=color;
- battle.enemyHP=Math.max(0,battle.enemyHP-damage);battle.heroHP=Math.min(battle.heroMax,battle.heroHP+heal);battle.shield=Math.min(150,battle.shield+shield);battle.delay+=delay;
- return {damage,heal,shield,delay,combo,comboArt:scroll?.art??-1,affinity,boost,enemyHP:battle.enemyHP};
+ if(scroll){damage=Math.round(damage*scroll.mult);delay+=scroll.delay||0;heal+=scroll.heal||0;if(scroll.burn&&!enemy.absorb?.includes(1))battle.burn=Math.max(battle.burn,scroll.burn);combo=scroll.name;battle.previousSpell=-1;}else battle.previousSpell=color;
+ if(!enemy.absorb?.includes(color))battle.enemyHP=Math.max(0,battle.enemyHP-damage);battle.heroHP=Math.min(battle.heroMax,battle.heroHP+heal);battle.shield=Math.min(150,battle.shield+shield);battle.delay+=delay;
+ return {damage,absorbed,heal,shield,delay,combo,comboArt:scroll?.art??-1,affinity:enemy.absorb?.includes(color)?0:affinity,boost,enemyHP:battle.enemyHP};
 }
 export function realmResonanceThreshold(stage){return 1000+Math.floor(stage.act/2)*150;}
 export function realmResonance(stage,battle,save,turnScore,specials){

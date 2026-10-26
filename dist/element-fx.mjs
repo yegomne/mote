@@ -50,20 +50,22 @@ export class ImpactFX extends ParticleFX {
 
   meteor(from,to,color,strength=1,delay=0,kind='fire'){
     if(this.reduced())return;
+    const c=this.getCols();
     if(kind==='gift'){
       this.gifts.push({from,to,color,strength,age:-delay,duration:.62});
     } else {
-      // High-End Motion Graphics: Hypersonic Orbital Kinetic Strike
-      const tx=(to%8)+.5;
-      const ty=Math.floor(to/8)+.5;
-      const sx=tx-1.8;
-      const sy=ty-4.5;
+      // High-End Motion Graphics: Hypersonic Orbital Kinetic Strike / Rain streak
+      const tx=(to%c)+.5;
+      const ty=Math.floor(to/c)+.5;
+      const isWater=kind==='water';
+      const sx=isWater?tx:tx-1.8;
+      const sy=isWater?ty-4.2:ty-4.5;
       this.fireLances.push({
         sx, sy, tx, ty,
-        strength: strength*1.2,
-        color: color||'#ff4500',
+        strength: strength*(isWater?0.9:1.2),
+        color: color||(isWater?'#38bdf8':'#ff4500'),
         age: -delay,
-        duration: 0.22,
+        duration: isWater?0.16:0.22,
         done: false
       });
     }
@@ -71,30 +73,33 @@ export class ImpactFX extends ParticleFX {
 
   lightning(a,b,color='#a5e9ff',strength=1){
     if(this.reduced())return;
+    const c=this.getCols();
     const points=[];
     for(let n=0;n<=20;n++){
       const t=n/20;
       points.push([
-        a%8+.5+(b%8-a%8)*t+(n&&n<20?(Math.random()-.5)*.48:0),
-        Math.floor(a/8)+.5+(Math.floor(b/8)-Math.floor(a/8))*t+(n&&n<20?(Math.random()-.5)*.48:0)
+        a%c+.5+(b%c-a%c)*t+(n&&n<20?(Math.random()-.5)*.48:0),
+        Math.floor(a/c)+.5+(Math.floor(b/c)-Math.floor(a/c))*t+(n&&n<20?(Math.random()-.5)*.48:0)
       ]);
     }
     this.bolts.push({points,color,strength,age:0,duration:.85,life:.95});
     for(let i=0;i<12&&this.sparks.length<220;i++){
       const angle=Math.random()*TAU,v=2+Math.random()*4;
-      this.sparks.push({x:b%8+.5,y:Math.floor(b/8)+.5,vx:Math.cos(angle)*v,vy:Math.sin(angle)*v,age:0,duration:.35+Math.random()*.4,color:'#c8f4ff'});
+      this.sparks.push({x:b%c+.5,y:Math.floor(b/c)+.5,vx:Math.cos(angle)*v,vy:Math.sin(angle)*v,age:0,duration:.35+Math.random()*.4,color:'#c8f4ff'});
     }
     this.elementHit?.(strength,'thunder');
   }
 
   storm(index,strength=1){
     if(this.reduced())return;
-    this.elements.push({kind:'storm',x:4,y:0,strength,age:0,duration:1.5});
-    this.lightning(index%8,index,'#c7f1ff',strength*1.2);
+    const c=this.getCols();
+    this.elements.push({kind:'storm',x:c/2,y:0,strength,age:0,duration:1.5});
+    this.lightning(index%c,index,'#c7f1ff',strength*1.2);
   }
 
   shockRange(index,radius,color){
-    if(!this.reduced())this.elements.push({kind:'shock',x:index%8+.5,y:Math.floor(index/8)+.5,radius,color,strength:1,age:0,duration:.8});
+    const c=this.getCols();
+    if(!this.reduced())this.elements.push({kind:'shock',x:index%c+.5,y:Math.floor(index/c)+.5,radius,color,strength:1,age:0,duration:.8});
   }
 
   siphon(from,to,color='#76e5a8',strength=1){
