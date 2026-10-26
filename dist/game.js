@@ -113,7 +113,7 @@ async function trySwap(a,b){
     if(activeCascades>0||busy){
       await cascadeChain;
     }
-    if(!adjacent(a,b)||!board[a]||!board[b])return;
+    if(!adjacent(a,b,boardCols)||!board[a]||!board[b])return;
     selected=-1;hint=[];lastAction=performance.now();
     [board[a],board[b]]=[board[b],board[a]];
     syncPositions();tone(280,.06);
@@ -538,7 +538,7 @@ function select(i){
   if(paused||ended||$('#modal').open)return;
   if(i<0||i>=boardCells||!board[i])return;
   if(selected===i){selected=-1;return;}
-  if(selected>=0&&adjacent(selected,i)){
+  if(selected>=0&&adjacent(selected,i,boardCols)){
     const prev=selected;
     selected=-1;
     trySwap(prev,i);
@@ -546,7 +546,6 @@ function select(i){
   }
   selected=i;
   lastAction=performance.now();
-  tone(400+board[i].color*40,.05);
 }
 let pointer=null;
 wrap.addEventListener('pointerdown',e=>{
@@ -574,7 +573,7 @@ wrap.addEventListener('pointermove',e=>{
     }
     if(targetCol>=0&&targetCol<boardCols&&targetRow>=0&&targetRow<boardRows){
       const to=targetRow*boardCols+targetCol;
-      if(adjacent(from,to)){
+      if(adjacent(from,to,boardCols)){
         selected=-1;
         trySwap(from,to);
       }
@@ -592,7 +591,7 @@ wrap.addEventListener('pointercancel',e=>{
     pointer=null;
   }
 });
-$('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;if(!Number.isFinite(i))return;const delta={ArrowRight:1,ArrowLeft:-1,ArrowUp:-boardCols,ArrowDown:boardCols}[e.key];if(delta){e.preventDefault();const j=i+delta;if(j>=0&&j<boardCells&&adjacent(i,j)){e.target.tabIndex=-1;const b=$('#boardInput').children[j];if(b){b.tabIndex=0;b.focus();}}}if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i);}});
+$('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;if(!Number.isFinite(i))return;const delta={ArrowRight:1,ArrowLeft:-1,ArrowUp:-boardCols,ArrowDown:boardCols}[e.key];if(delta){e.preventDefault();const j=i+delta;if(j>=0&&j<boardCells&&adjacent(i,j,boardCols)){e.target.tabIndex=-1;const b=$('#boardInput').children[j];if(b){b.tabIndex=0;b.focus();}}}if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i);}});
 document.addEventListener('keydown',e=>{if($('#modal').open)return;if(e.key==='Escape'){if(started&&!ended)pause();}});
 $('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=()=>level>100?realmHelp():help();$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
 $$('[data-mode]').forEach(b=>b.onclick=()=>{if(started&&!ended)return;mode=b.dataset.mode;reset();toast(mode==='zen'?'시간 제한 없이, 편안하게 즐기세요.':'90초 동안 고대 사원을 깨우세요.');});
@@ -735,7 +734,7 @@ function beam(a,b,color){
   beams.push({points,color,life:1.2,maxLife:1.2});
 }
 function draw(now,dt){ctx.clearRect(0,0,boardWidth,boardHeight);const bg=ctx.createLinearGradient(0,0,boardWidth,boardHeight);bg.addColorStop(0,'#0c292e');bg.addColorStop(1,'#05191f');ctx.fillStyle=bg;ctx.fillRect(0,0,boardWidth,boardHeight);for(let i=0;i<boardCells;i++){const col=i%boardCols,row=Math.floor(i/boardCols),x=col*cell,y=row*cell;ctx.fillStyle=(row+col)%2?'#183c3e44':'#03161c60';ctx.fillRect(x+1,y+1,cell-2,cell-2);ctx.strokeStyle='#a2bfa512';ctx.lineWidth=.5;ctx.strokeRect(x+.5,y+.5,cell-1,cell-1);if(sealState[i]>0){ctx.fillStyle=sealState[i]>1?'#80612b8a':'#b690353e';ctx.fillRect(x+2,y+2,cell-4,cell-4);ctx.strokeStyle='#e6c46ca8';ctx.lineWidth=sealState[i]>1?2:1;ctx.strokeRect(x+4,y+4,cell-8,cell-8);for(let n=0;n<sealState[i];n++){ctx.fillStyle='#f8d17b';ctx.fillRect(x+cell/2+(n-(sealState[i]-1)/2)*7-2,y+cell-6,4,3);}}}
-const hintOn=hintUntil>now||(now-lastAction>18000&&started&&!busy&&!activePower);if(hintOn&&!hint.length)hint=findMove(board,totemChain.color)||[];for(const i of (selected>=0?[selected]:hintOn?hint:[])){const x=(i%boardCols)*cell,y=Math.floor(i/boardCols)*cell;ctx.save();ctx.strokeStyle=selected===i?'#ffdf91':`rgba(208,243,193,${.45+.35*Math.sin(now/200)})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.roundRect(x+3,y+3,cell-6,cell-6,8);ctx.stroke();ctx.restore();}
+const hintOn=hintUntil>now||(now-lastAction>18000&&started&&!busy&&!activePower);if(hintOn&&!hint.length)hint=findMove(board,totemChain.color)||[];for(const i of (hintOn?hint:[])){const x=(i%boardCols)*cell,y=Math.floor(i/boardCols)*cell;ctx.save();ctx.strokeStyle=`rgba(208,243,193,${.45+.35*Math.sin(now/200)})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.roundRect(x+3,y+3,cell-6,cell-6,8);ctx.stroke();ctx.restore();}
 board.forEach((g,i)=>{if(!g)return;const speed=Math.min(1,dt*19);g.x+=(g.tx-g.x)*speed;g.y+=(g.ty-g.y)*speed;const hovered=selected===i;drawGem(g,(g.x+.5)*cell,(g.y+.5)*cell,hovered?1.07:1,1,now);});
 for(const g of ghosts){
   if(g.fireBurst){
@@ -1355,7 +1354,7 @@ function heavyShake(strength=1){if(reduced||performance.now()-lastHeavyShake<80)
 function impactSound(strength=1){director.impact(strength,totemChain.color>=0?totemChain.color:1);}
 function showCinematic(color,l,multiplier){clearTimeout(cinematicTimer);document.body.classList.toggle('overdrive',multiplier>1);cinematicTimer=setTimeout(()=>{document.body.classList.remove('overdrive');},reduced?600:1100);}
 
-function showSoundSettings(){if(busy){toast('연쇄가 끝난 뒤 소리를 조절할 수 있어요.');return;}if(running)pauseClock();const s=director.settings;showModal(`<div class="modal-kicker">TEMPLE SOUNDSCAPES</div><h2>사운드 설정</h2><p class="audio-description">보석 공명 · 묵직한 토템 · 사원의 리듬</p><div class="settings-row"><span>사운드</span><button id="audioEnabled">${s.enabled?'켜짐':'꺼짐'}</button></div>${[['master','전체 음량'],['effects','효과음'],['music','배경음악']].map(([key,label])=>`<label class="audio-control" for="audio-${key}"><span>${label}</span><b id="audioValue-${key}">${Math.round(s[key]*100)}%</b><input id="audio-${key}" data-audio="${key}" type="range" min="0" max="100" value="${Math.round(s[key]*100)}"></label>`).join('')}<label class="audio-preview-label" for="audioPreviewTotem">들어볼 토템</label><select id="audioPreviewTotem" class="audio-preview-select">${TOTEMS.map((t,i)=>`<option value="${i}" ${i===1?'selected':''}>${t.name}</option>`).join('')}</select><button id="audioPreview" class="audio-preview">▶ 토템 사운드 들어보기</button><button id="audioClose" class="primary-button">탐험으로 돌아가기 →</button>`);$('#audioEnabled').onclick=e=>{sound=!director.settings.enabled;director.configure('enabled',sound);e.target.textContent=sound?'켜짐':'꺼짐';persist();update();};$$('[data-audio]').forEach(input=>input.oninput=e=>{const key=e.target.dataset.audio,value=+e.target.value;director.configure(key,value/100);$('#audioValue-'+key).textContent=value+'%';});$('#audioPreview').onclick=async()=>{if(!director.settings.enabled){sound=true;director.configure('enabled',true);$('#audioEnabled').textContent='켜짐';update();}await director.unlock();director.power(Number($('#audioPreviewTotem').value),1.5);};$('#audioClose').onclick=resume;}
+function showSoundSettings(){if(busy){toast('연쇄가 끝난 뒤 소리를 조절할 수 있어요.');return;}if(running)pauseClock();const s=director.settings;showModal(`<div class="modal-kicker">TEMPLE SOUNDSCAPES</div><h2>사운드 설정</h2><p class="audio-description">보석 공명 · 묵직한 토템 · 사원의 리듬</p><div class="settings-row"><span>전체 사운드</span><button id="audioEnabled">${s.enabled?'켜짐':'꺼짐'}</button></div><div class="settings-row"><span>배경음악 (BGM)</span><button id="musicEnabled">${s.musicEnabled!==false?'켜짐':'꺼짐'}</button></div><div class="settings-row"><span>효과음 (SFX)</span><button id="effectsEnabled">${s.effectsEnabled!==false?'켜짐':'꺼짐'}</button></div>${[['master','전체 음량'],['music','배경음악 음량'],['effects','효과음 음량']].map(([key,label])=>`<label class="audio-control" for="audio-${key}"><span>${label}</span><b id="audioValue-${key}">${Math.round(s[key]*100)}%</b><input id="audio-${key}" data-audio="${key}" type="range" min="0" max="100" value="${Math.round(s[key]*100)}"></label>`).join('')}<label class="audio-preview-label" for="audioPreviewTotem">들어볼 토템</label><select id="audioPreviewTotem" class="audio-preview-select">${TOTEMS.map((t,i)=>`<option value="${i}" ${i===1?'selected':''}>${t.name}</option>`).join('')}</select><button id="audioPreview" class="audio-preview">▶ 토템 사운드 들어보기</button><button id="audioClose" class="primary-button">탐험으로 돌아가기 →</button>`);$('#audioEnabled').onclick=e=>{sound=!director.settings.enabled;director.configure('enabled',sound);e.target.textContent=sound?'켜짐':'꺼짐';persist();update();};$('#musicEnabled').onclick=e=>{const next=!(director.settings.musicEnabled!==false);director.configure('musicEnabled',next);e.target.textContent=next?'켜짐':'꺼짐';persist();};$('#effectsEnabled').onclick=e=>{const next=!(director.settings.effectsEnabled!==false);director.configure('effectsEnabled',next);e.target.textContent=next?'켜짐':'꺼짐';persist();};$$('[data-audio]').forEach(input=>input.oninput=e=>{const key=e.target.dataset.audio,value=+e.target.value;director.configure(key,value/100);$('#audioValue-'+key).textContent=value+'%';});$('#audioPreview').onclick=async()=>{if(!director.settings.enabled){sound=true;director.configure('enabled',true);$('#audioEnabled').textContent='켜짐';update();}await director.unlock();director.power(Number($('#audioPreviewTotem').value),1.5);};$('#audioClose').onclick=resume;}
 $('#soundSettingsBtn').onclick=showSoundSettings;
 
 function updateTitleUI(){

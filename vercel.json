@@ -1,5 +1,9 @@
 {
   "outputDirectory": "dist",
+  "redirects": [
+    { "source": "/anotherworld.html", "destination": "/", "permanent": false },
+    { "source": "/anotherworld", "destination": "/", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
   ]
