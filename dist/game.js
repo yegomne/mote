@@ -1,5 +1,5 @@
 import {Soundscape} from './soundscape.mjs?v=7';
-import {ImpactFX} from './element-fx.mjs?v=9';
+import {ImpactFX} from './element-fx.mjs?v=10';
 import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmAvailableColors,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=6';
 import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,makeRealmBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS} from './engine.mjs?v=23';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
@@ -262,7 +262,7 @@ async function clearCells(indices,creations=new Map(),chain=1){
     gained+=50*Math.min(chain,4)*(performance.now()<frenzyUntil?3:1);
     if(g.crystal)collected++;
     burst(i,g.color,heavyCast?26:chain>2?16:10);
-    if(!creations.has(i)){ghosts.push({g:{...g},life:1,fireBurst:currentCastColor===1});board[i]=null;}
+    if(!creations.has(i)){ghosts.push({g:{...g},life:1,fireBurst:currentCastColor===1,waterBurst:currentCastColor===6,earthBurst:currentCastColor===7,windBurst:currentCastColor===8});board[i]=null;}
   }
   for(const [i,special]of creations){
     if(board[i]){
@@ -629,7 +629,61 @@ if(g.special){
   ctx.stroke();
 }ctx.restore();}
 function burst(i,color,count=10){const isMob=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window));if(reduced||isMob)count=Math.min(count,4);const x=i%8+.5,y=Math.floor(i/8)+.5;const maxParts=isMob?120:450;for(let k=0;k<count&&particles.length<maxParts;k++){const a=Math.random()*Math.PI*2,v=.6+Math.random()*2.4;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,life:.4+Math.random()*.4,max:1,size:.025+Math.random()*.04,color:PALETTE[color][k%2],rot:Math.random()*6});}}
-function shatterGem(i,color,centerIndex=-1){const isMob=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window));const gx=(i%8)+.5,gy=Math.floor(i/8)+.5;const cx=centerIndex>=0?(centerIndex%8)+.5:gx;const cy=centerIndex>=0?Math.floor(centerIndex/8)+.5:gy;let dx=gx-cx,dy=gy-cy;const dist=Math.hypot(dx,dy);if(dist<0.01){dx=(Math.random()-.5)*.5;dy=-1;}else{dx/=dist;dy/=dist;}const shardCount=isMob?5:8;const pal=PALETTE[color]||PALETTE[1];for(let k=0;k<shardCount&&gemShards.length<180;k++){const spread=(Math.random()-.5)*1.4;const speed=2.2+Math.random()*4.2;const angle=Math.atan2(dy,dx)+spread;gemShards.push({x:gx,y:gy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-(1.2+Math.random()*2.0),rot:Math.random()*Math.PI*2,vrot:(Math.random()-.5)*14,size:0.07+Math.random()*0.09,life:0.6+Math.random()*0.35,color:pal[k%3],edgeColor:k%2===0?'#ffffff':'#ffe57f',isEmber:false});}for(let k=0;k<3&&gemShards.length<180;k++){const ang=Math.random()*Math.PI*2,spd=1.5+Math.random()*3.0;gemShards.push({x:gx,y:gy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-1.5,rot:0,vrot:0,size:0.035,life:0.45+Math.random()*0.3,color:k===0?'#ffffff':k===1?'#ffea00':'#ff3d00',isEmber:true});}}
+function shatterGem(i,color,centerIndex=-1,kind=''){
+  const isMob=typeof window!=='undefined'&&(matchMedia('(max-width:768px)').matches||('ontouchstart' in window));
+  const gx=(i%8)+.5,gy=Math.floor(i/8)+.5;
+  const cx=centerIndex>=0?(centerIndex%8)+.5:gx;
+  const cy=centerIndex>=0?Math.floor(centerIndex/8)+.5:gy;
+  let dx=gx-cx,dy=gy-cy;
+  const dist=Math.hypot(dx,dy);
+  if(dist<0.01){dx=(Math.random()-.5)*.5;dy=-1;}else{dx/=dist;dy/=dist;}
+  const shardCount=isMob?5:8;
+  let pal=PALETTE[color]||PALETTE[1];
+  let edgeCol=null;
+  const isWater=kind==='water'||currentCastColor===6;
+  const isEarth=kind==='earth'||currentCastColor===7;
+  const isWind=kind==='wind'||currentCastColor===8;
+  if(isWater){
+    pal=['#e0f7fa','#00e5ff','#0288d1'];
+    edgeCol='#ffffff';
+  }else if(isEarth){
+    pal=['#fff8e1','#f59e0b','#78350f'];
+    edgeCol='#fde68a';
+  }else if(isWind){
+    pal=['#ecfdf5','#10b981','#065f46'];
+    edgeCol='#a7f3d0';
+  }
+  for(let k=0;k<shardCount&&gemShards.length<180;k++){
+    const spread=(Math.random()-.5)*1.4;
+    const speed=2.2+Math.random()*4.2;
+    const angle=Math.atan2(dy,dx)+spread;
+    gemShards.push({
+      x:gx,y:gy,
+      vx:Math.cos(angle)*speed,
+      vy:Math.sin(angle)*speed-(1.2+Math.random()*2.0),
+      rot:Math.random()*Math.PI*2,
+      vrot:(Math.random()-.5)*14,
+      size:0.07+Math.random()*0.09,
+      life:0.6+Math.random()*0.35,
+      color:pal[k%3],
+      edgeColor:edgeCol||(k%2===0?'#ffffff':'#ffe57f'),
+      isEmber:false
+    });
+  }
+  for(let k=0;k<3&&gemShards.length<180;k++){
+    const ang=Math.random()*Math.PI*2,spd=1.5+Math.random()*3.0;
+    const col=isWater?(k===0?'#ffffff':'#38bdf8'):isEarth?(k===0?'#fde68a':'#d97706'):isWind?(k===0?'#ffffff':'#34d399'):(k===0?'#ffffff':k===1?'#ffea00':'#ff3d00');
+    gemShards.push({
+      x:gx,y:gy,
+      vx:Math.cos(ang)*spd,
+      vy:Math.sin(ang)*spd-1.5,
+      rot:0,vrot:0,size:0.035,
+      life:0.45+Math.random()*0.3,
+      color:col,
+      isEmber:true
+    });
+  }
+}
 function ring(x,y,color,max=2){rings.push({x,y,color,max,r:.1,life:1.2,maxLife:1.2});}
 function beam(a,b,color){
   const points=[],x1=a%8+.5,y1=Math.floor(a/8)+.5,x2=b%8+.5,y2=Math.floor(b/8)+.5;
@@ -666,6 +720,68 @@ for(const g of ghosts){
     ctx.beginPath();
     ctx.arc(0,0,cell*.38*t,0,Math.PI*2);
     ctx.fill();
+    ctx.restore();
+  }else if(g.waterBurst){
+    g.life-=dt*3.4;
+    const t=1-Math.max(0,g.life);
+    ctx.save();
+    ctx.translate((g.g.x+.5)*cell,(g.g.y+.5)*cell);
+    ctx.globalCompositeOperation='lighter';
+    const scale=1+t*.4;
+    ctx.scale(scale,scale);
+    ctx.globalAlpha=Math.max(0,g.life);
+    drawGem(g.g,0,0,1,Math.max(0,g.life),now);
+    ctx.strokeStyle='#00e5ff';
+    ctx.lineWidth=2.5*(1-t);
+    ctx.beginPath();
+    ctx.arc(0,0,cell*(.2+t*.5),0,Math.PI*2);
+    ctx.stroke();
+    ctx.fillStyle='#ffffff';
+    ctx.beginPath();
+    for(let d=0;d<4;d++){
+      const ang=d*Math.PI/2+t*3.2;
+      ctx.arc(Math.cos(ang)*cell*.36*t,Math.sin(ang)*cell*.36*t,Math.max(0.1,cell*.035*(1-t)),0,Math.PI*2);
+    }
+    ctx.fill();
+    ctx.restore();
+  }else if(g.earthBurst){
+    g.life-=dt*3.4;
+    const t=1-Math.max(0,g.life);
+    ctx.save();
+    ctx.translate((g.g.x+.5)*cell,(g.g.y+.5)*cell);
+    ctx.globalCompositeOperation='lighter';
+    const scale=1+t*.35;
+    ctx.scale(scale,scale);
+    ctx.globalAlpha=Math.max(0,g.life);
+    drawGem(g.g,0,0,1,Math.max(0,g.life),now);
+    ctx.strokeStyle='#ffd54f';
+    ctx.lineWidth=2.2*(1-t);
+    ctx.beginPath();
+    ctx.moveTo(-cell*.3,0);ctx.lineTo(-cell*.05,cell*.15);ctx.lineTo(cell*.1,-cell*.2);ctx.lineTo(cell*.32,cell*.05);
+    ctx.stroke();
+    ctx.fillStyle='#d97706';
+    ctx.fillRect(-cell*.2*t,-cell*.2*t,Math.max(0.1,cell*.1*(1-t)),Math.max(0.1,cell*.1*(1-t)));
+    ctx.fillRect(cell*.15*t,cell*.15*t,Math.max(0.1,cell*.1*(1-t)),Math.max(0.1,cell*.1*(1-t)));
+    ctx.restore();
+  }else if(g.windBurst){
+    g.life-=dt*3.8;
+    const t=1-Math.max(0,g.life);
+    ctx.save();
+    ctx.translate((g.g.x+.5)*cell,(g.g.y+.5)*cell);
+    ctx.globalCompositeOperation='lighter';
+    const scale=1+t*.45;
+    ctx.scale(scale,scale);
+    ctx.globalAlpha=Math.max(0,g.life);
+    drawGem(g.g,0,0,1,Math.max(0,g.life),now);
+    ctx.strokeStyle='#10b981';
+    ctx.lineWidth=2.5*(1-t);
+    ctx.beginPath();
+    ctx.moveTo(-cell*.4,-cell*.4);ctx.lineTo(cell*.4,cell*.4);
+    ctx.moveTo(cell*.35,-cell*.35);ctx.lineTo(-cell*.35,cell*.35);
+    ctx.stroke();
+    ctx.strokeStyle='#ffffff';
+    ctx.lineWidth=1.2;
+    ctx.stroke();
     ctx.restore();
   }else{
     g.life-=dt*4.5;
@@ -872,9 +988,140 @@ async function castTotem(color,index){
   if(color===3){const bonus=p.bonus*(performance.now()<frenzyUntil?3:1);score+=bonus;frenzy=Math.min(100,frenzy+p.energy);if(frenzy>=100){frenzy=0;frenzyUntil=performance.now()+(6000+l*500+(activeFeverBonus?3000:0));announce('SOLAR AWAKENING','황금 토템 · 점수 3배',1400);}floats.push({x:4,y:3,text:'+'+bonus,life:1.4,color:'#ffda82'});fx.field(c+.5,r+.5,t.accent,p.multiplier,'solar');}
   if(color===4){const gifts=lunarTargets(board,l,totemChain.count);metrics.specialsMade+=gifts.length;gifts.forEach(({index:i,special},k)=>{board[i].special=special;fx.meteor(index,i,t.accent,.75,k*.06,'gift');});fx.field(c+.5,r+.5,t.accent,p.multiplier,'lunar');}
   if(color===5){let text=level>100?'적의 반격 지연':'시간의 축복';if(level<=100&&mode!=='zen'){const next=extendTime(stage,time,p),gained=next-time;time=next;text='+'+gained.toFixed(1).replace('.0','')+'초';}if(p.stasis&&level<=100){frozen=Math.max(frozen,p.stasis);frame.classList.add('frozen-board');}floats.push({x:4,y:3,text,life:1.4,color:'#ffd7a1'});fx.field(4,4,t.accent,p.multiplier,'clock');}
-  if(color===6){const reach=l>=4?3:2;for(let x=Math.max(0,c-reach);x<=Math.min(7,c+reach);x++)cells.push(r*8+x);if(boost)for(const y of [r-1,r+1])if(y>=0&&y<8)cells.push(y*8+c);fx.field(c+.5,r+.5,t.accent,p.multiplier,'water');ring(c+.5,r+.5,t.accent,3);}
-  if(color===7){for(let y=Math.max(0,r-1);y<=Math.min(7,r+1);y++)for(let x=Math.max(0,c-1);x<=Math.min(7,c+1);x++)if(Math.abs(y-r)+Math.abs(x-c)<=1+(l>=4?1:0))cells.push(y*8+x);if(boost)cells=amplifyCells(cells,1.5,index);fx.field(c+.5,r+.5,t.accent,p.multiplier,'earth');}
-  if(color===8){const reach=l>=4?3:2;for(let k=-reach;k<=reach;k++)for(const x of [c+k,c-k]){const y=r+k;if(y>=0&&y<8&&x>=0&&x<8)cells.push(y*8+x);}if(boost)cells=amplifyCells(cells,1.5,index);fx.field(c+.5,r+.5,t.accent,p.multiplier,'wind');for(const hit of cells)beam(index,hit,t.accent);}
+  if(color===6){
+    const reach=l>=4?3:2;
+    currentCastColor=6;
+    fx.field(c+.5,r+.5,t.accent,p.multiplier,'water');
+    ring(c+.5,r+.5,t.accent,3.5);
+    director.power(6,p.multiplier);
+    heavyShake(1.3);
+    flash('#38bdf8');
+    const stages=[];
+    const centerBatch=[r*8+c];
+    if(boost){
+      for(const y of [r-1,r+1])if(y>=0&&y<8)centerBatch.push(y*8+c);
+    }
+    stages.push(centerBatch);
+    for(let step=1;step<=reach;step++){
+      const stepBatch=[];
+      for(const dx of [-step,step]){
+        const x=c+dx;
+        if(x>=0&&x<8)stepBatch.push(r*8+x);
+      }
+      if(stepBatch.length)stages.push(stepBatch);
+    }
+    for(const batch of stages){
+      const valid=batch.filter(i=>board[i]);
+      if(valid.length){
+        for(const idx of valid){
+          shatterGem(idx,board[idx].color,index,'water');
+          const bx=idx%8+.5,by=Math.floor(idx/8)+.5;
+          ring(bx,by,'#38bdf8',1.8);
+          beam(index,idx,'#00e5ff');
+        }
+        await clearCells(valid,new Map(),1);
+        update();
+        await wait(reduced?15:55);
+      }
+    }
+    currentCastColor=-1;
+    await settle();
+    heavyCast=false;best=Math.max(best,score);update();
+    return;
+  }
+  if(color===7){
+    currentCastColor=7;
+    fx.field(c+.5,r+.5,t.accent,p.multiplier,'earth');
+    director.bombDetonate();
+    heavyShake(2.0);
+    flash('#d97706');
+    const maxReach=1+(l>=4?1:0);
+    const tiers=new Map();
+    for(let y=Math.max(0,r-maxReach);y<=Math.min(7,r+maxReach);y++){
+      for(let x=Math.max(0,c-maxReach);x<=Math.min(7,c+maxReach);x++){
+        const dist=Math.abs(y-r)+Math.abs(x-c);
+        if(dist<=maxReach){
+          const list=tiers.get(dist)||[];
+          list.push(y*8+x);
+          tiers.set(dist,list);
+        }
+      }
+    }
+    if(boost){
+      const allTierCells=[...tiers.values()].flat();
+      const amplified=amplifyCells(allTierCells,1.5,index);
+      const extra=amplified.filter(i=>!allTierCells.includes(i));
+      if(extra.length)tiers.set(maxReach+1,extra);
+    }
+    const sortedDists=[...tiers.keys()].sort((a,b)=>a-b);
+    for(const dist of sortedDists){
+      const batch=tiers.get(dist)||[];
+      const valid=batch.filter(i=>board[i]);
+      if(valid.length){
+        for(const idx of valid){
+          shatterGem(idx,board[idx].color,index,'earth');
+          const bx=idx%8+.5,by=Math.floor(idx/8)+.5;
+          ring(bx,by,'#f59e0b',2.2);
+        }
+        await clearCells(valid,new Map(),1);
+        update();
+        await wait(reduced?20:70);
+      }
+    }
+    currentCastColor=-1;
+    await settle();
+    heavyCast=false;best=Math.max(best,score);update();
+    return;
+  }
+  if(color===8){
+    currentCastColor=8;
+    fx.field(c+.5,r+.5,t.accent,p.multiplier,'wind');
+    director.power(8,p.multiplier);
+    heavyShake(1.4);
+    flash('#10b981');
+    const reach=l>=4?3:2;
+    const steps=new Map();
+    steps.set(0,[index]);
+    for(let k=1;k<=reach;k++){
+      const kBatch=[];
+      for(const dx of [-k,k]){
+        for(const dy of [-k,k]){
+          const x=c+dx, y=r+dy;
+          if(x>=0&&x<8&&y>=0&&y<8){
+            const idx=y*8+x;
+            if(!kBatch.includes(idx))kBatch.push(idx);
+          }
+        }
+      }
+      if(kBatch.length)steps.set(k,kBatch);
+    }
+    if(boost){
+      const allDiag=[...steps.values()].flat();
+      const amplified=amplifyCells(allDiag,1.5,index);
+      const extra=amplified.filter(i=>!allDiag.includes(i));
+      if(extra.length)steps.set(reach+1,extra);
+    }
+    const sortedSteps=[...steps.keys()].sort((a,b)=>a-b);
+    for(const step of sortedSteps){
+      const batch=steps.get(step)||[];
+      const valid=batch.filter(i=>board[i]);
+      if(valid.length){
+        for(const idx of valid){
+          shatterGem(idx,board[idx].color,index,'wind');
+          const bx=idx%8+.5,by=Math.floor(idx/8)+.5;
+          ring(bx,by,'#6ee7b7',1.9);
+          beam(index,idx,'#34d399');
+        }
+        await clearCells(valid,new Map(),1);
+        update();
+        await wait(reduced?15:55);
+      }
+    }
+    currentCastColor=-1;
+    await settle();
+    heavyCast=false;best=Math.max(best,score);update();
+    return;
+  }
   if(cells.length){
     update();
     await wait(reduced?20:300);

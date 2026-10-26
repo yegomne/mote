@@ -103,9 +103,11 @@ export class ImpactFX extends ParticleFX {
 
   field(x,y,color,strength=1,kind='solar'){
     if(this.reduced())return;
-    this.elements.push({x,y,color,strength,kind,age:0,duration:kind==='clock'?1.75:1.45});
+    this.elements.push({x,y,color,strength,kind,age:0,duration:kind==='clock'?1.75:(kind==='earth'||kind==='water'||kind==='wind'?1.55:1.45)});
     if(kind==='solar')this.elementHit?.(strength,'sun');
     if(kind==='earth')this.elementHit?.(strength,'earth');
+    if(kind==='water')this.elementHit?.(strength,'water');
+    if(kind==='wind')this.elementHit?.(strength,'wind');
   }
 
   draw(now,dt){
@@ -418,57 +420,330 @@ export class ImpactFX extends ParticleFX {
       }
       if(f.kind==='water'){
         ctx.globalCompositeOperation='lighter';
-        const spread=(.65+t*3.3)*r,crest=(.38-t*.15)*r;
-        ctx.fillStyle='#168daf77';
-        ctx.beginPath();ctx.moveTo(-3.9*u,crest);
-        ctx.bezierCurveTo(-2*u,-crest*1.8,0,crest*1.2,2*u,-crest*.8);
-        ctx.lineTo(3.9*u,crest*.75);
-        ctx.bezierCurveTo(1.8*u,crest*2,-.5*u,crest*.45,-3.9*u,crest*1.8);
-        ctx.closePath();ctx.fill();
-        ctx.strokeStyle='#d9ffff';ctx.lineWidth=.11*u*fade;
-        ctx.beginPath();ctx.moveTo(-3.9*u,crest);
-        ctx.bezierCurveTo(-2*u,-crest*1.8,0,crest*1.2,2*u,-crest*.8);
-        ctx.lineTo(3.9*u,crest*.75);ctx.stroke();
-        for(let wave=0;wave<3;wave++){
-          const radius=spread*(.4+wave*.27);
-          ctx.strokeStyle=wave===0?'#e1ffff':'#6ae5f4';
-          ctx.lineWidth=(.11-wave*.017)*u*fade;
-          ctx.beginPath();ctx.ellipse(0,0,radius,radius*.4,0,.1,Math.PI*1.9);ctx.stroke();
+        const spread=(.8+t*3.4)*r;
+        
+        // --- LAYER 1: Hydro-Kinetic Core Pulse & Anamorphic Stream (t < 0.26) ---
+        if(t<0.26){
+          const ft=t/0.26;
+          const flashAlpha=1-ft;
+          const beamW=(1.2+Math.sin(ft*Math.PI)*3.2)*r;
+          const beamH=Math.max(1,(1-ft)*3.8*f.strength);
+          ctx.fillStyle='#ffffff';
+          ctx.globalAlpha=flashAlpha*0.95;
+          ctx.fillRect(-beamW,-beamH*0.5,beamW*2,beamH);
+          ctx.fillStyle='#00e5ff';
+          ctx.globalAlpha=flashAlpha*0.6;
+          ctx.fillRect(-beamW*1.2,-beamH*1.4,beamW*2.4,beamH*2.8);
+          const coreR=(0.5*(1-ft))*r;
+          ctx.fillStyle='#e0ffff';
+          ctx.globalAlpha=flashAlpha;
+          ctx.beginPath();
+          ctx.arc(0,0,Math.max(0.1,coreR),0,TAU);
+          ctx.fill();
         }
-        for(let drop=0;drop<14;drop++){
-          const angle=drop*TAU/14+t*.45,dist=spread*(.65+drop%3*.13);
-          const x=Math.cos(angle)*dist,y=Math.sin(angle)*dist*.47;
-          ctx.fillStyle=drop%2?'#69dcef':'#e6ffff';
-          ctx.beginPath();ctx.ellipse(x,y,(.08+drop%3*.025)*u*fade,.16*u*fade,angle,0,TAU);ctx.fill();
+
+        // --- LAYER 2: Turbulent Dual Tidal Surge Waves (Sinusoidal rolling breakers) ---
+        for(let wave=0;wave<2;wave++){
+          const wDir=wave===0?1:-1;
+          const wPhase=t*14+wave*Math.PI;
+          const crestY=Math.sin(wPhase)*0.45*r;
+          const waveW=3.8*u;
+          
+          ctx.fillStyle=wave===0?'#0099cc44':'#00d4ff33';
+          ctx.globalAlpha=fade*0.75;
+          ctx.beginPath();
+          ctx.moveTo(-waveW,crestY);
+          ctx.bezierCurveTo(-waveW*0.5,crestY-0.9*r*wDir,0,crestY+0.9*r*wDir,waveW*0.5,crestY-0.4*r*wDir);
+          ctx.lineTo(waveW,crestY+0.3*r);
+          ctx.bezierCurveTo(waveW*0.4,crestY+1.4*r*wDir,-waveW*0.4,crestY-1.2*r*wDir,-waveW,crestY+0.8*r);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.strokeStyle=wave===0?'#ffffff':'#a5f3fc';
+          ctx.lineWidth=Math.max(1,u*0.08*fade);
+          ctx.globalAlpha=fade*0.9;
+          ctx.beginPath();
+          ctx.moveTo(-waveW,crestY);
+          ctx.bezierCurveTo(-waveW*0.5,crestY-0.9*r*wDir,0,crestY+0.9*r*wDir,waveW*0.5,crestY-0.4*r*wDir);
+          ctx.lineTo(waveW,crestY+0.3*r);
+          ctx.stroke();
+        }
+
+        // --- LAYER 3: Concentric Hydro Refraction Caustics Rings ---
+        for(let cRing=0;cRing<3;cRing++){
+          const ringRad=spread*(0.35+cRing*0.28);
+          const rAlpha=fade*Math.max(0,1-cRing*0.25);
+          ctx.strokeStyle=cRing===0?'#ffffff':cRing===1?'#67e8f9':'#0284c7';
+          ctx.lineWidth=Math.max(1,(0.09-cRing*0.02)*u*fade);
+          ctx.globalAlpha=rAlpha*0.85;
+          ctx.beginPath();
+          ctx.ellipse(0,0,Math.max(0.1,ringRad),Math.max(0.1,ringRad*0.48),0,0,TAU);
+          ctx.stroke();
+
+          const arcCount=6;
+          const segAng=TAU/arcCount;
+          ctx.strokeStyle='#ffffff';
+          ctx.lineWidth=Math.max(1,0.04*u*fade);
+          ctx.beginPath();
+          for(let k=0;k<arcCount;k++){
+            const a0=k*segAng+t*1.5+cRing*0.4;
+            ctx.arc(0,0,Math.max(0.1,ringRad*1.08),a0,a0+segAng*0.45);
+            ctx.moveTo(Math.cos(a0+segAng)*ringRad*1.08,Math.sin(a0+segAng)*ringRad*1.08);
+          }
+          ctx.stroke();
+        }
+
+        // --- LAYER 4: Swirling Whirlpool Vortex Arms & Kinetic Water Droplet Beads ---
+        const spiralCount=3;
+        ctx.lineWidth=Math.max(1,0.06*u*fade);
+        ctx.strokeStyle='#38bdf8';
+        ctx.globalAlpha=fade*0.8;
+        for(let arm=0;arm<spiralCount;arm++){
+          const baseAng=arm*(TAU/spiralCount)+t*8.5;
+          ctx.beginPath();
+          for(let pt=0;pt<=12;pt++){
+            const frac=pt/12;
+            const a=baseAng+frac*2.4;
+            const d=frac*spread*0.85;
+            const px=Math.cos(a)*d, py=Math.sin(a)*d*0.55;
+            pt===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+          }
+          ctx.stroke();
+        }
+
+        const dropCount=20;
+        for(let d=0;d<dropCount;d++){
+          const dAngle=d*(TAU/dropCount)+t*1.2+Math.sin(d)*0.3;
+          const dDist=spread*(0.4+((d%5)*0.14));
+          const px=Math.cos(dAngle)*dDist;
+          const py=Math.sin(dAngle)*dDist*0.52;
+          const drSize=(0.06+(d%3)*0.025)*u*fade;
+          ctx.fillStyle=d%3===0?'#ffffff':d%2===0?'#67e8f9':'#0ea5e9';
+          ctx.globalAlpha=fade*(0.65+Math.sin(t*10+d)*0.35);
+          ctx.beginPath();
+          ctx.ellipse(px,py,Math.max(0.1,drSize*1.4),Math.max(0.1,drSize*0.7),dAngle,0,TAU);
+          ctx.fill();
         }
       }
       if(f.kind==='earth'){
-        const spread=(.6+t*3.3)*r;
-        ctx.fillStyle='#a6794050';ctx.beginPath();ctx.ellipse(0,0,spread,spread*.45,0,0,TAU);ctx.fill();
-        ctx.strokeStyle='#f0d99e';ctx.lineWidth=.12*u*fade;
-        ctx.beginPath();ctx.ellipse(0,0,spread,spread*.45,0,0,TAU);ctx.stroke();
+        ctx.globalCompositeOperation='lighter';
+        const spread=(.7+t*3.2)*r;
+
+        // --- LAYER 1: Epicenter Seismic Shock Flash & Core Diamond (t < 0.24) ---
+        if(t<0.24){
+          const ft=t/0.24;
+          const flashAlpha=1-ft;
+          const octR=(1.0+Math.sin(ft*Math.PI)*2.2)*r;
+          ctx.fillStyle='#ffffff';
+          ctx.globalAlpha=flashAlpha*0.9;
+          ctx.beginPath();
+          for(let i=0;i<8;i++){
+            const ang=i*(TAU/8);
+            const x=Math.cos(ang)*octR, y=Math.sin(ang)*octR*0.6;
+            i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle='#f59e0b';
+          ctx.lineWidth=Math.max(1,u*0.12*flashAlpha);
+          ctx.stroke();
+        }
+
+        // --- LAYER 2: Tectonic Fault Chasms / Deep Fissure Network ---
+        const chasmFade=fade;
         for(let crack=0;crack<CRACK_ANGLES.length;crack++){
-          const angle=CRACK_ANGLES[crack],inner=spread*.12,outer=spread*(.8+crack%2*.15);
-          ctx.strokeStyle=crack%2?'#f5d593':'#be8d52';ctx.lineWidth=(.09+crack%2*.035)*u*fade;
-          ctx.beginPath();ctx.moveTo(Math.cos(angle)*inner,Math.sin(angle)*inner*.55);
-          ctx.lineTo(Math.cos(angle+.24)*spread*.58,Math.sin(angle+.24)*spread*.49);
-          ctx.lineTo(Math.cos(angle)*outer,Math.sin(angle)*outer*.58);ctx.stroke();
-          ctx.save();ctx.translate(Math.cos(angle)*outer,Math.sin(angle)*outer*.58);ctx.rotate(angle+t*.7);
-          ctx.fillStyle=crack%2?'#b4935d':'#f0d8a1';ctx.beginPath();ctx.moveTo(0,-.39*r*fade);ctx.lineTo(.25*r*fade,-.09*r*fade);ctx.lineTo(.14*r*fade,.23*r*fade);ctx.lineTo(-.26*r*fade,.12*r*fade);ctx.closePath();ctx.fill();ctx.restore();
+          const baseAng=CRACK_ANGLES[crack];
+          const crackLen=(0.3+Math.min(1,t*2.8)*1.1)*spread;
+          const midDist=crackLen*0.52;
+          const zigAng=baseAng+((crack%2===0)?0.38:-0.38);
+          const x1=Math.cos(baseAng)*midDist;
+          const y1=Math.sin(baseAng)*midDist*0.65;
+          const x2=x1+Math.cos(zigAng)*(crackLen*0.48);
+          const y2=y1+Math.sin(zigAng)*(crackLen*0.48)*0.65;
+
+          ctx.lineWidth=Math.max(1,(0.12+crack%2*0.04)*u*chasmFade);
+          ctx.strokeStyle=crack%2?'#d97706':'#ea580c';
+          ctx.globalAlpha=chasmFade*0.8;
+          ctx.beginPath();
+          ctx.moveTo(0,0);
+          ctx.lineTo(x1,y1);
+          ctx.lineTo(x2,y2);
+          ctx.stroke();
+
+          ctx.lineWidth=Math.max(0.8,0.03*u*chasmFade);
+          ctx.strokeStyle='#fffbeb';
+          ctx.globalAlpha=chasmFade*0.95;
+          ctx.beginPath();
+          ctx.moveTo(0,0);
+          ctx.lineTo(x1,y1);
+          ctx.lineTo(x2,y2);
+          ctx.stroke();
+        }
+
+        // --- LAYER 3: Erupting 3D Polygonal Granite Monolith Slabs ---
+        const monolithCount=8;
+        const monoEase=1-Math.pow(1-Math.min(1,t*3.0),3);
+        for(let m=0;m<monolithCount;m++){
+          const mAng=m*(TAU/monolithCount)+0.22;
+          const mDist=spread*(0.25+m%3*0.22)*monoEase;
+          const mx=Math.cos(mAng)*mDist;
+          const my=Math.sin(mAng)*mDist*0.6;
+          const mScale=(0.28+m%3*0.12)*r*fade;
+          const mRot=mAng+t*(m%2?1.2:-1.2);
+
+          ctx.save();
+          ctx.translate(mx,my);
+          ctx.rotate(mRot);
+
+          ctx.fillStyle=m%2?'#fde68a':'#fbbf24';
+          ctx.globalAlpha=fade*0.95;
+          ctx.beginPath();
+          ctx.moveTo(-mScale*0.5,-mScale*0.7);
+          ctx.lineTo(mScale*0.6,-mScale*0.5);
+          ctx.lineTo(mScale*0.3,mScale*0.5);
+          ctx.lineTo(-mScale*0.7,mScale*0.3);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle='#92400e';
+          ctx.globalAlpha=fade*0.75;
+          ctx.beginPath();
+          ctx.moveTo(mScale*0.3,mScale*0.5);
+          ctx.lineTo(mScale*0.6,-mScale*0.5);
+          ctx.lineTo(mScale*0.75,mScale*0.1);
+          ctx.lineTo(mScale*0.45,mScale*0.8);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.strokeStyle='#ffffff';
+          ctx.lineWidth=Math.max(0.8,1.2*fade);
+          ctx.globalAlpha=fade;
+          ctx.stroke();
+
+          ctx.restore();
+        }
+
+        // --- LAYER 4: Heavy Seismic Compression Rings & Granite Shrapnel ---
+        for(let rIdx=0;rIdx<2;rIdx++){
+          const ringR=spread*(0.5+rIdx*0.35);
+          ctx.strokeStyle=rIdx===0?'#f59e0b':'#d97706';
+          ctx.lineWidth=Math.max(1,(0.08-rIdx*0.03)*u*fade);
+          ctx.globalAlpha=fade*0.75;
+          ctx.beginPath();
+          ctx.ellipse(0,0,Math.max(0.1,ringR),Math.max(0.1,ringR*0.55),0,0,TAU);
+          ctx.stroke();
+        }
+
+        for(let s=0;s<16;s++){
+          const sAng=s*(TAU/16)+t*0.8;
+          const sDist=spread*(0.55+(s%4)*0.12);
+          const sx=Math.cos(sAng)*sDist;
+          const sy=Math.sin(sAng)*sDist*0.6-Math.sin(t*Math.PI)*(0.3*r);
+          const sz=(0.05+(s%3)*0.02)*u*fade;
+          ctx.fillStyle=s%3===0?'#ffffff':s%2?'#f59e0b':'#b45309';
+          ctx.globalAlpha=fade*0.85;
+          ctx.beginPath();
+          ctx.rect(sx-sz*0.5,sy-sz*0.5,Math.max(0.1,sz),Math.max(0.1,sz));
+          ctx.fill();
         }
       }
       if(f.kind==='wind'){
-        ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
-        for(let gust=0;gust<4;gust++){
-          const offset=(t*6-3+gust*.27)*r,alt=(gust-1.5)*.57*r;
-          ctx.strokeStyle=gust%2?'#a6ffe1':'#f1fff8';ctx.lineWidth=(.17-gust*.02)*u*fade;
-          ctx.beginPath();ctx.moveTo(offset-2.7*r,alt+.46*r);
-          ctx.quadraticCurveTo(offset,alt-1.1*r,offset+2.7*r,alt-.32*r);ctx.stroke();
-          ctx.strokeStyle='#45d9b9';ctx.lineWidth=.06*u*fade;
-          ctx.beginPath();ctx.moveTo(offset-1.6*r,alt+.63*r);
-          ctx.quadraticCurveTo(offset+.2*r,alt+.92*r,offset+2.3*r,alt+.13*r);ctx.stroke();
-          ctx.fillStyle=gust%2?'#b9ffeb':'#fff';
-          ctx.beginPath();ctx.moveTo(offset+2.2*r,alt-.43*r);ctx.lineTo(offset+2.8*r,alt-.32*r);ctx.lineTo(offset+2.15*r,alt-.04*r);ctx.closePath();ctx.fill();
+        ctx.globalCompositeOperation='lighter';
+        ctx.lineCap='round';
+        const spread=(.8+t*3.4)*r;
+
+        // --- LAYER 1: Eye of the Hurricane Vacuum Implosion & Core Flash (t < 0.22) ---
+        if(t<0.22){
+          const ft=t/0.22;
+          const flashAlpha=1-ft;
+          ctx.strokeStyle='#a7f3d0';
+          ctx.lineWidth=Math.max(1,u*0.06*flashAlpha);
+          ctx.globalAlpha=flashAlpha*0.85;
+          for(let k=0;k<6;k++){
+            const inAng=k*(TAU/6)+ft*4;
+            const inDist=(2.4-ft*1.6)*r;
+            ctx.beginPath();
+            ctx.arc(0,0,Math.max(0.1,inDist),inAng,inAng+0.6);
+            ctx.stroke();
+          }
+          const eyeR=(0.45*(1-ft))*r;
+          ctx.fillStyle='#ffffff';
+          ctx.globalAlpha=flashAlpha;
+          ctx.beginPath();
+          ctx.arc(0,0,Math.max(0.1,eyeR),0,TAU);
+          ctx.fill();
+        }
+
+        // --- LAYER 2: Diagonal Supersonic Razor Vacuum Scythes (X-Cross Slices) ---
+        for(let diag=0;diag<4;diag++){
+          const dAng=diag*(Math.PI/2)+Math.PI/4;
+          const bladeProg=Math.min(1,t*2.8);
+          const bladeReach=bladeProg*3.8*u;
+          const perpX=-Math.sin(dAng)*0.24*u;
+          const perpY=Math.cos(dAng)*0.24*u;
+          const bx=Math.cos(dAng)*bladeReach;
+          const by=Math.sin(dAng)*bladeReach;
+
+          ctx.strokeStyle='#059669';
+          ctx.lineWidth=Math.max(1,u*0.14*fade);
+          ctx.globalAlpha=fade*0.6;
+          ctx.beginPath();
+          ctx.moveTo(-bx*0.2,-by*0.2);
+          ctx.quadraticCurveTo(bx*0.5+perpX*1.2,by*0.5+perpY*1.2,bx,by);
+          ctx.stroke();
+
+          ctx.strokeStyle='#ffffff';
+          ctx.lineWidth=Math.max(1,u*0.05*fade);
+          ctx.globalAlpha=fade*0.95;
+          ctx.beginPath();
+          ctx.moveTo(-bx*0.1,-by*0.1);
+          ctx.quadraticCurveTo(bx*0.5+perpX*0.6,by*0.5+perpY*0.6,bx,by);
+          ctx.stroke();
+
+          ctx.strokeStyle='#34d399';
+          ctx.lineWidth=Math.max(0.8,1.2*fade);
+          ctx.globalAlpha=fade*0.75;
+          ctx.beginPath();
+          ctx.moveTo(-bx*0.1-perpX,-by*0.1-perpY);
+          ctx.quadraticCurveTo(bx*0.4-perpX,by*0.4-perpY,bx-perpX*0.5,by-perpY*0.5);
+          ctx.stroke();
+        }
+
+        // --- LAYER 3: Fibonacci Whirlwind Cyclone Vortex Arms ---
+        const armCount=5;
+        const spinAng=t*14;
+        for(let arm=0;arm<armCount;arm++){
+          const baseAng=arm*(TAU/armCount)+spinAng;
+          ctx.strokeStyle=arm%2?'#10b981':'#6ee7b7';
+          ctx.lineWidth=Math.max(1,(0.12-arm*0.015)*u*fade);
+          ctx.globalAlpha=fade*0.75;
+          ctx.beginPath();
+          for(let pt=0;pt<=14;pt++){
+            const frac=pt/14;
+            const a=baseAng+frac*2.6;
+            const d=(0.2+frac*2.8)*r;
+            const px=Math.cos(a)*d, py=Math.sin(a)*d*0.75;
+            pt===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+          }
+          ctx.stroke();
+        }
+
+        // --- LAYER 4: Aerodynamic Needle Shards & Gale Streamers ---
+        const shardCount=22;
+        for(let s=0;s<shardCount;s++){
+          const sAngle=s*(TAU/shardCount)+t*4.5;
+          const sDist=spread*(0.35+((s%4)*0.18));
+          const sx=Math.cos(sAngle)*sDist;
+          const sy=Math.sin(sAngle)*sDist*0.72;
+          const tanX=-Math.sin(sAngle)*0.18*u*fade;
+          const tanY=Math.cos(sAngle)*0.18*u*fade*0.72;
+          ctx.strokeStyle=s%3===0?'#ffffff':s%2?'#a7f3d0':'#34d399';
+          ctx.lineWidth=Math.max(0.8,(s%2?2.0:1.2)*fade);
+          ctx.globalAlpha=fade*0.85;
+          ctx.beginPath();
+          ctx.moveTo(sx-tanX,sy-tanY);
+          ctx.lineTo(sx+tanX,sy+tanY);
+          ctx.stroke();
         }
       }
       if(f.kind==='jade'){
