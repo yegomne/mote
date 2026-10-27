@@ -312,6 +312,86 @@ $('#realmMage').innerHTML=realmDollLayers();
 function updateRealmDoll(){for(const el of $$('[data-gear-layer]')){const slot=el.dataset.gearLayer,tier=realmSave.gear?.[slot]||0;el.hidden=tier===0;if(tier){const src=`assets/gear/${slot}-${tier}.svg`;if(el.getAttribute('src')!==src)el.src=src;el.dataset.tier=tier;el.dataset.rank=realmGearRank(realmSave,slot,tier);}}}
 const realmPoseTimer={mage:0,monster:0};
 function realmPose(who,pose,duration=0){if(level<=100)return;const el=$(who==='mage'?'#realmMage':'#realmMonster');if(!el)return;el.dataset.pose=pose;if(who==='monster')realmPack.dataset.pose=pose;if(duration){clearTimeout(realmPoseTimer[who]);realmPoseTimer[who]=setTimeout(()=>{if(level>100&&realmBattle?.phase==='playing'){el.dataset.pose='idle';if(who==='monster')realmPack.dataset.pose='idle';}},duration);}}
+
+const ELEMENT_SPECS = [
+  { id: 0, name: '비취', icon: '🌿', color: '#4ade80', bg: '#052e16', border: '#22c55e', glow: '#4ade8066' },
+  { id: 1, name: '불',   icon: '🔥', color: '#f87171', bg: '#450a0a', border: '#ef4444', glow: '#ef444466' },
+  { id: 2, name: '번개', icon: '⚡', color: '#38bdf8', bg: '#082f49', border: '#0284c7', glow: '#38bdf866' },
+  { id: 3, name: '황금', icon: '☀️', color: '#fde047', bg: '#422006', border: '#eab308', glow: '#fde04766' },
+  { id: 4, name: '달',   icon: '🌙', color: '#d8b4fe', bg: '#3b0764', border: '#a855f7', glow: '#c084fc66' },
+  { id: 5, name: '시간', icon: '⏳', color: '#fb923c', bg: '#431407', border: '#ea580c', glow: '#fb923c66' },
+  { id: 6, name: '물',   icon: '💧', color: '#22d3ee', bg: '#083344', border: '#06b6d4', glow: '#22d3ee66' },
+  { id: 7, name: '대지', icon: '🪨', color: '#fcd34d', bg: '#341f11', border: '#b45309', glow: '#f59e0b66' },
+  { id: 8, name: '바람', icon: '🍃', color: '#6ee7b7', bg: '#064e3b', border: '#059669', glow: '#34d39966' }
+];
+
+function getElementSpec(id){
+  return ELEMENT_SPECS[id] || { id, name: TOTEMS[id]?.shortName||'원소', icon: '✦', color: '#e2e8f0', bg: '#1e293b', border: '#64748b', glow: '#94a3b833' };
+}
+
+function showArcaneScrollCircle(scrollName, damage, firstElem, secondElem){
+  const overlay = $('#arcaneSpellOverlay');
+  if(!overlay) return;
+  const e1 = getElementSpec(firstElem);
+  const e2 = getElementSpec(secondElem);
+  const scrollTitle = scrollName || '고대 연계 술식';
+
+  try {
+    tone(330, .18, 'sine', .1);
+    setTimeout(() => tone(494, .22, 'sine', .12), 110);
+    setTimeout(() => tone(659, .28, 'triangle', .14), 220);
+    setTimeout(() => tone(988, .36, 'triangle', .18), 360);
+  } catch(e) {}
+
+  const circle = document.createElement('div');
+  circle.className = 'arcane-circle-caster';
+  circle.style.setProperty('--color-1', e1.color);
+  circle.style.setProperty('--color-2', e2.color);
+  circle.style.setProperty('--bdr-1', e1.border);
+  circle.style.setProperty('--bdr-2', e2.border);
+  circle.style.setProperty('--glow-1', e1.glow);
+  circle.style.setProperty('--glow-2', e2.glow);
+
+  const uid = 'path_' + Math.random().toString(36).slice(2, 8);
+  circle.innerHTML = `
+    <div class="arcane-aura-pillar"></div>
+    <div class="arcane-circle-core">
+      <svg class="arcane-svg-ring ring-outer" viewBox="0 0 240 240">
+        <circle cx="120" cy="120" r="114" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="6 8 18 8"/>
+        <circle cx="120" cy="120" r="102" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <path id="${uid}" d="M 120, 120 m -94, 0 a 94,94 0 1,1 188,0 a 94,94 0 1,1 -188,0" fill="none"/>
+        <text class="arcane-rune-text">
+          <textPath href="#${uid}" startOffset="0%">
+            ᚛ ᚱ ᚢ ᚾ ᛖ ✦ ᛊ ᛈ ᛖ ᛚ ᛚ ✦ ᚱ ᛁ ᛏ ᚢ ᚨ ᛚ ✦ ᛗ ᚨ ᚷ ᛁ ᚲ ✦ ᛋ ᛟ ᛚ ᚨ ᚱ ᚜
+          </textPath>
+        </text>
+      </svg>
+      <svg class="arcane-svg-ring ring-middle" viewBox="0 0 200 200">
+        <polygon points="100,8 192,100 100,192 8,100" fill="none" stroke="currentColor" stroke-width="1.8"/>
+        <polygon points="100,8 192,100 100,192 8,100" fill="none" stroke="currentColor" stroke-width="1.8" transform="rotate(45 100 100)"/>
+        <circle cx="100" cy="100" r="66" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="8 6"/>
+      </svg>
+      <div class="arcane-core-emblem">
+        <span class="elem-node e1">${e1.icon}</span>
+        <span class="elem-link">✦</span>
+        <span class="elem-node e2">${e2.icon}</span>
+      </div>
+    </div>
+    <div class="arcane-spell-ribbon">
+      <div class="ribbon-runes">⚡ ANCIENT FORMULA ENGAGED · ᚱᚢᚾᛖ ᛊᛈᛖᛚᛚ · ◈ ${scrollTitle} ⚡</div>
+      <div class="ribbon-title">
+        <span class="ribbon-icon">${e1.icon}</span>
+        <b>${scrollTitle}</b>
+        <span class="ribbon-icon">${e2.icon}</span>
+      </div>
+      <div class="ribbon-damage">−${damage} COMBO BURST</div>
+    </div>
+  `;
+
+  overlay.appendChild(circle);
+  setTimeout(() => circle.remove(), 1450);
+}
+
 function updateRealmUI(){
  const arena=$('#realmArena');arena.hidden=level<=100;if(level<=100)return;
  updateRealmDoll();
@@ -323,10 +403,22 @@ function updateRealmUI(){
  $('#realmEnemyName').textContent=pack?`${foe.name} ×${remaining}`:d.waves>1?`${foe.name} · ${b.wave}/${d.waves}`:foe.name;
  $('#realmEnemyHP').textContent=`${encounter.current} / ${encounter.max}`;$('#realmHeroHP').textContent=`${b.heroHP} / ${b.heroMax}${b.shield?' · 방어 '+b.shield:''}`;
  $('#realmEnemyFill').style.width=`${Math.max(0,encounter.current/encounter.max*100)}%`;$('#realmHeroFill').style.width=`${Math.max(0,b.heroHP/b.heroMax*100)}%`;
-  const weakBadges=(foe.weak||[]).map(i=>`<span class="affinity-tag weak">🎯 ${TOTEMS[i]?.shortName||i}</span>`).join(' ')||'<span class="affinity-tag none">없음</span>';
-  const resistBadges=(foe.resist||[]).map(i=>`<span class="affinity-tag resist">🛡️ ${TOTEMS[i]?.shortName||i}</span>`).join(' ')||'<span class="affinity-tag none">없음</span>';
-  const absorbBadges=(foe.absorb||[]).map(i=>`<span class="affinity-tag absorb">⚠️ ${TOTEMS[i]?.shortName||i} 흡수</span>`).join(' ');
-  $('#realmAffinity').innerHTML=`<div class="affinity-row"><span class="affinity-label">적 약점:</span> ${weakBadges}</div><div class="affinity-row"><span class="affinity-label">적 내성:</span> ${resistBadges}</div>${absorbBadges?`<div class="affinity-row"><span class="affinity-label">적 흡수:</span> ${absorbBadges}</div>`:''}`;
+    const weakBadges=(foe.weak||[]).map(i=>{
+    const spec=getElementSpec(i);
+    return `<span class="affinity-tag weak" style="--elem-col:${spec.color};--elem-bg:${spec.bg};--elem-bdr:${spec.border};--elem-glow:${spec.glow}"><span class="affinity-type-icon">🎯</span><span class="elem-icon">${spec.icon}</span><b>${spec.name}</b></span>`;
+  }).join(' ')||'<span class="affinity-tag none">없음</span>';
+
+  const resistBadges=(foe.resist||[]).map(i=>{
+    const spec=getElementSpec(i);
+    return `<span class="affinity-tag resist" style="--elem-col:${spec.color};--elem-bg:${spec.bg};--elem-bdr:${spec.border};--elem-glow:${spec.glow}"><span class="affinity-type-icon">🛡️</span><span class="elem-icon">${spec.icon}</span><b>${spec.name}</b></span>`;
+  }).join(' ')||'<span class="affinity-tag none">없음</span>';
+
+  const absorbBadges=(foe.absorb||[]).map(i=>{
+    const spec=getElementSpec(i);
+    return `<span class="affinity-tag absorb" style="--elem-col:${spec.color};--elem-bg:${spec.bg};--elem-bdr:${spec.border};--elem-glow:${spec.glow}"><span class="affinity-type-icon">⚠️</span><span class="elem-icon">${spec.icon}</span><b>${spec.name} 흡수</b></span>`;
+  }).join(' ');
+
+  $('#realmAffinity').innerHTML=`<div class="affinity-row"><b class="label-weak">적 약점:</b> ${weakBadges}</div><div class="affinity-row"><b class="label-resist">적 내성:</b> ${resistBadges}</div>${absorbBadges?`<div class="affinity-row"><b class="label-absorb">적 흡수:</b> ${absorbBadges}</div>`:''}`;
   updateRealmCounterLabel();
  $('#mobileGoal').textContent=`적 체력 ${encounter.current}/${encounter.max} · ◈ ${realmSave.coins}`;$('#targetScore').textContent=encounter.max;$('#crystalCount').textContent=`적 체력 ${encounter.current} / ${encounter.max}`;$('#goalProgress').style.width=`${Math.max(0,(1-encounter.current/encounter.max)*100)}%`;
  const newGems=['물','대지','바람'].slice(0,d.colors-6).join('·');
@@ -355,13 +447,17 @@ function combatCast(color,anchor){
   void orb.offsetWidth;
   orb.classList.add('fly');
   showRealmDamage(`${result.combo?result.combo+' · ':''}−${result.damage}`,TOTEMS[color].accent);
-  if(result.combo){
+    if(result.combo){
     realmScrollBurst.style.backgroundPosition=`${result.comboArt%4*100/3}% ${Math.floor(result.comboArt/4)*100}%`;
     realmScrollBurst.classList.remove('burst');
     void realmScrollBurst.offsetWidth;
     realmScrollBurst.classList.add('burst');
     toast(`${result.combo} 연계 마법! ${result.damage} 피해`);
-    director.resonance(2);
+    const scrollObj = REALM_SCROLLS.find(s => s.name === result.combo);
+    const firstColor = scrollObj ? scrollObj.pair[0] : 0;
+    showArcaneScrollCircle(result.combo, result.damage, firstColor, color);
+    director.resonance(2.4);
+    vibrate([40, 50, 80]);
   }else if(result.affinity>1)toast(`약점 적중! ${result.damage} 피해`);
   director.impact(result.boost>1?1.5:1,color===2?2:color===1?1:0);
   updateRealmUI();
