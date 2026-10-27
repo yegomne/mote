@@ -309,40 +309,154 @@ body.realm .board-wrap{--board-aspect:9/10;--board-cols:9;--board-rows:10}
 .affinity-tag.absorb{animation:absorbPulse 1.4s infinite ease-in-out}
 @keyframes absorbPulse{0%,100%{transform:scale(1);box-shadow:0 0 6px var(--elem-glow)}50%{transform:scale(1.05);box-shadow:0 0 14px var(--elem-glow)}}
 
-/* 🌟 고대 비전 술식 마법진 상승 오버레이 (Arcane Spell Overlay) */
-.arcane-spell-overlay{position:fixed;inset:0;z-index:9000;pointer-events:none;overflow:hidden}
-.arcane-circle-caster{position:absolute;left:50%;bottom:12%;transform:translate(-50%,0);display:flex;flex-direction:column;align-items:center;justify-content:center;width:min(90vw,360px);height:min(90vw,360px);animation:arcaneAscend 1.35s cubic-bezier(.16,1,.3,1) forwards}
 
-@keyframes arcaneAscend{
-  0%{opacity:0;bottom:10%;transform:translate(-50%,0) scale(.38) rotate(-20deg);filter:brightness(2.2) drop-shadow(0 0 10px var(--color-1))}
-  22%{opacity:1;bottom:42%;transform:translate(-50%,0) scale(1.08) rotate(6deg);filter:brightness(1.5) drop-shadow(0 0 25px var(--color-2))}
-  45%{opacity:1;bottom:64%;transform:translate(-50%,0) scale(.98) rotate(0);filter:brightness(1.2) drop-shadow(0 0 20px var(--color-1))}
-  80%{opacity:.92;bottom:78%;transform:translate(-50%,0) scale(1.04);filter:drop-shadow(0 0 30px var(--color-2))}
-  100%{opacity:0;bottom:88%;transform:translate(-50%,0) scale(1.22) rotate(15deg);filter:brightness(2) drop-shadow(0 0 45px var(--color-1))}
+
+/* 🌟 고대 비전 술식 마법진 중앙 폭발 오버레이 (Arcane Spell Overlay - Center Focused) */
+.arcane-spell-overlay{position:fixed;inset:0;z-index:9000;pointer-events:none;overflow:hidden}
+.arcane-screen-dim{position:fixed;inset:0;background:radial-gradient(circle at center,transparent 20%,rgba(0,10,15,0.75) 85%);opacity:0;animation:screenDimFade 1.4s ease-out forwards;pointer-events:none;z-index:-1}
+@keyframes screenDimFade{0%{opacity:0}20%{opacity:.85}75%{opacity:.85}100%{opacity:0}}
+
+.arcane-circle-caster{
+  position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:min(94vw,390px);height:min(94vw,390px);
+  animation:arcaneCenterBurst 1.4s cubic-bezier(.16,1,.3,1) forwards;
 }
 
-.arcane-aura-pillar{position:absolute;inset:-40% -20%;background:radial-gradient(ellipse at center,var(--glow-1) 0%,var(--glow-2) 35%,transparent 70%);opacity:.65;animation:pillarPulse 1.35s ease-out forwards}
-@keyframes pillarPulse{0%{opacity:0;transform:scaleY(.3)}25%{opacity:.8;transform:scaleY(1.2)}100%{opacity:0;transform:scaleY(1.6)}}
+@keyframes arcaneCenterBurst{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.35) rotate(-25deg);filter:brightness(2.4) drop-shadow(0 0 15px var(--color-1))}
+  18%{opacity:1;transform:translate(-50%,-50%) scale(1.12) rotate(6deg);filter:brightness(1.6) drop-shadow(0 0 35px var(--color-2))}
+  40%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0);filter:brightness(1.3) drop-shadow(0 0 28px var(--color-1))}
+  75%{opacity:.95;transform:translate(-50%,-50%) scale(1.03);filter:drop-shadow(0 0 35px var(--color-2))}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.25) rotate(15deg);filter:brightness(2) drop-shadow(0 0 50px var(--color-1))}
+}
 
 .arcane-circle-core{position:relative;width:100%;height:100%;display:grid;place-items:center}
+.arcane-circle-bg-art{
+  position:absolute;inset:5%;border-radius:50%;
+  background:url('assets/arcane-circle.jpg') center/cover no-repeat;
+  mix-blend-mode:screen;opacity:.88;filter:drop-shadow(0 0 20px var(--glow-1));
+  animation:artSpinCw 16s linear infinite;pointer-events:none;
+}
+@keyframes artSpinCw{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+.arcane-aura-pillar{position:absolute;inset:-30% -15%;background:radial-gradient(ellipse at center,var(--glow-1) 0%,var(--glow-2) 35%,transparent 70%);opacity:.7;animation:pillarPulse 1.4s ease-out forwards}
+@keyframes pillarPulse{0%{opacity:0;transform:scaleY(.3)}25%{opacity:.85;transform:scaleY(1.15)}100%{opacity:0;transform:scaleY(1.4)}}
+
 .arcane-svg-ring{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.arcane-svg-ring.ring-outer{color:var(--color-1);filter:drop-shadow(0 0 8px var(--glow-1));animation:runeSpinCw 7s linear infinite}
-.arcane-svg-ring.ring-middle{color:var(--color-2);filter:drop-shadow(0 0 10px var(--glow-2));animation:runeSpinCcw 5s linear infinite}
-.arcane-rune-text{fill:var(--color-1);font-family:Georgia,serif;font-size:9px;font-weight:700;letter-spacing:2px}
+.arcane-svg-ring.ring-outer{color:var(--color-1);filter:drop-shadow(0 0 10px var(--glow-1));animation:runeSpinCw 8s linear infinite}
+.arcane-svg-ring.ring-middle{color:var(--color-2);filter:drop-shadow(0 0 12px var(--glow-2));animation:runeSpinCcw 6s linear infinite}
+.arcane-rune-text{fill:var(--color-1);font-family:Georgia,serif;font-size:9.5px;font-weight:800;letter-spacing:2px}
 
 @keyframes runeSpinCw{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes runeSpinCcw{from{transform:rotate(360deg)}to{transform:rotate(0)}}
 
-.arcane-core-emblem{position:relative;z-index:3;display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 18px;border-radius:50%;background:radial-gradient(circle,#05171df0,#071216ee);border:2px solid var(--bdr-1);box-shadow:0 0 22px var(--glow-1),inset 0 0 18px var(--glow-2)}
-.arcane-core-emblem .elem-node{font-size:26px;filter:drop-shadow(0 0 8px currentColor)}
+.arcane-core-emblem{
+  position:relative;z-index:4;display:flex;align-items:center;justify-content:center;
+  gap:14px;padding:14px 20px;border-radius:50%;
+  background:radial-gradient(circle,#05171df5,#071216f2);
+  border:2.5px solid var(--bdr-1);
+  box-shadow:0 0 26px var(--glow-1),inset 0 0 20px var(--glow-2);
+}
+.arcane-core-emblem .elem-node{font-size:28px;filter:drop-shadow(0 0 10px currentColor)}
 .arcane-core-emblem .elem-node.e1{color:var(--color-1)}
 .arcane-core-emblem .elem-node.e2{color:var(--color-2)}
-.arcane-core-emblem .elem-link{font-size:16px;color:#fff;animation:starTwinkle .4s ease-in-out infinite alternate}
+.arcane-core-emblem .elem-link{font-size:18px;color:#fff;animation:starTwinkle .4s ease-in-out infinite alternate}
 @keyframes starTwinkle{from{transform:scale(.8);opacity:.7}to{transform:scale(1.3);opacity:1}}
 
-.arcane-spell-ribbon{position:absolute;bottom:-38px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap;z-index:5}
-.arcane-spell-ribbon .ribbon-runes{font:bold 8.5px/1 monospace;letter-spacing:1.5px;color:#fde047;text-shadow:0 0 8px #eab308;animation:runeFlicker .6s infinite alternate}
+.arcane-spell-ribbon{
+  position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  white-space:nowrap;z-index:6;
+}
+.arcane-spell-ribbon .ribbon-runes{
+  font:bold 9.5px/1 monospace;letter-spacing:2px;color:#fde047;
+  text-shadow:0 0 10px #eab308;animation:runeFlicker .6s infinite alternate;
+}
 @keyframes runeFlicker{from{opacity:.75}to{opacity:1}}
-.arcane-spell-ribbon .ribbon-title{display:inline-flex;align-items:center;gap:8px;padding:5px 18px;border-radius:20px;background:linear-gradient(90deg,var(--elem-bg,#061a1ff0),#08272ef8,var(--elem-bg,#061a1ff0));border:1.5px solid var(--bdr-1);box-shadow:0 0 20px var(--glow-1),0 8px 16px #000a;color:#fff;font-size:15px;letter-spacing:1px}
-.arcane-spell-ribbon .ribbon-title b{font-weight:800;background:linear-gradient(90deg,var(--color-1),#fff,var(--color-2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.arcane-spell-ribbon .ribbon-damage{font:bold 11px Georgia,serif;color:#fecaca;letter-spacing:1px;text-shadow:0 0 10px #ef4444}
+.arcane-spell-ribbon .ribbon-title{
+  display:inline-flex;align-items:center;gap:10px;padding:6px 22px;border-radius:24px;
+  background:linear-gradient(90deg,var(--elem-bg,#061a1ff5),#08272efa,var(--elem-bg,#061a1ff5));
+  border:2px solid var(--bdr-1);box-shadow:0 0 24px var(--glow-1),0 10px 20px #000c;
+  color:#fff;font-size:17px;letter-spacing:1px;
+}
+.arcane-spell-ribbon .ribbon-title b{
+  font-weight:800;background:linear-gradient(90deg,var(--color-1),#fff,var(--color-2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.arcane-spell-ribbon .ribbon-damage{
+  font:bold 12.5px Georgia,serif;color:#fecaca;letter-spacing:1.5px;
+  text-shadow:0 0 12px #ef4444;background:#2b0c0ce0;padding:2px 12px;border-radius:10px;border:1px solid #ef444488;
+}
+
+/* 🌟 힌트 & 리프레시(섞기) 전용 프리미엄 네온 도구 버튼 시스템 */
+.board-tools{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:8px!important;padding:5px 6px!important;margin-top:6px!important;margin-bottom:4px!important;
+  width:100%!important;max-width:480px!important;box-sizing:border-box!important;
+}
+.board-tools .tool-btn{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:6px!important;padding:6px 14px!important;min-height:34px!important;
+  border-radius:20px!important;font-weight:700!important;font-size:11.5px!important;
+  cursor:pointer!important;transition:all .2s ease!important;user-select:none!important;
+  border:1.5px solid transparent!important;text-shadow:0 1px 2px #000!important;
+}
+.board-tools .hint-btn{
+  background:linear-gradient(135deg,#382806,#1c1203 70%)!important;
+  border-color:#f59e0b!important;color:#fef08a!important;
+  box-shadow:0 0 12px #f59e0b55,inset 0 0 8px #fef08a22!important;
+}
+.board-tools .hint-btn:hover:not(.depleted){
+  transform:translateY(-1px) scale(1.04)!important;
+  box-shadow:0 0 18px #f59e0b88,inset 0 0 12px #fef08a44!important;
+  border-color:#fbbf24!important;
+}
+.board-tools .shuffle-btn{
+  background:linear-gradient(135deg,#062c31,#03161a 70%)!important;
+  border-color:#06b6d4!important;color:#a5f3fc!important;
+  box-shadow:0 0 12px #06b6d455,inset 0 0 8px #a5f3fc22!important;
+}
+.board-tools .shuffle-btn:hover:not(.depleted){
+  transform:translateY(-1px) scale(1.04)!important;
+  box-shadow:0 0 18px #06b6d488,inset 0 0 12px #a5f3fc44!important;
+  border-color:#22d3ee!important;
+}
+.board-tools .tool-btn .tool-icon{
+  font-size:14px!important;line-height:1!important;display:inline-block!important;
+}
+.board-tools .tool-btn svg.tool-icon{
+  width:15px!important;height:15px!important;stroke-width:2!important;
+}
+.board-tools .tool-btn .tool-badge{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-width:18px!important;height:18px!important;padding:0 5px!important;
+  border-radius:10px!important;font-size:9.5px!important;font-weight:800!important;
+  line-height:1!important;margin-left:2px!important;box-shadow:0 1px 4px #0008!important;
+}
+.board-tools .hint-btn .tool-badge{
+  background:#f59e0b!important;color:#451a03!important;border:1px solid #fde047!important;
+}
+.board-tools .shuffle-btn .tool-badge{
+  background:#06b6d4!important;color:#083344!important;border:1px solid #67e8f9!important;
+}
+.board-tools .tool-btn.depleted{
+  opacity:.4!important;filter:grayscale(70%)!important;cursor:not-allowed!important;
+  transform:none!important;box-shadow:none!important;
+}
+.board-tools #boardHint{
+  font-size:10px!important;color:#cbd5e1!important;max-width:160px!important;
+  text-align:center!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+@media(max-width:650px){
+  .board-tools{padding:2px 4px!important;margin-top:2px!important;margin-bottom:2px!important}
+  .board-tools .tool-btn{
+    padding:4px 9px!important;min-height:28px!important;font-size:9.5px!important;gap:4px!important;
+  }
+  .board-tools .tool-btn .tool-badge{
+    min-width:15px!important;height:15px!important;font-size:8.5px!important;padding:0 4px!important;
+  }
+  .board-tools #boardHint{
+    font-size:8px!important;max-width:110px!important;
+  }
+}

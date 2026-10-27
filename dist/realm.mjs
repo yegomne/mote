@@ -38,7 +38,17 @@ export const REALM_SCROLLS=[
   {id:'eclipse',name:'영원의 월식',pair:[4,5],price:1400,mult:1.9,delay:1,art:4,desc:'달 → 시간 · 월식 피해와 반격 지연'},
   {id:'inferno',name:'불새의 숨결',pair:[1,8],price:1050,mult:2.15,burn:3,art:5,desc:'불 → 바람 · 불새 폭풍과 강한 화상'},
   {id:'marsh',name:'깊은 늪의 맹세',pair:[7,6],price:850,mult:1.65,delay:2,heal:12,art:6,desc:'대지 → 물 · 속박과 생명 회복'},
-  {id:'chronostorm',name:'찰나의 뇌광',pair:[5,2],price:1650,mult:2.35,delay:2,art:7,desc:'시간 → 번개 · 연속 낙뢰와 반격 지연'}
+  {id:'chronostorm',name:'찰나의 뇌광',pair:[5,2],price:1650,mult:2.35,delay:2,art:7,desc:'시간 → 번개 · 연속 낙뢰와 반격 지연'},
+  {id:'supernova',name:'초신성 폭발',pair:[1,3],price:950,mult:2.3,burn:2,art:0,desc:'불 → 황금 · 성스러운 태양열 폭발과 화상'},
+  {id:'frostfire',name:'동결 화염',pair:[6,1],price:1100,mult:2.25,burn:2,delay:1,art:2,desc:'물 → 불 · 급격한 열 충격과 혼돈 피해'},
+  {id:'sandstorm',name:'모래폭풍',pair:[7,8],price:780,mult:1.95,delay:2,art:5,desc:'대지 → 바람 · 적의 시야를 가리는 모래 폭풍'},
+  {id:'aurora',name:'오로라 장막',pair:[2,4],price:1250,mult:2.0,heal:20,art:4,desc:'번개 → 달 · 신비로운 오로라 빛과 생명 회복'},
+  {id:'overload',name:'시간 과부하',pair:[2,5],price:1350,mult:2.4,delay:2,art:7,desc:'번개 → 시간 · 전자기장 과부하로 시간 왜곡'},
+  {id:'verdant_tide',name:'신록의 해일',pair:[0,6],price:680,mult:1.7,heal:30,art:3,desc:'비취 → 물 · 거대한 신록의 파도와 대량 치유'},
+  {id:'meteor',name:'황금 유성우',pair:[7,3],price:1450,mult:2.5,burn:2,art:2,desc:'대지 → 황금 · 하늘에서 떨어지는 불타는 황금 운석'},
+  {id:'voidstrike',name:'암흑 참격',pair:[4,1],price:1200,mult:2.15,burn:3,art:1,desc:'달 → 불 · 암흑과 지옥불이 결합된 저주 일격'},
+  {id:'cyclone',name:'질풍의 뇌우',pair:[8,2],price:1150,mult:2.3,delay:1,art:0,desc:'바람 → 번개 · 회오리에 감싸인 연쇄 벼락'},
+  {id:'timewarp',name:'시공 봉인',pair:[5,4],price:1550,mult:2.2,delay:3,art:4,desc:'시간 → 달 · 시공간을 정지시키는 월식 결계'}
 ];
 export const REALM_GEAR={
   staff:[{name:'사원의 지팡이',price:0,power:0},{name:'숲의 지팡이',price:250,power:10},{name:'서리 수정봉',price:600,power:22},{name:'화산의 권장',price:1350,power:38},{name:'일식 성좌봉',price:2700,power:58}],

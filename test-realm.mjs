@@ -67,7 +67,7 @@ save.coins=10000;assert.ok(realmBuy(save,'gear','staff'));assert.equal(save.gear
 battle=freshRealmBattle(realmStage(130),save);battle.previousSpell=6;const combo=realmCast(realmStage(130),battle,save,2,5,2);assert.equal(combo.combo,REALM_SCROLLS[0].name);
 assert.equal(combo.comboArt,0);
 assert.equal(REALM_GEAR_SLOTS.length,6);
-assert.equal(REALM_SCROLLS.length,8);
+assert.equal(REALM_SCROLLS.length,18);
 const gearSave=freshRealmSave();gearSave.coins=10000;
 assert.ok(realmBuyGear(gearSave,'robe',2));assert.equal(gearSave.gear.robe,0,'purchased gear waits for equip');
 assert.ok(realmEquipGear(gearSave,'robe',2));assert.equal(realmMaxHP(gearSave),235);

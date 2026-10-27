@@ -1,3 +1,22 @@
+
+let hintLeft = 3;
+let shuffleLeft = 3;
+
+function updateToolUI(){
+  const hintBadge = $('#hintCount');
+  const shuffleBadge = $('#shuffleCount');
+  const hintBtn = $('#hintBtn');
+  const shuffleBtn = $('#shuffleBtn');
+  if(hintBadge) hintBadge.textContent = hintLeft;
+  if(shuffleBadge) shuffleBadge.textContent = shuffleLeft;
+  if(hintBtn){
+    hintBtn.classList.toggle('depleted', hintLeft <= 0);
+  }
+  if(shuffleBtn){
+    shuffleBtn.classList.toggle('depleted', shuffleLeft <= 0);
+  }
+}
+
 import {Soundscape} from './soundscape.mjs?v=7';
 import {ImpactFX} from './element-fx.mjs?v=10';
 import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmAvailableColors,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=7';
@@ -32,7 +51,7 @@ function applyDivineBlessing(silent=false){
 function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return i<6?`마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`:`${TOTEMS[i].unlockStage}단계 승리 후 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초`,`전체 폭우 · 치유`,`대지 충격 · 보호막`,`대각선 칼바람 · 반격 지연` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.slice(0,level>100?9:6).map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i),art=i<6?'totem-art':'realm-totem-art',position=i<6?`${(i%3)*50}% ${Math.floor(i/3)*100}%`:`${(i-6)*50}% 50%`;return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon ${art}" style="background-position:${position}">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>+b.dataset.totem>=6?openRealmShop():openUpgrades(+b.dataset.totem));}
-let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=saved.level>100?makeRealmBoard(realmAvailableColors(realmSave)):makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=2,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
+let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=saved.level>100?makeRealmBoard(realmAvailableColors(realmSave)):makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=3,hintLeft=3,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
 const is100Completed=stageStars[99]>=1||level>100;
 if(is100Completed){applyDivineBlessing(true);}
 let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false,realmCounterElapsed=0;
@@ -96,7 +115,7 @@ function update(){document.body.classList.toggle('playing',started&&!ended);fram
 function accessBoard(){const input=$('#boardInput');if(input.children.length!==boardCells){input.innerHTML='';for(let i=0;i<boardCells;i++){const b=document.createElement('button');b.dataset.cell=i;b.tabIndex=i===0?0:-1;input.append(b);}}board.forEach((g,i)=>{const b=input.children[i];if(!b)return;b.setAttribute('aria-label',`${Math.floor(i/boardCols)+1}행 ${i%boardCols+1}열 ${colorNames[g.color]}${g.special?' 특수 보석':''}${g.crystal?' 별빛 수정':''}${sealState[i]?' 봉인 '+sealState[i]+'겹':''}`);b.dataset.color=g.color;b.dataset.seal=sealState[i];});}
 function syncPositions(reset=false){board.forEach((g,i)=>{const c=i%boardCols,r=Math.floor(i/boardCols);if(reset||g.x===undefined){g.x=c;g.y=r;}g.tx=c;g.ty=r;});accessBoard();}
 function start(){if(ended){reset();}if(started){if(paused){resumeClock();$('#modal').close();update();}else pause();return;}started=true;running=true;lastTick=performance.now();lastAction=lastTick;tone(523,.2);announce(stage.name,stage.tip,1700);update();}
-function reset(){initStage();pausedAt=0;realmCounterElapsed=0;frame.classList.remove('frozen-board');board=level>100?makeCurrentBoard():makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=level>100?Infinity:2;totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];gemShards=[];currentCastColor=-1;ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);renderTotems();$('#modal').close();update();persist();}
+function reset(){initStage();pausedAt=0;realmCounterElapsed=0;frame.classList.remove('frozen-board');board=level>100?makeCurrentBoard():makeStageBoard(level);score=0;crystals=0;time=objectives(level).time??50;frenzy=0;frenzyUntil=0;frozen=0;selected=-1;activePower=null;running=false;started=false;ended=false;paused=false;busy=false;swapping=false;queuedSwap=null;finishAfterBusy=false;shuffleLeft=3;hintLeft=3;updateToolUI();totemChain={color:-1,count:0};totalTotemCasts=0;goalsMetAnnounced=false;combo=1;particles=[];gemShards=[];currentCastColor=-1;ghosts=[];rings=[];beams=[];floats=[];hint=[];syncPositions(true);renderTotems();$('#modal').close();update();persist();}
 function ensureStarted(){if(finishing)return false;if(!started)start();return running&&!paused&&!ended;}
 function pause(){if(!started||ended){toast('보석을 연결하면 탐험이 시작됩니다.');return;}if(busy){toast('연쇄가 끝나면 잠시 쉴 수 있어요.');return;}pauseClock();showModal(`<div class="modal-kicker">TAKE A BREATH</div><h2>사원이 기다리고 있어요</h2><p style="text-align:center">잠시 쉬어도 괜찮아요.<br>돌아오면 바로 이어갈 수 있어요.</p><div class="settings-row"><span>화면 효과 줄이기</span><button id="motionToggle">${reduced?'켜짐':'꺼짐'}</button></div><button id="resumeBtn" class="primary-button">탐험 계속하기 →</button><button id="restartBtn" class="text-button">이 스테이지 처음부터 <span>↻</span></button>`);$('#resumeBtn').onclick=resume;$('#motionToggle').onclick=e=>{reduced=!reduced;document.body.classList.toggle('reduced-motion',reduced);e.target.textContent=reduced?'켜짐':'꺼짐';persist();};$('#restartBtn').onclick=()=>{reset();start();};update();}
 function resume(){if(started&&!ended){resumeClock();}$('#modal').close();update();}
@@ -354,10 +373,12 @@ function showArcaneScrollCircle(scrollName, damage, firstElem, secondElem){
 
   const uid = 'path_' + Math.random().toString(36).slice(2, 8);
   circle.innerHTML = `
+    <div class="arcane-screen-dim"></div>
     <div class="arcane-aura-pillar"></div>
     <div class="arcane-circle-core">
+      <div class="arcane-circle-bg-art"></div>
       <svg class="arcane-svg-ring ring-outer" viewBox="0 0 240 240">
-        <circle cx="120" cy="120" r="114" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="6 8 18 8"/>
+        <circle cx="120" cy="120" r="114" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="6 8 18 8"/>
         <circle cx="120" cy="120" r="102" fill="none" stroke="currentColor" stroke-width="1.2"/>
         <path id="${uid}" d="M 120, 120 m -94, 0 a 94,94 0 1,1 188,0 a 94,94 0 1,1 -188,0" fill="none"/>
         <text class="arcane-rune-text">
@@ -367,9 +388,9 @@ function showArcaneScrollCircle(scrollName, damage, firstElem, secondElem){
         </text>
       </svg>
       <svg class="arcane-svg-ring ring-middle" viewBox="0 0 200 200">
-        <polygon points="100,8 192,100 100,192 8,100" fill="none" stroke="currentColor" stroke-width="1.8"/>
-        <polygon points="100,8 192,100 100,192 8,100" fill="none" stroke="currentColor" stroke-width="1.8" transform="rotate(45 100 100)"/>
-        <circle cx="100" cy="100" r="66" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="8 6"/>
+        <polygon points="100,8 192,100 100,192 8,100" fill="none" stroke="currentColor" stroke-width="2"/>
+        <polygon points="100,8 192,100 100,192 8,100" fill="none" stroke="currentColor" stroke-width="2" transform="rotate(45 100 100)"/>
+        <circle cx="100" cy="100" r="66" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="8 6"/>
       </svg>
       <div class="arcane-core-emblem">
         <span class="elem-node e1">${e1.icon}</span>
@@ -422,7 +443,7 @@ function updateRealmUI(){
   updateRealmCounterLabel();
  $('#mobileGoal').textContent=`적 체력 ${encounter.current}/${encounter.max} · ◈ ${realmSave.coins}`;$('#targetScore').textContent=encounter.max;$('#crystalCount').textContent=`적 체력 ${encounter.current} / ${encounter.max}`;$('#goalProgress').style.width=`${Math.max(0,(1-encounter.current/encounter.max)*100)}%`;
  const newGems=['물','대지','바람'].slice(0,d.colors-6).join('·');
- $('#timer').textContent='∞';$('#timerLabel').textContent='이동 제한 없음';$('#shuffleCount').textContent='∞';$('#goalChips').innerHTML=`<span class="goal-chip" style="--chip-color:${newGems?'#91e4e8':'#dec486'}">${d.colors}색 · ${newGems?'새 보석 '+newGems:'특수돌+'+realmResonanceThreshold(d).toLocaleString()+'점 공명'}</span><span class="goal-chip">◈ ${realmSave.coins} 코인</span>`;
+ $('#timer').textContent='∞';$('#timerLabel').textContent='이동 제한 없음';updateToolUI();$('#goalChips').innerHTML=`<span class="goal-chip" style="--chip-color:${newGems?'#91e4e8':'#dec486'}">${d.colors}색 · ${newGems?'새 보석 '+newGems:'특수돌+'+realmResonanceThreshold(d).toLocaleString()+'점 공명'}</span><span class="goal-chip">◈ ${realmSave.coins} 코인</span>`;
 }
 function showRealmDamage(text,color='#ffe4a0'){const el=$('#realmDamage');el.textContent=text;el.style.color=color;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
 function combatCast(color,anchor){
@@ -691,8 +712,43 @@ $('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;i
 document.addEventListener('keydown',e=>{if($('#modal').open)return;if(e.key==='Escape'){if(started&&!ended)pause();}});
 $('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=()=>level>100?realmHelp():help();$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
 $$('[data-mode]').forEach(b=>b.onclick=()=>{if(started&&!ended)return;mode=b.dataset.mode;reset();toast(mode==='zen'?'시간 제한 없이, 편안하게 즐기세요.':'90초 동안 고대 사원을 깨우세요.');});
-$('#hintBtn').onclick=()=>{if(busy||paused||ended)return;hint=findMove(board,totemChain.color)||[];hintUntil=performance.now()+3500;if(hint.length)toast('빛나는 두 보석을 서로 바꿔보세요.');};
-$('#shuffleBtn').onclick=()=>{if(busy||paused||ended)return;if(!shuffleLeft){toast('섞기를 모두 사용했어요. 다음 스테이지에 충전됩니다.');return;}if(level<=100)shuffleLeft--;board=makeCurrentBoard();selected=-1;hint=[];syncPositions(true);ring(4,4,'#bde5b9',4);tone(450,.18);toast('보석에 새로운 기운이 깃들었어요.');update();};
+$('#hintBtn').onclick=()=>{
+  if(busy||paused||ended) return;
+  if(hintLeft <= 0){
+    toast('이번 탐험의 힌트(3회)를 모두 사용했어요!');
+    tone(200, .15, 'sawtooth', .08);
+    return;
+  }
+  hint = findMove(board, totemChain.color) || [];
+  hintUntil = performance.now() + 3500;
+  if(hint.length){
+    hintLeft--;
+    updateToolUI();
+    toast(`💡 힌트 발동! (남은 횟수: ${hintLeft}회)`);
+    director.resonance(1.2);
+    tone(720, .18, 'sine', .1);
+  } else {
+    toast('가능한 매치가 없어요! 섞기를 사용해보세요.');
+  }
+};
+$('#shuffleBtn').onclick=()=>{
+  if(busy||paused||ended) return;
+  if(shuffleLeft <= 0){
+    toast('이번 탐험의 섞기(3회)를 모두 사용했어요!');
+    tone(200, .15, 'sawtooth', .08);
+    return;
+  }
+  shuffleLeft--;
+  board = makeCurrentBoard();
+  selected = -1;
+  hint = [];
+  syncPositions(true);
+  updateToolUI();
+  toast(`🔄 보석판 섞기 완료! (남은 횟수: ${shuffleLeft}회)`);
+  ring(4, .25, 540);
+  director.impact(1.2, 0);
+  vibrate(30);
+};
 $('#mapBtn').onclick=()=>openMap();
 $('#mobileMap').onclick=()=>$('#mapBtn').click();
 $('#realmBattleMap').onclick=()=>openRealmMap();
