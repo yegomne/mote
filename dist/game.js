@@ -1,22 +1,3 @@
-
-let hintLeft = 3;
-let shuffleLeft = 3;
-
-function updateToolUI(){
-  const hintBadge = $('#hintCount');
-  const shuffleBadge = $('#shuffleCount');
-  const hintBtn = $('#hintBtn');
-  const shuffleBtn = $('#shuffleBtn');
-  if(hintBadge) hintBadge.textContent = hintLeft;
-  if(shuffleBadge) shuffleBadge.textContent = shuffleLeft;
-  if(hintBtn){
-    hintBtn.classList.toggle('depleted', hintLeft <= 0);
-  }
-  if(shuffleBtn){
-    shuffleBtn.classList.toggle('depleted', shuffleLeft <= 0);
-  }
-}
-
 import {Soundscape} from './soundscape.mjs?v=7';
 import {ImpactFX} from './element-fx.mjs?v=10';
 import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmAvailableColors,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=7';
@@ -52,6 +33,13 @@ function totemUnlocked(i){return totemLevels[i]>=1;}
 function totemEffectText(i,l=totemLevels[i]){if(l===0)return i<6?`마법별 ★${TOTEMS[i].unlockCost}개로 성소에서 기술 해금`:`${TOTEMS[i].unlockStage}단계 승리 후 해금`;return [ `회수 ${l+1}개 · 생성 ${l+1}개`, `불덩이 ${l}발 · 폭발 반경 ${l>=4?2:1}`, `주변 사방 ${5+(l-1)*2}개 감전 · 반경 ${(1.5+(l-1)*.4).toFixed(1)}`, `보너스 ${300*l}점 · 피버 +${15+5*l}%`, `무작위 특수 보석 ${l}개${l>=5?' · 노바 포함':''}`, `시간 +${3+l*2}초 · 정지 ${l>=3?l:0}초`,`전체 폭우 · 치유`,`대지 충격 · 보호막`,`대각선 칼바람 · 반격 지연` ][i];}
 function renderTotems(){const list=$('.power-list');list.innerHTML=TOTEMS.slice(0,level>100?9:6).map((t,i)=>{const l=totemLevels[i],unlocked=totemUnlocked(i),art=i<6?'totem-art':'realm-totem-art',position=i<6?`${(i%3)*50}% ${Math.floor(i/3)*100}%`:`${(i-6)*50}% 50%`;return `<button class="power totem ${unlocked?'':'locked'}" style="--accent:${t.accent}" data-totem="${i}" aria-label="${t.name} 토템 정보와 강화"><span class="power-icon ${art}" style="background-position:${position}">${unlocked?'':'🔒'}</span><span class="power-info"><b>${t.shortName||t.name}<small class="totem-level">${unlocked?'Lv.'+l:'🔒'}</small></b><span class="power-meter"><i></i></span></span><span class="power-state">${unlocked?'대기':'잠김'}</span></button>`;}).join('');$$('[data-totem]').forEach(b=>b.onclick=()=>+b.dataset.totem>=6?openRealmShop():openUpgrades(+b.dataset.totem));}
 let level=saved.level,unlocked=Math.max(saved.unlocked,level),best=saved.best,mode='adventure',board=saved.level>100?makeRealmBoard(realmAvailableColors(realmSave)):makeStageBoard(saved.level),score=0,crystals=0,time=50,frenzy=0,frenzyUntil=0,frozen=0,selected=-1,activePower=null,running=false,started=false,busy=false,swapping=false,queuedSwap=null,activeCascades=0,ended=false,paused=false,shuffleLeft=3,hintLeft=3,combo=1,hint=[],hintUntil=0,lastAction=performance.now(),finishAfterBusy=false;
+function updateToolUI(){
+  const hintBadge=$('#hintCount'),shuffleBadge=$('#shuffleCount'),hintBtn=$('#hintBtn'),shuffleBtn=$('#shuffleBtn');
+  if(hintBadge)hintBadge.textContent=hintLeft;
+  if(shuffleBadge)shuffleBadge.textContent=shuffleLeft;
+  if(hintBtn)hintBtn.classList.toggle('depleted',hintLeft<=0);
+  if(shuffleBtn)shuffleBtn.classList.toggle('depleted',shuffleLeft<=0);
+}
 const is100Completed=stageStars[99]>=1||level>100;
 if(is100Completed){applyDivineBlessing(true);}
 let pausedAt=0,lastFireTargets=[],finishing=false,goalsMetAnnounced=false,realmCounterElapsed=0;
