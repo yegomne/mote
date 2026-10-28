@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
-import {fireTargets,extendTime,gem,makeBoard,makeStageBoard,findMatches,findMove,adjacent,affected,specialCreations,collapse,powerCells,objectives,advanceTotem,stageReward,upgradeCost,chapterIndex,STAGE_COUNT,TOTEMS,stageDesign,stageGoals,totemPower,amplifyCells,damageSeals,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS}from './dist/engine.mjs';
+import {fireTargets,extendTime,gem,makeBoard,makeStageBoard,shuffleExistingBoard,findMatches,findMove,adjacent,affected,specialCreations,collapse,powerCells,objectives,advanceTotem,stageReward,upgradeCost,chapterIndex,STAGE_COUNT,TOTEMS,stageDesign,stageGoals,totemPower,amplifyCells,damageSeals,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS}from './dist/engine.mjs';
 let checks=0;
+for(let t=0;t<20;t++){
+  const sb=makeBoard();sb[5].special='bomb';sb[12].special='row';sb[25].crystal=true;
+  const initSpecials=sb.filter(g=>g.special).map(g=>g.special);
+  const initCrystals=sb.filter(g=>g.crystal).length;
+  const initColors=sb.reduce((acc,g)=>{acc[g.color]=(acc[g.color]||0)+1;return acc;},{});
+  shuffleExistingBoard(sb);
+  assert.equal(sb.length,64);assert.equal(findMatches(sb).length,0);assert.ok(findMove(sb));
+  assert.deepEqual(sb.filter(g=>g.special).map(g=>g.special).sort(),initSpecials.sort());
+  assert.equal(sb.filter(g=>g.crystal).length,initCrystals);
+  const newColors=sb.reduce((acc,g)=>{acc[g.color]=(acc[g.color]||0)+1;return acc;},{});
+  assert.deepEqual(newColors,initColors);
+  checks++;
+}
 let seals=Array(64).fill(0);seals[7]=2;seals[8]=1;seals[15]=1;let hit=damageSeals(seals,[7,6]);assert.equal(seals[7],1);assert.equal(seals[8],1,'no horizontal row wrap');assert.equal(seals[15],0);assert.equal(hit.broken,1);hit=damageSeals(seals,[7]);assert.equal(seals[7],0);assert.equal(hit.broken,1);checks++;
 for(let n=0;n<150;n++){const b=makeBoard();assert.equal(b.length,64);assert.equal(findMatches(b).length,0);assert.ok(findMove(b));assert.equal(new Set(b.map(g=>g.id)).size,64);const ids=b.map(g=>g.id);const [a,c]=findMove(b);assert.ok(adjacent(a,c));assert.deepEqual(b.map(g=>g.id),ids);[b[a],b[c]]=[b[c],b[a]];assert.ok(findMatches(b).length);checks++;}
 const base=()=>Array.from({length:64},(_,i)=>gem(i+10));

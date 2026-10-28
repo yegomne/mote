@@ -356,6 +356,44 @@ export function findMove(board,preferredColor=-1,strict=false,cols=boardCols(boa
 export function makeBoard(colors=COLORS,random=Math.random,cols=8,rows=8){const total=cols*rows;let board;do{board=[];for(let i=0;i<total;i++){let g;do{g=gem(undefined,colors,random);}while((i%cols>=2&&board[i-1].color===g.color&&board[i-2].color===g.color)||(i>=cols*2&&board[i-cols].color===g.color&&board[i-cols*2].color===g.color));board.push(g);}}while(!findMove(board,-1,false,cols,rows));return board;}
 export function makeRealmBoard(colors=COLORS,random=Math.random,cols=9,rows=10){let board;for(let attempt=0;attempt<200;attempt++){board=makeBoard(colors,random,cols,rows);if(Array.from({length:Math.max(0,colors-6)},(_,i)=>i+6).every(color=>board.filter(g=>g.color===color).length>=5))return board;}return board;}
 export function makeStageBoard(level){if(level>100)return makeRealmBoard(realmStage(level).colors,Math.random,9,10);if(![1,2].includes(level))return makeBoard();for(let attempt=0;attempt<250;attempt++){const b=makeBoard();if(level===2||level===9){for(const row of [0,4,7]){for(const col of [0,1,3])b[row*8+col].color=1;b[row*8+2].color=2;b[row*8+4].color=0;}}if(level===7){for(const i of [0,1,3,10])b[i].color=4;b[2].color=2;b[4].color=0;}if(findMatches(b).length)continue;const move=findMove(b,level===7?4:level===2||level===9?1:-1);if(!move)continue;[b[move[0]],b[move[1]]]=[b[move[1]],b[move[0]]];const groups=findMatches(b);groups[0].cells.slice(0,2).forEach(i=>b[i].crystal=true);[b[move[0]],b[move[1]]]=[b[move[1]],b[move[0]]];return b;}return makeBoard();}
+export function shuffleExistingBoard(board,cols=boardCols(board),rows=boardRows(board)){
+  const total=cols*rows;
+  if(!board||board.length!==total)return board;
+  const normals=[];
+  board.forEach((g,i)=>{if(!g?.special&&!g?.crystal)normals.push(i);});
+  if(normals.length>=6){
+    for(let attempt=0;attempt<350;attempt++){
+      const candidate=[...board],shuffled=normals.map(i=>candidate[i]);
+      for(let i=shuffled.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+      }
+      normals.forEach((pos,idx)=>{candidate[pos]=shuffled[idx];});
+      if(findMatches(candidate,cols,rows).length===0&&findMove(candidate,-1,false,cols,rows)){
+        for(let i=0;i<total;i++)board[i]=candidate[i];
+        return board;
+      }
+    }
+  }
+  for(let attempt=0;attempt<500;attempt++){
+    const candidate=[...board];
+    for(let i=total-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [candidate[i],candidate[j]]=[candidate[j],candidate[i]];
+    }
+    if(findMatches(candidate,cols,rows).length===0&&findMove(candidate,-1,false,cols,rows)){
+      for(let i=0;i<total;i++)board[i]=candidate[i];
+      return board;
+    }
+  }
+  const candidate=[...board];
+  for(let i=total-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [candidate[i],candidate[j]]=[candidate[j],candidate[i]];
+  }
+  for(let i=0;i<total;i++)board[i]=candidate[i];
+  return board;
+}
 export function affected(board,initial,cols=boardCols(board),rows=boardRows(board)){const set=new Set(initial),queue=[...set];const effects=[];for(let k=0;k<queue.length;k++){const i=queue[k],g=board[i];if(!g?.special)continue;const r=Math.floor(i/cols),c=i%cols;effects.push({index:i,type:g.special,color:g.color});const extra=[];if(g.special==='row'||g.special==='cross')for(let x=0;x<cols;x++)extra.push(r*cols+x);if(g.special==='col'||g.special==='cross')for(let y=0;y<rows;y++)extra.push(y*cols+c);if(g.special==='bomb')for(let y=Math.max(0,r-1);y<=Math.min(rows-1,r+1);y++)for(let x=Math.max(0,c-1);x<=Math.min(cols-1,c+1);x++)extra.push(y*cols+x);if(g.special==='nova')board.forEach((v,n)=>{if(v?.color===g.color)extra.push(n);});for(const n of extra)if(!set.has(n)){set.add(n);queue.push(n);}}return {cells:[...set],effects};}
 export function specialCreations(groups,preferred=[]){const creations=new Map;const count=new Map;groups.forEach(g=>g.cells.forEach(i=>count.set(i,(count.get(i)||0)+1)));for(const [i,n]of count)if(n>1)creations.set(i,'bomb');for(const g of groups){if(g.cells.some(i=>creations.has(i)))continue;if(g.cells.length>=4){const i=preferred.find(i=>g.cells.includes(i))??g.cells[Math.floor(g.cells.length/2)];creations.set(i,g.cells.length>=5?'nova':g.axis);}}return creations;}
 export function collapse(board,colors=COLORS,random=Math.random,cols=boardCols(board),rows=boardRows(board)){for(let c=0;c<cols;c++){let dest=rows-1;for(let r=rows-1;r>=0;r--)if(board[r*cols+c]){board[dest*cols+c]=board[r*cols+c];if(dest!==r)board[r*cols+c]=null;dest--;}let born=0;while(dest>=0){const g=gem(undefined,colors,random);g.x=c;g.y=-1-born++;board[dest*cols+c]=g;dest--;}}return board;}

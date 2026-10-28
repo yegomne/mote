@@ -1,12 +1,12 @@
 import {Soundscape} from './soundscape.mjs?v=7';
 import {ImpactFX} from './element-fx.mjs?v=10';
 import {REALM_FIRST,REALM_LAST,REALM_ACTS,REALM_FOES,REALM_SCROLLS,REALM_GEAR,REALM_GEAR_SLOTS,realmGearOwned,realmGearRank,realmGearEnhanceCost,realmGearStats,realmBuyGear,realmEquipGear,realmEnhanceGear,realmStage,realmBackdrop,realmGateStars,realmAvailableColors,realmMaxHP,freshRealmSave,freshRealmBattle,realmEncounterHP,realmCast,realmResonanceThreshold,realmResonance,realmCounter,realmNextWave,realmReward,realmBuy} from './realm.mjs?v=7';
-import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,makeRealmBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS,boardCols as getBoardCols,boardRows as getBoardRows} from './engine.mjs?v=24';
+import {SIZE,STAGE_COUNT,thunderTargets,harvestTargets,lunarTargets,fireTargets,extendTime,totemPower,amplifyCells,stageDesign,stageGoals,makeStageBoard,makeRealmBoard,shuffleExistingBoard,damageSeals,TOTEMS,totemLevelSpecs,advanceTotem,upgradeCost,stageReward,chapterIndex,colorNames,chapters,findMatches,adjacent,findMove,makeBoard,affected,specialCreations,collapse,objectives,stageScenario,canUpgradeTotem,upgradePrerequisite,stageStarCriteria,evaluateStageStars,FORTUNE_CARDS,boardCols as getBoardCols,boardRows as getBoardRows} from './engine.mjs?v=25';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],wait=ms=>new Promise(r=>setTimeout(r,ms));
 const canvas=$('#board'),ctx=canvas.getContext('2d'),wrap=$('#boardWrap'),frame=$('#boardFrame');
 const PALETTE=[['#b7ffce','#18d99f','#087564','#043b3b'],['#ffb0ad','#fb526a','#ac184f','#580d36'],['#bef8ff','#44bdf7','#1367b5','#113367'],['#fff0ba','#f3cb4e','#ae6b0d','#60400b'],['#edcaff','#b36cfa','#7333b1','#3f1b6a'],['#ffddb8','#fc9953','#c04b19','#682612'],['#d9ffff','#44d5ee','#128ab3','#074268'],['#fff1c6','#cda767','#806044','#38342c'],['#e4fff1','#95eacb','#48ab96','#156c77']];
 const shapes=[[[0,-.44],[.31,-.25],[.36,.23],[0,.43],[-.36,.23],[-.31,-.25]],[[0,-.46],[.39,0],[0,.46],[-.39,0]],[[-.27,-.36],[.27,-.36],[.4,-.13],[.36,.28],[0,.43],[-.36,.28],[-.4,-.13]],[[-.29,-.34],[.29,-.34],[.43,0],[0,.43],[-.43,0]],[[0,-.45],[.39,-.17],[.25,.35],[-.25,.35],[-.39,-.17]],[[-.24,-.39],[.24,-.39],[.4,-.13],[.35,.28],[.17,.4],[-.17,.4],[-.35,.28],[-.4,-.13]],[[-.31,-.31],[.31,-.31],[.42,.12],[0,.45],[-.42,.12]],[[0,-.46],[.35,-.31],[.43,.2],[0,.46],[-.43,.2],[-.35,-.31]],[[-.32,-.38],[.32,-.38],[.44,0],[.27,.38],[-.27,.38],[-.44,0]]];
-function readSave(){try{const s=JSON.parse(localStorage.getItem('solar-relic-v1')||'{}');return {level:Math.max(1,Math.min(STAGE_COUNT,+s.level||1)),unlocked:Math.max(1,Math.min(STAGE_COUNT,+s.unlocked||1)),best:Math.max(0,+s.best||0),reduced:!!s.reduced,sound:!!s.sound};}catch{return {level:1,unlocked:1,best:0,reduced:false,sound:false};}}
+function readSave(){try{const s=JSON.parse(localStorage.getItem('solar-relic-v1')||'{}');return {level:Math.max(1,Math.min(STAGE_COUNT,+s.level||1)),unlocked:Math.max(1,Math.min(STAGE_COUNT,+s.unlocked||1)),best:Math.max(0,+s.best||0),reduced:!!s.reduced,sound:!!s.sound,vibrate:s.vibrate!==undefined?!!s.vibrate:true};}catch{return {level:1,unlocked:1,best:0,reduced:false,sound:false,vibrate:true};}}
 const saved=readSave(),director=new Soundscape();
 document.addEventListener('pointerdown',()=>director.unlock(),{passive:true});document.addEventListener('keydown',()=>director.unlock(),{passive:true});
 document.addEventListener('touchmove',e=>{if(document.body.classList.contains('playing')&&!$('#modal')?.open){e.preventDefault();}},{passive:false});
@@ -47,7 +47,7 @@ const REALM_COUNTER_TICK=4.8;
 function pauseClock(){if(!pausedAt)pausedAt=performance.now();paused=true;running=false;}
 function resumeClock(){if(pausedAt){const gap=performance.now()-pausedAt;if(frenzyUntil)frenzyUntil+=gap;lastAction+=gap;pausedAt=0;}paused=false;if(started&&!ended)running=true;lastTick=performance.now();}
 let boardCols=saved.level>100?9:8,boardRows=saved.level>100?10:8,boardCells=boardCols*boardRows;
-let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,boardWidth=450,boardHeight=450,cell=boardWidth/boardCols,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches;
+let particles=[],gemShards=[],currentCastColor=-1,rings=[],beams=[],floats=[],ghosts=[],lastTick=performance.now(),boardSize=450,boardWidth=450,boardHeight=450,cell=boardWidth/boardCols,toastTimer,messageTimer,sound=director.settings.enabled,reduced=saved.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches,vibrateEnabled=saved.vibrate!==undefined?!!saved.vibrate:true;
 let lastHeavyShake=0,cameraAnimation;
 let stage=stageDesign(level),realmBattle=level>100?freshRealmBattle(stage,realmSave):null,sealState=Array(boardCells).fill(0),metrics={colorCollected:Array(9).fill(0),sealsBroken:0,bestCascade:0,specialsMade:0,totemCasts:0,overdrives:0},impactUntil=0,heavyCast=false,cinematicTimer,activeFeverBonus=false;
 function makeCurrentBoard(){return level>100?makeRealmBoard(stage.colors):makeBoard(stage.colors||6);}
@@ -91,15 +91,15 @@ function initStage(){
 function currentGoals(){return stageGoals(stage,{...metrics,score,crystals,enemyHP:realmBattle?.enemyHP});}
 function budgetEmpty(){return level<=100&&mode!=='zen'&&time<=0;}
 document.body.classList.toggle('reduced-motion',reduced);
-function persist(){try{localStorage.setItem('solar-relic-v1',JSON.stringify({level,unlocked,best,reduced,sound}));saveGrowth();}catch{}}
+function persist(){try{localStorage.setItem('solar-relic-v1',JSON.stringify({level,unlocked,best,reduced,sound,vibrate:vibrateEnabled}));saveGrowth();}catch{}}
 function toast(text){$('#toast').textContent=text;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2400);}
 function announce(title,sub='',duration=1200){const el=level>100?$('#realmCombatNotice'):$('#boardMessage');$('#boardMessage').classList.remove('show');el.replaceChildren(document.createTextNode(title));if(sub){const small=document.createElement('small');small.textContent=sub;el.append(small);}el.classList.add('show');clearTimeout(messageTimer);messageTimer=setTimeout(()=>el.classList.remove('show'),duration);}
 function tone(freq=440,dur=.12,type='sine',vol=.07){director.ui(freq,dur,type,vol);}
 function chord(kind=0){director.chord(kind);}
-function vibrate(n=20){if(!reduced&&navigator.vibrate)navigator.vibrate(n);}
+function vibrate(n=20){if(vibrateEnabled&&!reduced&&navigator.vibrate)navigator.vibrate(n);}
 function flash(color='#ffd58b'){if(reduced)return;const el=$('#screenFlash');el.style.background=color;el.animate([{opacity:.16},{opacity:0}],{duration:420});}
 function shake(){if(reduced)return;frame.classList.remove('shake');void frame.offsetWidth;frame.classList.add('shake');}
-function update(){document.body.classList.toggle('playing',started&&!ended);frame.setAttribute('aria-busy',String(busy));const obj=objectives(level);$('#mobileStage').textContent=`STAGE ${String(level).padStart(2,'0')} · ${chapters[chapterIndex(level)][0]}`;$('#mobileGoal').textContent=`목표 ${obj.target.toLocaleString()}점 · 수정 ${crystals}/${obj.crystals}`;$('#score').textContent=score.toLocaleString();$('#bestScore').textContent=best.toLocaleString();$('#targetScore').textContent=obj.target.toLocaleString();$('#crystalCount').textContent=`${crystals} / ${obj.crystals}`;$('#goalProgress').style.width=`${Math.min(100,score/obj.target*100)}%`;$('#levelLabel').textContent=`STAGE ${String(level).padStart(2,'0')}`;const ci=chapterIndex(level);$('#chapterNumber').textContent=String(ci+1).padStart(2,'0');$('#chapterName').textContent=chapters[ci][0];$('#chapterSub').textContent=chapters[ci][1];$('#chapterPath').innerHTML=Array.from({length:5},(_,i)=>`<span class="${i===ci?'current':i<ci?'done':''}"></span>`).join('');$('#timer').textContent=mode==='zen'?'∞':`${Math.floor(Math.ceil(Math.max(0,time))/60)}:${String(Math.ceil(Math.max(0,time))%60).padStart(2,'0')}`;$('.timer-wrap').classList.toggle('frozen',frozen>0);$('.timer-wrap').classList.toggle('urgent',time<=15&&mode!=='zen'&&running&&!paused&&frozen<=0);$('#timerLabel').textContent=frozen>0?`시간 정지 ${Math.ceil(frozen)}초`:mode==='zen'?'휴식 모드':'남은 시간';const isFrenzy=performance.now()<frenzyUntil;document.body.classList.toggle('is-frenzy',isFrenzy);$('#frenzyFill').style.width=`${isFrenzy?Math.max(0,(frenzyUntil-performance.now())/100):frenzy}%`;$('#multiplier').textContent=isFrenzy?'×3':'×1';$('#frenzyLabel').textContent=isFrenzy?'태양의 각성 · FEVER':'태양의 각성';$('#frenzyText').textContent=isFrenzy?'모든 점수 3배! 계속 연결하세요':`${Math.round(frenzy)}% · 연속 매치로 피버 충전`;$('#shuffleCount').textContent=shuffleLeft;$('#startBtn').innerHTML=(ended?'다시 도전':!started?'탐험 시작':paused?'탐험 계속':'탐험 중 · 잠시 쉬기')+' <svg><use href="#arrow"/></svg>';$$('[data-mode]').forEach(e=>{e.classList.toggle('active',e.dataset.mode===mode);e.disabled=started&&!ended;});updateTotemUI();updateStageUI();director.mood(stage.chapter,running&&!paused,performance.now()<frenzyUntil);$('#soundBtn').setAttribute('aria-label',sound?'소리 끄기':'소리 켜기');$('#soundBtn').title=sound?'소리 끄기':'소리 켜기';$('.mute-dot').style.display=sound?'none':'block';}
+function update(){document.body.classList.toggle('playing',started&&!ended);frame.setAttribute('aria-busy',String(busy));const obj=objectives(level);$('#mobileStage').textContent=`STAGE ${String(level).padStart(2,'0')} · ${chapters[chapterIndex(level)][0]}`;$('#mobileGoal').textContent=`목표 ${obj.target.toLocaleString()}점 · 수정 ${crystals}/${obj.crystals}`;$('#score').textContent=score.toLocaleString();$('#bestScore').textContent=best.toLocaleString();$('#targetScore').textContent=obj.target.toLocaleString();$('#crystalCount').textContent=`${crystals} / ${obj.crystals}`;$('#goalProgress').style.width=`${Math.min(100,score/obj.target*100)}%`;$('#levelLabel').textContent=`STAGE ${String(level).padStart(2,'0')}`;const ci=chapterIndex(level);$('#chapterNumber').textContent=String(ci+1).padStart(2,'0');$('#chapterName').textContent=chapters[ci][0];$('#chapterSub').textContent=chapters[ci][1];$('#chapterPath').innerHTML=Array.from({length:5},(_,i)=>`<span class="${i===ci?'current':i<ci?'done':''}"></span>`).join('');$('#timer').textContent=mode==='zen'?'∞':`${Math.floor(Math.ceil(Math.max(0,time))/60)}:${String(Math.ceil(Math.max(0,time))%60).padStart(2,'0')}`;$('.timer-wrap').classList.toggle('frozen',frozen>0);$('.timer-wrap').classList.toggle('urgent',time<=15&&mode!=='zen'&&running&&!paused&&frozen<=0);$('#timerLabel').textContent=frozen>0?`시간 정지 ${Math.ceil(frozen)}초`:mode==='zen'?'휴식 모드':'남은 시간';const isFrenzy=performance.now()<frenzyUntil;document.body.classList.toggle('is-frenzy',isFrenzy);$('#frenzyFill').style.width=`${isFrenzy?Math.max(0,(frenzyUntil-performance.now())/100):frenzy}%`;$('#multiplier').textContent=isFrenzy?'×3':'×1';$('#frenzyLabel').textContent=isFrenzy?'태양의 각성 · FEVER':'태양의 각성';$('#frenzyText').textContent=isFrenzy?'모든 점수 3배! 계속 연결하세요':`${Math.round(frenzy)}% · 연속 매치로 피버 충전`;$('#shuffleCount').textContent=shuffleLeft;$('#startBtn').innerHTML=(ended?'다시 도전':!started?'탐험 시작':paused?'탐험 계속':'탐험 중 · 잠시 쉬기')+' <svg><use href="#arrow"/></svg>';$$('[data-mode]').forEach(e=>{e.classList.toggle('active',e.dataset.mode===mode);e.disabled=started&&!ended;});updateTotemUI();updateStageUI();director.mood(stage.chapter,running&&!paused,performance.now()<frenzyUntil);$('#soundBtn').setAttribute('aria-label',sound?'소리 끄기':'소리 켜기');$('#soundBtn').title=sound?'소리 끄기':'소리 켜기';$('.mute-dot').style.display=sound?'none':'block';const vBtn=$('#vibrateBtn');if(vBtn){vBtn.setAttribute('aria-label',vibrateEnabled?'진동 끄기':'진동 켜기');vBtn.title=vibrateEnabled?'진동 끄기':'진동 켜기';}$$('.vibrate-dot').forEach(dot=>dot.style.display=vibrateEnabled?'none':'block');}
 function accessBoard(){const input=$('#boardInput');if(input.children.length!==boardCells){input.innerHTML='';for(let i=0;i<boardCells;i++){const b=document.createElement('button');b.dataset.cell=i;b.tabIndex=i===0?0:-1;input.append(b);}}board.forEach((g,i)=>{const b=input.children[i];if(!b)return;b.setAttribute('aria-label',`${Math.floor(i/boardCols)+1}행 ${i%boardCols+1}열 ${colorNames[g.color]}${g.special?' 특수 보석':''}${g.crystal?' 별빛 수정':''}${sealState[i]?' 봉인 '+sealState[i]+'겹':''}`);b.dataset.color=g.color;b.dataset.seal=sealState[i];});}
 function syncPositions(reset=false){board.forEach((g,i)=>{const c=i%boardCols,r=Math.floor(i/boardCols);if(reset||g.x===undefined){g.x=c;g.y=r;}g.tx=c;g.ty=r;});accessBoard();}
 function start(){if(ended){reset();}if(started){if(paused){resumeClock();$('#modal').close();update();}else pause();return;}started=true;running=true;lastTick=performance.now();lastAction=lastTick;tone(523,.2);announce(stage.name,stage.tip,1700);update();}
@@ -134,8 +134,8 @@ async function trySwap(a,b){
       await wait(reduced?15:90);
       tone(150,.08,'triangle');
       if(!findMove(board)){
-        board=makeCurrentBoard();syncPositions(true);
-        announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');
+        shuffleExistingBoard(board,boardCols,boardRows);selected=-1;hint=[];syncPositions(false);
+        announce('새로운 흐름','가능한 매치가 없어 기존 보석을 섞었어요');
       }
       if(budgetEmpty()&&activeCascades===0){
         const standardWin=currentGoals().every(g=>g.done);
@@ -224,7 +224,7 @@ async function resolve(groups,preferred=[]){
     preferred=[];combo++;
   }
   if(!activeCascades&&findMatches(board).length===0&&!findMove(board)){
-    board=makeCurrentBoard();syncPositions(true);toast('사원의 기운이 보석을 새롭게 배치했어요.');
+    shuffleExistingBoard(board,boardCols,boardRows);selected=-1;hint=[];syncPositions(false);toast('사원의 기운이 기존 보석들을 새롭게 섞었어요.');
   }
 }
 async function settle(recurse=true){collapse(board,stage.colors||6);syncPositions();await wait(reduced?20:185);if(recurse){const groups=findMatches(board);if(groups.length){combo++;await resolve(groups);}}}
@@ -490,7 +490,7 @@ function combatCounterEvent(event){if(!event)return;if(event.delayed){realmPose(
 function showCombatWave(){realmCounterElapsed=0;if(stage.enemyId===0){realmPack.classList.remove('spawn');void realmPack.offsetWidth;realmPack.classList.add('spawn');realmPose('monster','idle');announce('슬라임 한 마리 격파!',`${stage.waves-realmBattle.wave+1}마리 남았습니다.`,1000);}else{realmPose('monster','groggy',700);announce(`${realmBattle.wave}/${stage.waves} 연전`,'새로운 적이 나타났습니다. 생명력 일부 회복!',1200);}}
 function checkEnd(){
   if(ended||finishing)return;
-  if(level>100){if(realmBattle?.heroHP<=0){finish(false);return;}if(realmBattle?.enemyHP<=0){if(realmNextWave(stage,realmBattle)){showCombatWave();update();return;}finish(true);return;}if(!findMove(board)){board=makeCurrentBoard();syncPositions(true);}persist();return;}
+  if(level>100){if(realmBattle?.heroHP<=0){finish(false);return;}if(realmBattle?.enemyHP<=0){if(realmNextWave(stage,realmBattle)){showCombatWave();update();return;}finish(true);return;}if(!findMove(board)){shuffleExistingBoard(board,boardCols,boardRows);selected=-1;hint=[];syncPositions(false);}persist();return;}
   const obj=objectives(level);
   const allGoalsDone=currentGoals().every(g=>g.done);
   if(allGoalsDone&&!goalsMetAnnounced){
@@ -505,7 +505,7 @@ function checkEnd(){
     finish(standardWin||stars>=1);
     return;
   }
-  if(!findMove(board)){board=makeCurrentBoard();syncPositions(true);announce('새로운 흐름','가능한 매치가 없어 자동으로 섞었어요');}
+  if(!findMove(board)){shuffleExistingBoard(board,boardCols,boardRows);selected=-1;hint=[];syncPositions(false);announce('새로운 흐름','가능한 매치가 없어 기존 보석을 섞었어요');}
   persist();
 }
 async function finish(requestedWin){
@@ -711,6 +711,15 @@ wrap.addEventListener('pointercancel',e=>{
 });
 $('#boardInput').addEventListener('keydown',e=>{const i=+e.target.dataset.cell;if(!Number.isFinite(i))return;const delta={ArrowRight:1,ArrowLeft:-1,ArrowUp:-boardCols,ArrowDown:boardCols}[e.key];if(delta){e.preventDefault();const j=i+delta;if(j>=0&&j<boardCells&&adjacent(i,j,boardCols)){e.target.tabIndex=-1;const b=$('#boardInput').children[j];if(b){b.tabIndex=0;b.focus();}}}if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i);}});
 document.addEventListener('keydown',e=>{if($('#modal').open)return;if(e.key==='Escape'){if(started&&!ended)pause();}});
+const toggleVibration=()=>{
+  vibrateEnabled=!vibrateEnabled;
+  if(vibrateEnabled&&navigator.vibrate)navigator.vibrate(30);
+  toast(vibrateEnabled?'📳 진동이 켜졌습니다.':'📴 진동이 꺼졌습니다.');
+  persist();
+  update();
+};
+if($('#vibrateBtn'))$('#vibrateBtn').onclick=toggleVibration;
+if($('#titleVibrateBtn'))$('#titleVibrateBtn').onclick=toggleVibration;
 $('#startBtn').onclick=start;$('#pauseBtn').onclick=()=>paused?resume():pause();$('#helpBtn').onclick=()=>level>100?realmHelp():help();$('#soundBtn').onclick=()=>{sound=!sound;director.configure('enabled',sound);tone(660,.15);persist();update();};$('#closeModal').onclick=resume;$('#modal').addEventListener('cancel',e=>{e.preventDefault();resume();});
 $$('[data-mode]').forEach(b=>b.onclick=()=>{if(started&&!ended)return;mode=b.dataset.mode;reset();toast(mode==='zen'?'시간 제한 없이, 편안하게 즐기세요.':'90초 동안 고대 사원을 깨우세요.');});
 $('#hintBtn').onclick=()=>{
@@ -740,12 +749,12 @@ $('#shuffleBtn').onclick=()=>{
     return;
   }
   shuffleLeft--;
-  board = makeCurrentBoard();
+  shuffleExistingBoard(board, boardCols, boardRows);
   selected = -1;
   hint = [];
-  syncPositions(true);
+  syncPositions(false);
   updateToolUI();
-  toast(`🔄 보석판 섞기 완료! (남은 횟수: ${shuffleLeft}회)`);
+  toast(`🔄 보석판 섞기 완료! (특수돌 유지 · 남은 횟수: ${shuffleLeft}회)`);
   ring(4, .25, 540);
   director.impact(1.2, 0);
   vibrate(30);
