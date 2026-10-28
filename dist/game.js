@@ -1783,17 +1783,25 @@ function realmGearUpgradePreview(item,rank=0){
     return `${label} +${c} → <b>+${n}</b> (+${n-c})`;
   }).join(' · ');
 }
-function realmGearShortDiff(item,rank=0){
-  if(rank>=5)return 'MAX';
+function realmGearDiffText(item,rank=0){
+  if(rank>=5)return '최대 강화';
   const curM=1+rank*.08,nxtM=1+(rank+1)*.08;
-  return [['power','공격'],['hp','체력'],['armor','방어'],['focus','집중'],['ward','보호막'],['arcana','마력']].filter(([key])=>item[key]).map(([key,label])=>{
-    if(key==='focus'){
-      const c=Math.round(item[key]*curM*100),n=Math.round(item[key]*nxtM*100);
-      return `+${n-c}% ${label}`;
-    }
-    const c=Math.ceil(item[key]*curM),n=Math.ceil(item[key]*nxtM);
-    return `+${n-c} ${label}`;
-  }).join(', ');
+  const list=[['power','공격'],['hp','체력'],['armor','방어'],['focus','집중'],['ward','보호막'],['arcana','마력']]
+    .filter(([key])=>item[key])
+    .map(([key,label])=>{
+      if(key==='focus'){
+        const c=Math.round(item[key]*curM*100),n=Math.round(item[key]*nxtM*100);
+        return {label,diff:n-c,unit:'%'};
+      }
+      const c=Math.ceil(item[key]*curM),n=Math.ceil(item[key]*nxtM);
+      return {label,diff:n-c,unit:''};
+    });
+  const positive=list.filter(x=>x.diff>0);
+  const targets=positive.length?positive:list;
+  return targets.map(x=>`${x.label} +${Math.max(1,x.diff)}${x.unit}`).join(' · ');
+}
+function realmGearShortDiff(item,rank=0){
+  return realmGearDiffText(item,rank);
 }
 function realmDollPreview(){const stats=realmGearStats(realmSave);return `<div class="realm-equipment-preview"><div class="realm-doll"><div class="realm-mage" data-pose="idle" role="img" aria-label="현재 장비를 착용한 마법사">${realmDollLayers()}</div></div><div><b>현재 장착</b><small>공격 +${stats.power} · 마력 +${stats.arcana}<br>체력 +${stats.hp} · 방어 +${stats.armor}<br>집중 +${Math.round(stats.focus*100)}% · 시작 보호막 +${stats.ward}</small></div></div>`;}
 function syncRealmGearBattle(before){if(!realmBattle)return;const after=realmGearStats(realmSave),oldMax=realmBattle.heroMax;realmBattle.heroMax=170+after.hp;realmBattle.heroHP=Math.max(0,Math.min(realmBattle.heroMax,realmBattle.heroHP+realmBattle.heroMax-oldMax));realmBattle.shield=Math.max(0,Math.min(150,realmBattle.shield+after.ward-before.ward));}
@@ -1803,7 +1811,29 @@ function openRealmShop(tab='gear',gearSlot='staff'){
  let items='';
  if(tab==='gear'){
   const slotTabs=REALM_GEAR_SLOTS.map(slot=>`<button data-gear-slot="${slot}" class="${gearSlot===slot?'active':''}">${realmGearArt(slot,1)}<span>${realmGearNames[slot]}</span></button>`).join('');
-  const cards=REALM_GEAR[gearSlot].slice(1).map((item,i)=>{const tier=i+1,owned=realmGearOwned(realmSave,gearSlot,tier),equipped=realmSave.gear[gearSlot]===tier,rank=realmGearRank(realmSave,gearSlot,tier),cost=realmGearEnhanceCost(gearSlot,tier,rank);return `<article class="realm-gear-card ${equipped?'equipped':''}">${realmGearArt(gearSlot,tier)}<div class="realm-item-copy"><b>${item.name} <em>+${rank}</em></b><small>현재: ${realmGearDescription(item,rank)}</small>${owned&&rank<5?`<div class="gear-enhance-preview"><span class="preview-badge">강화 시</span>${realmGearUpgradePreview(item,rank)}</div>`:''}<span>${equipped?'✦ 착용 중':owned?'보유 · 장착 가능':'◈ '+item.price.toLocaleString()+' · 구매 가능'}</span></div><div class="realm-item-actions">${!owned?`<button data-gear-buy="${gearSlot}:${tier}" ${realmSave.coins<item.price?'disabled':''}>구매 ◈${item.price.toLocaleString()}</button>`:`<button data-gear-equip="${gearSlot}:${tier}" ${equipped?'disabled':''}>${equipped?'장착 중':'장착'}</button><button data-gear-enhance="${gearSlot}:${tier}" class="gear-enhance-btn" ${rank>=5||realmSave.coins<cost?'disabled':''} title="강화 시 효과: ${realmGearShortDiff(item,rank)}"><span class="enhance-btn-title">${rank>=5?'최대 강화':`강화 ◈${cost.toLocaleString()}`}</span>${rank<5?`<span class="enhance-btn-diff">▲ ${realmGearShortDiff(item,rank)}</span>`:''}</button>`}</div></article>`;}).join('');
+  const cards=REALM_GEAR[gearSlot].slice(1).map((item,i)=>{
+    const tier=i+1,
+          owned=realmGearOwned(realmSave,gearSlot,tier),
+          equipped=realmSave.gear[gearSlot]===tier,
+          rank=realmGearRank(realmSave,gearSlot,tier),
+          cost=realmGearEnhanceCost(gearSlot,tier,rank),
+          diff=realmGearDiffText(item,rank);
+    return `<article class="realm-gear-card ${equipped?'equipped':''}">
+      ${realmGearArt(gearSlot,tier)}
+      <div class="realm-item-copy">
+        <div class="gear-title-row">
+          <b>${item.name}</b>
+          <span class="gear-rank-tag ${rank>=5?'max':''}">${rank>=5?'+5 MAX':`+${rank}`}</span>
+        </div>
+        <small class="gear-stat-current">현재: ${realmGearDescription(item,rank)}</small>
+        ${owned?(rank<5?`<div class="gear-enhance-note"><span class="enhance-pill">강화 시</span><b>${diff} 증가</b></div>`:`<div class="gear-enhance-note max"><span class="enhance-pill max">MAX</span>최대 강화 완료</div>`):''}
+        <span class="gear-status-tag">${equipped?'✦ 착용 중':owned?'보유 · 장착 가능':'◈ '+item.price.toLocaleString()+' · 구매 가능'}</span>
+      </div>
+      <div class="realm-item-actions">
+        ${!owned?`<button data-gear-buy="${gearSlot}:${tier}" class="gear-buy-btn" ${realmSave.coins<item.price?'disabled':''}>구매 ◈${item.price.toLocaleString()}</button>`:`<button data-gear-equip="${gearSlot}:${tier}" class="gear-equip-btn ${equipped?'active':''}" ${equipped?'disabled':''}>${equipped?'착용 중':'장착'}</button><button data-gear-enhance="${gearSlot}:${tier}" class="gear-enhance-btn ${rank>=5?'is-max':''}" ${rank>=5||realmSave.coins<cost?'disabled':''} title="${rank<5?`강화 시: ${diff} 증가`:'최대 강화 완료'}">${rank>=5?'최대 강화':`강화 ◈${cost.toLocaleString()}`}</button>`}
+      </div>
+    </article>`;
+  }).join('');
   items=`${realmDollPreview()}<nav class="realm-gear-slots" aria-label="장비 부위">${slotTabs}</nav><div class="realm-gear-list">${cards}</div>`;
  }else if(tab==='scroll'){
   items=`<div class="realm-scroll-list">${REALM_SCROLLS.map(s=>`<article class="realm-scroll-card"><span class="realm-scroll-art" style="background-position:${s.art%4*100/3}% ${Math.floor(s.art/4)*100}%" role="img" aria-label="${s.name} 마법 그림"></span><div><b>${s.name}</b><small>${s.desc}</small><em>피해 ×${s.mult} ${s.delay?'· 반격 지연 '+s.delay:''}${s.heal?' · 회복 '+s.heal:''}</em></div><button data-realm-buy="scroll:${s.id}" ${realmSave.scrolls.includes(s.id)||realmSave.coins<s.price?'disabled':''}>${realmSave.scrolls.includes(s.id)?'보유':'◈ '+s.price.toLocaleString()}</button></article>`).join('')}</div>`;
