@@ -336,7 +336,7 @@ function getElementSpec(id){
   return ELEMENT_SPECS[id] || { id, name: TOTEMS[id]?.shortName||'원소', icon: '✦', color: '#e2e8f0', bg: '#1e293b', border: '#64748b', glow: '#94a3b833' };
 }
 
-function showArcaneScrollCircle(scrollName, damage, firstElem, secondElem){
+function showArcaneScrollCircle(scrollName, damage, firstElem, secondElem, chain = 1){
   const overlay = $('#arcaneSpellOverlay');
   if(!overlay) return;
   const e1 = getElementSpec(firstElem);
@@ -344,14 +344,18 @@ function showArcaneScrollCircle(scrollName, damage, firstElem, secondElem){
   const scrollTitle = scrollName || '고대 연계 술식';
 
   try {
-    tone(330, .18, 'sine', .1);
-    setTimeout(() => tone(494, .22, 'sine', .12), 110);
-    setTimeout(() => tone(659, .28, 'triangle', .14), 220);
-    setTimeout(() => tone(988, .36, 'triangle', .18), 360);
+    const pitchOffset = Math.min(260, (chain - 1) * 85);
+    tone(330 + pitchOffset, .18, 'sine', .1);
+    setTimeout(() => tone(494 + pitchOffset, .22, 'sine', .12), 100);
+    setTimeout(() => tone(659 + pitchOffset, .28, 'triangle', .14), 210);
+    setTimeout(() => tone(988 + pitchOffset, .36, 'triangle', .18), 340);
+    if(chain > 1) {
+      setTimeout(() => tone(1318 + pitchOffset, .42, 'sawtooth', .16), 460);
+    }
   } catch(e) {}
 
   const circle = document.createElement('div');
-  circle.className = 'arcane-circle-caster';
+  circle.className = 'arcane-circle-caster' + (chain > 1 ? ' relay-chain' : '');
   circle.style.setProperty('--color-1', e1.color);
   circle.style.setProperty('--color-2', e2.color);
   circle.style.setProperty('--bdr-1', e1.border);
@@ -360,6 +364,13 @@ function showArcaneScrollCircle(scrollName, damage, firstElem, secondElem){
   circle.style.setProperty('--glow-2', e2.glow);
 
   const uid = 'path_' + Math.random().toString(36).slice(2, 8);
+  const chainBadge = chain > 1 ? `
+    <div class="relay-combo-badge">
+      <span class="chain-pulse">⚡ RELAY CHAIN ×${chain}</span>
+      <span class="chain-mult">+${Math.min(50, (chain - 1) * 15)}% 피해 증폭!</span>
+    </div>
+  ` : '';
+
   circle.innerHTML = `
     <div class="arcane-screen-dim"></div>
     <div class="arcane-aura-pillar"></div>
@@ -387,7 +398,8 @@ function showArcaneScrollCircle(scrollName, damage, firstElem, secondElem){
       </div>
     </div>
     <div class="arcane-spell-ribbon">
-      <div class="ribbon-runes">⚡ ANCIENT FORMULA ENGAGED · ᚱᚢᚾᛖ ᛊᛈᛖᛚᛚ · ◈ ${scrollTitle} ⚡</div>
+      ${chainBadge}
+      <div class="ribbon-runes">${chain > 1 ? `⚡ CONTINUOUS RELAY COMBO CHAIN ×${chain} ⚡` : `⚡ ANCIENT FORMULA ENGAGED · ᚱᚢᚾᛖ ᛊᛈᛖᛚᛚ · ◈ ${scrollTitle} ⚡`}</div>
       <div class="ribbon-title">
         <span class="ribbon-icon">${e1.icon}</span>
         <b>${scrollTitle}</b>
@@ -461,12 +473,13 @@ function combatCast(color,anchor){
     realmScrollBurst.classList.remove('burst');
     void realmScrollBurst.offsetWidth;
     realmScrollBurst.classList.add('burst');
-    toast(`${result.combo} 연계 마법! ${result.damage} 피해`);
+    const chainNotice = result.chain > 1 ? ` ⚡ ${result.chain}연속 릴레이 연계!` : '';
+    toast(`${result.combo} 연계 마법!${chainNotice} ${result.damage} 피해`);
     const scrollObj = REALM_SCROLLS.find(s => s.name === result.combo);
     const firstColor = scrollObj ? scrollObj.pair[0] : 0;
-    showArcaneScrollCircle(result.combo, result.damage, firstColor, color);
-    director.resonance(2.4);
-    vibrate([40, 50, 80]);
+    showArcaneScrollCircle(result.combo, result.damage, firstColor, color, result.chain || 1);
+    director.resonance(2.4 + (result.chain > 1 ? 0.6 : 0));
+    vibrate(result.chain > 1 ? [40, 60, 100, 120] : [40, 50, 80]);
   }else if(result.affinity>1)toast(`약점 적중! ${result.damage} 피해`);
   director.impact(result.boost>1?1.5:1,color===2?2:color===1?1:0);
   updateRealmUI();

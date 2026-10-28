@@ -96,9 +96,22 @@ export function realmCast(stage,battle,save,color,level,streak){if(battle.phase!
  if(color===7)shield=13+level*4;
  if(color===8)delay=battle.wet>0?1:0;
  const scroll=REALM_SCROLLS.find(s=>save.scrolls.includes(s.id)&&s.pair[0]===battle.previousSpell&&s.pair[1]===color);
- if(scroll){damage=Math.round(damage*scroll.mult);delay+=scroll.delay||0;heal+=scroll.heal||0;if(scroll.burn&&!enemy.absorb?.includes(1))battle.burn=Math.max(battle.burn,scroll.burn);combo=scroll.name;battle.previousSpell=-1;}else battle.previousSpell=color;
+ let chain=0;
+ if(scroll){
+   battle.scrollChain=(battle.scrollChain||0)+1;
+   chain=battle.scrollChain;
+   const chainBonus=chain>1?1+Math.min(0.5,(chain-1)*0.15):1;
+   damage=Math.round(damage*scroll.mult*chainBonus);
+   delay+=scroll.delay||0;
+   heal+=scroll.heal||0;
+   if(scroll.burn&&!enemy.absorb?.includes(1))battle.burn=Math.max(battle.burn,scroll.burn);
+   combo=scroll.name;
+ }else{
+   battle.scrollChain=0;
+ }
+ battle.previousSpell=color;
  if(!enemy.absorb?.includes(color))battle.enemyHP=Math.max(0,battle.enemyHP-damage);battle.heroHP=Math.min(battle.heroMax,battle.heroHP+heal);battle.shield=Math.min(150,battle.shield+shield);battle.delay+=delay;
- return {damage,absorbed,heal,shield,delay,combo,comboArt:scroll?.art??-1,affinity:enemy.absorb?.includes(color)?0:affinity,boost,enemyHP:battle.enemyHP};
+ return {damage,absorbed,heal,shield,delay,combo,comboArt:scroll?.art??-1,affinity:enemy.absorb?.includes(color)?0:affinity,boost,enemyHP:battle.enemyHP,chain};
 }
 export function realmResonanceThreshold(stage){return 1000+Math.floor(stage.act/2)*150;}
 export function realmResonance(stage,battle,save,turnScore,specials){

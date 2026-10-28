@@ -389,6 +389,27 @@ body.realm .board-wrap{--board-aspect:9/10;--board-cols:9;--board-rows:10}
   text-shadow:0 0 12px #ef4444;background:#2b0c0ce0;padding:2px 12px;border-radius:10px;border:1px solid #ef444488;
 }
 
+/* ⚡ 릴레이 연계 콤보 (Relay Spell Chain) */
+.arcane-circle-caster.relay-chain .arcane-circle-bg-art{
+  filter:drop-shadow(0 0 35px #fde047) brightness(1.3);
+}
+.relay-combo-badge{
+  display:inline-flex;align-items:center;gap:8px;padding:4px 14px;border-radius:20px;
+  background:linear-gradient(90deg,#854d0e,#b45309,#78350f);
+  border:1.5px solid #fde047;box-shadow:0 0 16px #fde04788;
+  animation:relayPulse .5s infinite alternate;
+  margin-bottom:3px;
+}
+@keyframes relayPulse{from{transform:scale(.96)}to{transform:scale(1.05)}}
+.relay-combo-badge .chain-pulse{
+  font:900 13px/1 monospace;color:#fef08a;letter-spacing:1px;
+  text-shadow:0 0 10px #eab308;
+}
+.relay-combo-badge .chain-mult{
+  font:bold 11px/1 system-ui,sans-serif;color:#a7f3d0;
+  text-shadow:0 0 8px #10b981;
+}
+
 /* 🌟 힌트 & 리프레시(섞기) 전용 프리미엄 네온 도구 버튼 시스템 */
 .board-tools{
   display:flex!important;align-items:center!important;justify-content:space-between!important;
